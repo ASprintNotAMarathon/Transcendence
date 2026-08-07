@@ -17,24 +17,28 @@ One vocabulary for issue labels, branch names and commit messages.
 
 ## Branches
 
-<category>/<issue-number>-<short-description>
+```<category>/<issue-number>-<short-description>```
 
 Lowercase, kebab-case.
 
+```
 feat/12-gomoku-engine
 fix/34-reversi-flip-direction
 chore/7-eslint-config
 docs/19-api-contract
+```
 
 Branch off `main`. Delete the branch after merging.
 
 ## Commits
 
-<category>: <what changed, imperative>
+```<category>: <what changed, imperative>```
 
+```
 feat: add five-in-a-row win detection
 fix: correct diagonal flip direction in reversi
 chore: add vitest config
+```
 
 Present tense, lowercase after the colon, no trailing period. If you need more than one line, leave a blank line and explain *why* in the body.
 
