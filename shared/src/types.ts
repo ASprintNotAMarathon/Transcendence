@@ -38,7 +38,7 @@ export interface GameEngine<TState, TMove> {
    * Turn untrusted JSON from a client into a move, or throw.
    * This is the only place that accepts `unknown` — everything past it is typed.
    */
-  parseMove(raw: unknown): TMove;
+  parseMove(input: unknown): TMove;
 
   /** Whose turn it is. Read from state, never assumed to alternate. */
   turn(state: TState): PlayerIndex;
@@ -59,5 +59,5 @@ export interface GameEngine<TState, TMove> {
 
   /** For storing in the database. Must survive a JSON round-trip. */
   serialize(state: TState): unknown;
-  deserialize(raw: unknown): TState;
+  deserialize(input: unknown): TState;
 }
