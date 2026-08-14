@@ -147,17 +147,32 @@ export const gomoku: GameEngine<GomokuState, GomokuMove> = {
   },
 
   /**
-   * TODO: implement.
-   * Return null if the game is still running.
+   * Reports the game result implied by the most recent move,
+   * or null if play continues.
    *
-   * Only the last move can have created a win, so check the four DIRECTIONS
-   * through state.lastMove using countLine. Five or more wins — note the
-   * winner is the player who just moved, which is NOT state.turn.
+   * Only lines running through `state.lastMove` are examined.
+   * Any winning line must contain the stone that was just placed,
+   * so a full-board scan would be redundant — but this makes the check incremental:
+   * it must be called after every move, or a win made on a skipped move goes unnoticed.
    *
-   * If nobody won and the board is full, it's a draw.
+   * @returns {{kind: "win", player: number} | {kind: "draw"} | null}
    */
   outcome(state) {
-    throw new Error("not implemented");
+    const last = state.lastMove;
+
+    if (last === null) return null;           // Nothing was played yet
+
+    const player = state.turn === 0 ? 1 : 0;  // Who just moved - NOT state.turn
+
+    for (const [dr, dc] of DIRECTIONS) {
+      if (countLine(state.board, last.row, last.col, dr, dc, player) >= WIN_LENGTH) {
+        return {kind: "win", player};
+      }
+    }
+
+    if (state.moveCount === BOARD_SIZE * BOARD_SIZE) return {kind: "draw"};
+
+    return null;
   },
 
   serialize(state) {
