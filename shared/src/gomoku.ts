@@ -139,11 +139,20 @@ export const gomoku: GameEngine<GomokuState, GomokuMove> = {
   },
 
   /**
-   * TODO: implement.
    * Every empty square, or an empty list once the game is over.
    */
   legalMoves(state) {
-    throw new Error("not implemented");
+    if (gomoku.outcome(state) !== null) return [];
+
+    const moves: GomokuMove[] = [];
+
+    for (let row = 0; row < BOARD_SIZE; row++) {
+      for (let col = 0; col < BOARD_SIZE; col++) {
+        if (state.board[row][col] === null) moves.push({ row, col });
+      }
+    }
+
+    return moves;
   },
 
   /**
