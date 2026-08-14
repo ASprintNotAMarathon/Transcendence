@@ -112,24 +112,26 @@ export const gomoku: GameEngine<GomokuState, GomokuMove> = {
   },
 
   /**
-   * TODO: implement.
    * Throw if the move isn't legal. Otherwise return a NEW state:
-   *   - board with the stone placed (copy the row you change, keep the others)
+   *   - board with the stone placed
    *   - turn flipped to the other player
    *   - lastMove set, moveCount incremented
-   *
-   * Copying one row and reusing the rest is enough — nothing mutates them.
    */
   apply(state, move) {
     if (!gomoku.isLegal(state, move)) {
       throw new Error(`illegal move: ${move.row}, ${move.col}`);
     }
 
-    const newRow = [...state.board[move.row]]; // The three dots create a copy of an array, and we just copy the row changed.
-    newRow[move.col] = state.turn;             // The stone belongs to whoevers' turn it is
+    // The three dots copy an array. Copy the row that changes, place the stone.
+    const newRow = [...state.board[move.row]];
+    newRow[move.col] = state.turn; // the stone belongs to whoever's turn it is
+
+    // Copy the outer array too, then point the changed slot at the new row.
+    const newBoard = [...state.board];
+    newBoard[move.row] = newRow;
 
     return {
-      board: state.board.map((existingRow, rowIndex) => (rowIndex === move.row ? newRow : existingRow)),
+      board: newBoard,
       turn: state.turn === 0 ? 1 : 0,
       lastMove: move,
       moveCount: state.moveCount + 1,
