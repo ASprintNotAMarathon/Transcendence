@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BOARD_SIZE, gomoku, type GomokuMove, type GomokuState } from "./gomoku.js";
+import { BOARD_SIZE, gomoku, type Cell, type GomokuMove, type GomokuState } from "./gomoku.js";
 
 /** Play a list of moves in order, alternating players automatically. */
 function play(moves: GomokuMove[], from = gomoku.initialState()): GomokuState {
@@ -275,5 +275,113 @@ describe("serialization", () => {
 
     expect(payload.lastMove).toEqual({ row: 7, col: 7 }); // same value
     expect(payload.lastMove).not.toBe(s.lastMove);        // different object
+  });
+});
+
+/**
+ * Eight legal moves that leave player 1 holding four in a row at row 7, cols 1-4,
+ * with player 0 playing harmlessly along row 0. Afterwards it is player 0 to move,
+ * so outcome() reads player 1 as the one who just moved.
+ *
+ * Move lastMove onto the empty square at (7,0) and the run reads as five: four real
+ * stones plus the empty square outcome() would have taken on trust.
+ */
+const fourInARowForPlayer1 = play([
+  { row: 0, col: 0 }, { row: 7, col: 1 },
+  { row: 0, col: 1 }, { row: 7, col: 2 },
+  { row: 0, col: 2 }, { row: 7, col: 3 },
+  { row: 0, col: 3 }, { row: 7, col: 4 },
+]);
+
+/**
+ * deserialize is a trust boundary, like parseMove: the input is whatever came back
+ * out of the database, so a malformed state has to be rejected rather than played on.
+ * Every invariant apply() maintains is one that something downstream relies on.
+ */
+describe("deserialize validation", () => {
+  /** A valid payload, with `overrides` merged in so each test corrupts exactly one thing. */
+  function payload(state: GomokuState, overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    return { ...(gomoku.serialize(state) as Record<string, unknown>), ...overrides };
+  }
+
+  /** A grid of nulls typed loosely, so a test can put something illegal in it. */
+  function blankBoard(): unknown[][] {
+    return Array.from({ length: BOARD_SIZE }, () => Array(BOARD_SIZE).fill(null));
+  }
+
+  it("accepts a genuine serialized state", () => {
+    const s = play([{ row: 7, col: 7 }, { row: 8, col: 8 }]);
+    expect(() => gomoku.deserialize(payload(s))).not.toThrow();
+  });
+
+  it("rejects a board with the wrong number of rows", () => {
+    const bad = payload(gomoku.initialState(), { board: [] });
+    expect(() => gomoku.deserialize(bad)).toThrow(/board must have 15 rows/);
+  });
+
+  it("rejects rows that are not rows", () => {
+    // 15 numbers rather than 15 arrays: the old length-only check let this through.
+    const bad = payload(gomoku.initialState(), { board: Array(BOARD_SIZE).fill(0) });
+    expect(() => gomoku.deserialize(bad)).toThrow(/must have 15 cells/);
+  });
+
+  it("rejects a cell that is not 0, 1 or null", () => {
+    const board = blankBoard();
+    board[3][4] = "x";
+    expect(() => gomoku.deserialize(payload(gomoku.initialState(), { board }))).toThrow(
+      /cell 3,4 is not 0, 1 or null/,
+    );
+  });
+
+  it("rejects a turn that disagrees with moveCount", () => {
+    // One move played, so it must be player 1 to move.
+    const bad = payload(play([{ row: 7, col: 7 }]), { turn: 0 });
+    expect(() => gomoku.deserialize(bad)).toThrow(/turn disagrees with moveCount/);
+  });
+
+  it("rejects stone counts that disagree with moveCount", () => {
+    // One stone on the board, but the state claims three moves were played.
+    const bad = payload(play([{ row: 7, col: 7 }]), { moveCount: 3 });
+    expect(() => gomoku.deserialize(bad)).toThrow(/stones, moveCount says 3/);
+  });
+
+  it("rejects a lastMove off the board", () => {
+    const bad = payload(play([{ row: 7, col: 7 }]), { lastMove: { row: 99, col: 0 } });
+    expect(() => gomoku.deserialize(bad)).toThrow(/not a square on the board/);
+  });
+
+  it("rejects a lastMove pointing at an empty square", () => {
+    // Everything else stays consistent: 8 moves, player 0 to move, 4 stones each.
+    // Only lastMove moves, onto the gap at the end of player 1's run.
+    const bad = payload(fourInARowForPlayer1, { lastMove: { row: 7, col: 0 } });
+    expect(() => gomoku.deserialize(bad)).toThrow(/does not point at the last stone played/);
+  });
+
+  it("returns a state detached from the input", () => {
+    const p = payload(play([{ row: 7, col: 7 }]));
+    const s = gomoku.deserialize(p);
+
+    (p.board as Cell[][])[7][7] = null;
+    (p.lastMove as { row: number }).row = 0;
+
+    expect(s.board[7][7]).toBe(0);
+    expect(s.lastMove).toEqual({ row: 7, col: 7 });
+  });
+});
+
+/**
+ * The validation above is the first line of defence, but countLine used to assume
+ * the square at lastMove held the mover's stone. apply() guarantees that; a state
+ * built any other way does not. This checks the assumption is no longer made, so a
+ * forged state reaching outcome() by some other route still cannot win on a gap.
+ */
+describe("outcome does not trust lastMove blindly", () => {
+  it("does not count an empty square at lastMove as a stone", () => {
+    const forged: GomokuState = {
+      ...fourInARowForPlayer1,
+      lastMove: { row: 7, col: 0 }, // empty, immediately left of player 1's four
+    };
+    expect(forged.board[7][0]).toBeNull();
+    expect(gomoku.outcome(forged)).toBeNull();
   });
 });
