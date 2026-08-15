@@ -261,4 +261,19 @@ describe("serialization", () => {
     expect(back.turn).toBe(s.turn);
     expect(back.moveCount).toBe(2);
   });
+
+  /**
+   * serialize deep-copies the board, so the payload has to be fully detached.
+   * Returning lastMove by reference would leave one object shared between the
+   * payload and the state, and mutating the payload before persisting would
+   * reach back into the state it came from.
+   * The round trip above passes either way, so this needs its own test.
+   */
+  it("detaches lastMove from the state it serialized", () => {
+    const s = play([{ row: 7, col: 7 }]);
+    const payload = gomoku.serialize(s) as { lastMove: GomokuMove | null };
+
+    expect(payload.lastMove).toEqual({ row: 7, col: 7 }); // same value
+    expect(payload.lastMove).not.toBe(s.lastMove);        // different object
+  });
 });

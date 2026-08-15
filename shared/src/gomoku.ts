@@ -188,7 +188,7 @@ export const gomoku: GameEngine<GomokuState, GomokuMove> = {
     return {
       board: state.board.map((row) => [...row]),
       turn: state.turn,
-      lastMove: state.lastMove,
+      lastMove: state.lastMove === null ? null : { ...state.lastMove },
       moveCount: state.moveCount,
     };
   },
