@@ -14,6 +14,13 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    "paths": {
+      // Resolve the workspace package to its built declarations (shared's
+      // `prepare` script builds dist/ on npm install). Do NOT point this at
+      // shared/src: that pulls shared into this compilation and shifts the
+      // build output to dist/apps/api/src, breaking `node dist/main`.
+      "@transcendence/shared": ["../../shared/dist/types.d.ts"]
+    },
     "incremental": true,
     "skipLibCheck": true,
     "strictNullChecks": true,
