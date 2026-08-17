@@ -1,0 +1,44 @@
+{
+  "compilerOptions": {
+    // Read source from src/, write compiled output to dist/
+    "rootDir": "./src",
+    "outDir": "./dist",
+
+    // Modern JavaScript. No "DOM" in lib, so browser-only code
+    // (document, window) won't compile here — this runs on the server too.
+    "module": "nodenext",
+    "target": "esnext",
+    "lib": ["esnext"],
+    "types": [],
+
+    // Let debuggers show the original TypeScript instead of compiled JS,
+    // and describe our types to whoever imports this package.
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Off deliberately: these would require a null check on every
+    // board[row][col] access, which is exhausting for grid code.
+    "noUncheckedIndexedAccess": false,
+    "exactOptionalPropertyTypes": false,
+
+    // The setting that matters. Without it TypeScript shrugs at possible nulls and undefineds.
+    "strict": true,
+
+    // Catches Gomoku.ts vs gomoku.ts
+    "forceConsistentCasingInFileNames": true,
+
+    // Requires `import type { Foo }` for types, so it's obvious nothing is imported at runtime.
+    "verbatimModuleSyntax": true,
+
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+
+    // Don't type-check inside node_modules. Purely for speed.
+    "skipLibCheck": true
+  },
+
+  // Only compile src/ — ignore config files and dist/
+  "include": ["src"]
+}
