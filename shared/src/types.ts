@@ -1,11 +1,11 @@
 /**
  * The contract every game in this project implements.
  *
- * Gomoku and Reversi both fit this shape,
- * which is why the second game reuses the match runtime, the WebSocket layer and the database schema.
+ * Gomoku and Reversi both fit this shape, which is why the second game reuses
+ * the match runtime, the WebSocket layer and the database schema.
  *
- * Everything here is pure: no I/O, no logging, no DOM, no Node APIs.
- * This file and its implementations must be importable by both the frontend and backend.
+ * Everything here is pure: no I/O, no logging, no DOM, no Node APIs. This file
+ * and its implementations must be importable by both the frontend and backend.
  */
 
 /** There are exactly two players. Player 0 moves first. */
@@ -14,8 +14,10 @@ export type PlayerIndex = 0 | 1;
 /**
  * How a finished game ended.
  *
- * This is a "discriminated union": a value is one shape OR the other, and the `kind` field tells you which.
- * After `if (o.kind === "win")` TypeScript knows `o.player` exists; in the draw branch it knows it doesn't.
+ * This is a "discriminated union": a value is one shape OR the other,
+ * and the `kind` field tells you which.
+ * After `if (o.kind === "win")` TypeScript knows `o.player` exists;
+ * in the draw branch it knows it doesn't.
  */
 export type GameOutcome =
   | { readonly kind: "win"; readonly player: PlayerIndex }
