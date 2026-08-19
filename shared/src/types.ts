@@ -20,8 +20,8 @@ export type PlayerIndex = 0 | 1;
  * in the draw branch it knows it doesn't.
  */
 export type GameOutcome =
-  | { readonly kind: "win"; readonly player: PlayerIndex }
-  | { readonly kind: "draw" };
+	| { readonly kind: "win"; readonly player: PlayerIndex }
+	| { readonly kind: "draw" };
 
 /**
  * TState and TMove are generics: placeholders each game fills in.
@@ -29,36 +29,36 @@ export type GameOutcome =
  * so within that implementation TypeScript reads every TState as GomokuState.
  */
 export interface GameEngine<TState, TMove> {
-  readonly name: string;
+	readonly name: string;
 
-  /** A fresh game. Same result every time. */
-  initialState(): TState;
+	/** A fresh game. Same result every time. */
+	initialState(): TState;
 
-  /**
-   * Turn untrusted JSON from a client into a move, or throw.
-   * This is the only place that accepts `unknown`; everything past it is typed.
-   */
-  parseMove(input: unknown): TMove;
+	/**
+	 * Turn untrusted JSON from a client into a move, or throw.
+	 * This is the only place that accepts `unknown`; everything past it is typed.
+	 */
+	parseMove(input: unknown): TMove;
 
-  /** Whose turn it is. Read from state, never assumed to alternate. */
-  turn(state: TState): PlayerIndex;
+	/** Whose turn it is. Read from state, never assumed to alternate. */
+	turn(state: TState): PlayerIndex;
 
-  /** Every move the current player may legally make. */
-  legalMoves(state: TState): readonly TMove[];
+	/** Every move the current player may legally make. */
+	legalMoves(state: TState): readonly TMove[];
 
-  isLegal(state: TState, move: TMove): boolean;
+	isLegal(state: TState, move: TMove): boolean;
 
-  /**
-   * Play a move. MUST NOT mutate `state`; return a new one.
-   * Callers rely on old states staying valid.
-   */
-  apply(state: TState, move: TMove): TState;
+	/**
+	 * Play a move. MUST NOT mutate `state`; return a new one.
+	 * Callers rely on old states staying valid.
+	 */
+	apply(state: TState, move: TMove): TState;
 
-  /** null while the game is still running. */
-  outcome(state: TState): GameOutcome | null;
+	/** null while the game is still running. */
+	outcome(state: TState): GameOutcome | null;
 
-  /** For storing in the database.
-   * Must survive a JSON round-trip (save it, load it back, check you got the same thing). */
-  serialize(state: TState): unknown;    // board object  →  something storable
-  deserialize(input: unknown): TState;  // stored thing  →  board object back
+	/** For storing in the database.
+	 * Must survive a JSON round-trip (save it, load it back, check you got the same thing). */
+	serialize(state: TState): unknown;    // board object  →  something storable
+	deserialize(input: unknown): TState;  // stored thing  →  board object back
 }

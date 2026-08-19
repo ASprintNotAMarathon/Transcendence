@@ -1,7 +1,9 @@
 COMPOSE := docker compose
+NPM := npm
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs ps psql clean fclean re check-env
+.PHONY: help up down logs ps psql clean fclean re check-env \
+	install test test-watch typecheck build
 
 help:	## Show available targets
 	@grep -E '^[a-z-]+:.*##' $(MAKEFILE_LIST) | sed 's/:.*##/\t/'
@@ -47,3 +49,26 @@ fclean:	## Stop AND DELETE THE DATABASE
 	$(COMPOSE) down -v --remove-orphans
 
 re: fclean up ## Nuke and restart
+
+# A file target, like .env: make builds node_modules/ from the manifests and reinstalls only when one of them is newer.
+# So `make test` on an up-to-date clone skips the install, but still works on a fresh one.
+# npm doesn't reliably update the directory's timestamp, hence the touch.
+node_modules: package.json package-lock.json
+	$(NPM) install
+	@touch node_modules
+
+install:	## Install npm dependencies (always runs)
+	$(NPM) install
+	@touch node_modules
+
+test: node_modules	## Run the game engine tests once
+	$(NPM) test
+
+test-watch: node_modules	## Run the game engine tests, rerunning on save
+	$(NPM) run test:watch --workspace shared
+
+typecheck: node_modules	## Type-check every workspace
+	$(NPM) run typecheck
+
+build: node_modules	## Compile shared/ to dist/
+	$(NPM) run build --workspace shared

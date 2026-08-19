@@ -1,0 +1,10 @@
+{
+	// Same settings as tsconfig.json, minus the tests.
+	//
+	// tsconfig.json still includes *.test.ts so `npm run typecheck` checks the
+	// test code too. This config is only for emitting dist/: without it the
+	// compiled suites land there, and vitest picks up dist/gomoku.test.js as a
+	// second copy of every test.
+	"extends": "./tsconfig.json",
+	"exclude": ["src/**/*.test.ts"]
+}
