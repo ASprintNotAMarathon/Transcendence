@@ -1,0 +1,10 @@
+/*
+Deliberately minimal. Vite's template CSS was styling its own demo page and is
+gone with it. Real styling waits on the CSS framework decision (Tailwind +
+DaisyUI, unconfirmed).
+*/
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
