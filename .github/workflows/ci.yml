@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same PR cancels the run still going for the old commit.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # ci, not install: installs exactly what package-lock.json pins and fails
+      # if the lockfile is out of date, instead of quietly updating it.
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: make typecheck
+
+      - name: Test
+        run: make test
+
+      # No linter is configured at the root yet. apps/api brings eslint with it,
+      # so add the step once that branch lands:
+      # - name: Lint
+      #   run: make lint
