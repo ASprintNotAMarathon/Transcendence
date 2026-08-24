@@ -13,7 +13,8 @@
     "target": "ES2023",
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
+    "rootDir": ".",
+    "types": ["node", "jest"],
     "paths": {
       // Resolve the workspace package to its built declarations (shared's
       // `prepare` script builds dist/ on npm install). Do NOT point this at
