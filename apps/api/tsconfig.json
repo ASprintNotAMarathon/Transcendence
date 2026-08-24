@@ -19,7 +19,7 @@
       // `prepare` script builds dist/ on npm install). Do NOT point this at
       // shared/src: that pulls shared into this compilation and shifts the
       // build output to dist/apps/api/src, breaking `node dist/main`.
-      "@transcendence/shared": ["../../shared/dist/types.d.ts"]
+      "@transcendence/shared": ["../../shared/dist/index.d.ts"]
     },
     "incremental": true,
     "skipLibCheck": true,
