@@ -7,7 +7,7 @@
  */
 
 export interface EnvConfig {
-  PORT: number;
+  API_PORT: number;
   DATABASE_URL: string;
 }
 
@@ -18,19 +18,19 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variable(s): ${missing.join(', ')}.\n` +
-        'Copy apps/api/.env.example to apps/api/.env and fill in the values.',
+        'The repo has a single env file at its root: copy .env.example to .env and fill in the values.',
     );
   }
 
-  const port = config.PORT === undefined ? 3000 : Number(config.PORT);
+  const port = config.API_PORT === undefined ? 3000 : Number(config.API_PORT);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(
-      `PORT must be an integer between 1 and 65535, got "${String(config.PORT)}"`,
+      `API_PORT must be an integer between 1 and 65535, got "${String(config.API_PORT)}"`,
     );
   }
 
   return {
-    PORT: port,
+    API_PORT: port,
     DATABASE_URL: String(config.DATABASE_URL),
   };
 }

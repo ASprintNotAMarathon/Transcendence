@@ -6,6 +6,6 @@ import type { EnvConfig } from './config/env.validation';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService<EnvConfig, true>);
-  await app.listen(config.get('PORT', { infer: true }));
+  await app.listen(config.get('API_PORT', { infer: true }));
 }
 void bootstrap();
