@@ -27,7 +27,7 @@ check-env: .env
 			echo "	expected:	$$expected"; \
 			echo "	actual:		$$DATABASE_URL"; exit 1; }
 
-up: check-env	## Start everything
+up: check-env build	## Start everything
 	$(COMPOSE) up -d --build
 
 down:	## Stop, keep data
@@ -54,7 +54,7 @@ re: fclean up ## Nuke and restart
 # So `make test` on an up-to-date clone skips the install, but still works on a fresh one.
 # npm doesn't reliably update the directory's timestamp, hence the touch.
 node_modules: package.json package-lock.json
-	$(NPM) install
+	$(NPM) ci
 	@touch node_modules
 
 install:	## Install npm dependencies (always runs)
