@@ -4,6 +4,8 @@ gone with it. Real styling waits on the CSS framework decision (Tailwind +
 DaisyUI, unconfirmed).
 */
 
+@import "tailwindcss";
+
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
