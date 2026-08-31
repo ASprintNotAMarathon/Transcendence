@@ -1,7 +1,7 @@
 /*
-Deliberately minimal. Vite's template CSS was styling its own demo page and is
-gone with it. Real styling waits on the CSS framework decision (Tailwind +
-DaisyUI, unconfirmed).
+CSS decision (issue #18): Tailwind, chosen for its wide adoption and utility
+first workflow. DaisyUI (component library on top of Tailwind) is still
+unconfirmed, added separately if we want it.
 */
 
 @import "tailwindcss";
@@ -9,4 +9,45 @@ DaisyUI, unconfirmed).
 body {
   margin: 0;
   font-family: system-ui, sans-serif;
+}
+
+.font-display {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+@keyframes stone-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.stone-pop {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: stone-pop 0.25s ease-out backwards;
+}
+
+@keyframes win-line-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.stone-win-line {
+  animation: win-line-draw 0.4s ease-out 1.3s backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stone-pop,
+  .stone-win-line {
+    animation: none;
+  }
 }
