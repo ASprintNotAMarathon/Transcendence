@@ -14,6 +14,29 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    # The database steps below need a real Postgres, not a mock: a migration
+    # that only "looks right" is worth nothing. Same major version as
+    # compose.yaml, so CI and a developer's machine can't disagree.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: transcendence
+          POSTGRES_PASSWORD: transcendence
+          POSTGRES_DB: transcendence
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # Throwaway credentials for a container that lives for one job. The real
+      # ones come from .env, which is not committed.
+      DATABASE_URL: postgresql://transcendence:transcendence@localhost:5432/transcendence?schema=public
+
     steps:
       - uses: actions/checkout@v4
 
@@ -26,6 +49,26 @@ jobs:
       # if the lockfile is out of date, instead of quietly updating it.
       - name: Install
         run: npm ci
+
+      # Prisma Client is generated code and is not committed, so nothing
+      # downstream typechecks until this has run. apps/api's postinstall runs it
+      # too; it is a step of its own so a generate failure is legible rather
+      # than buried in the install log.
+      - name: Generate Prisma Client
+        run: npm run prisma:generate --workspace api
+
+      # Proves every committed migration applies to an empty database, which is
+      # what a fresh clone and a fresh container both do.
+      - name: Apply migrations
+        run: npm run prisma:deploy --workspace api
+
+      # The mismatch guard. Compares the database the migrations just built
+      # against schema.prisma and exits 2 if they differ, which is what happens
+      # when someone edits the schema and forgets to run `prisma migrate dev`.
+      # Without this the schema and the migrations drift apart silently and the
+      # next person to migrate inherits the mess.
+      - name: Check schema and migrations agree
+        run: npm run prisma:check --workspace api
 
       - name: Typecheck
         run: make typecheck
