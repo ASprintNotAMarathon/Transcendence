@@ -9,22 +9,17 @@ type Stone = {
 }
 
 /**
- * A small hero illustration of a Gomoku board: stones place themselves one
- * by one, ending on a line of five. The one animated moment on the page,
- * everything else stays still.
+ * Animation of a Gomoku board: stones placed one
+ * by one, ending on a line of five. 
  */
 function BoardIllustration() {
   const spacing = 34
-  const lines = 7 // 7 grid lines -> 6x6 cells, enough to read at a glance
+  const lines = 7 // 7 grid lines -> 6x6 cells
   const size = spacing * (lines - 1)
 
   const gridLines = Array.from({ length: lines }, (_, i) => i * spacing)
 
-  // Stones in placement order, so the animation reads like a game being
-  // played rather than a diagram fading in. White builds outward from the
-  // center of the diagonal, black stays close the whole way as if it nearly
-  // blocked every step. All five white stones are the winning line, so they
-  // all get the glow once the win line draws in.
+  // Stones placement order
   const stones: Stone[] = [
     { col: 4, row: 3, color: 'black' },
     { col: 3, row: 3, color: 'white', winning: true },
@@ -52,8 +47,8 @@ function BoardIllustration() {
     >
       <defs>
         <radialGradient id="board-glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#C9D6B5" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#C9D6B5" stopOpacity="0" />
+          <stop offset="0%" style={{ stopColor: 'var(--color-secondary)' }} stopOpacity="0.18" />
+          <stop offset="100%" style={{ stopColor: 'var(--color-secondary)' }} stopOpacity="0" />
         </radialGradient>
       </defs>
 
@@ -71,7 +66,7 @@ function BoardIllustration() {
         y1={winStart.row * spacing}
         x2={winEnd.col * spacing}
         y2={winEnd.row * spacing}
-        stroke="#B23A2E"
+        style={{ stroke: 'var(--color-primary)' }}
         strokeWidth={3}
         strokeLinecap="round"
         className="stone-win-line"
@@ -83,11 +78,11 @@ function BoardIllustration() {
           cx={stone.col * spacing}
           cy={stone.row * spacing}
           r={12}
-          fill={stone.color === 'white' ? '#ECE7DE' : '#0F1013'}
           stroke={stone.color === 'black' ? '#4A4E5A' : 'none'}
           strokeWidth={1}
           className={stone.winning ? 'stone-win-glow' : 'stone-pop'}
           style={{
+            fill: stone.color === 'white' ? 'var(--color-primary-content)' : '#0F1013',
             animationDelay: stone.winning ? `${i * 0.12}s, 1.3s` : `${i * 0.12}s`,
           }}
         />
@@ -101,20 +96,20 @@ function LandingPage() {
     <div className="flex min-h-screen flex-col items-center justify-center gap-10 px-6 py-16 text-center">
       <BoardIllustration />
 
-      <div className="flex max-w-md flex-col items-center gap-4">
-        <h1 className="font-barrio text-5xl text-[#ECE7DE] sm:text-7xl">
-          <span className="glow-pulse text-[#B23A2E]">GO</span>MOKU Friends
+      <div className="flex max-w-3xl flex-col items-center gap-4">
+        <h1 className="font-barrio text-5xl text-(--color-primary-content) sm:text-7xl">
+          <span className="glow-pulse text-(--color-primary)">GO</span>MOKU Friends
         </h1>
-        <p className="text-balance text-xl  text-muted">
+        <p className="text-balance text-3xl text-muted">
           Real-time five in a row. Invite a friend, start playing.
         </p>
       </div>
 
       <div className="flex flex-col items-center gap-3 sm:flex-row">
-      <PrimaryLink to="/login">Start playing</PrimaryLink>
+        <PrimaryLink to="/login">Start playing</PrimaryLink>
         <Link
           to="/register"
-          className="px-6 py-3 text-sm text-muted underline-offset-4 hover:text-[#ECE7DE] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#C9D6B5]"
+          className="px-6 py-3 text-sm text-muted underline-offset-4 hover:text-(--color-primary-content) hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 outline-(--color-secondary)"
         >
           New here? Create an account
         </Link>

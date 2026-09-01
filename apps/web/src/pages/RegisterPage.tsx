@@ -55,7 +55,7 @@ function RegisterPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="font-barrio text-2xl font-bold text-white">Create an account</h1>
+      <h1 className="font-barrio text-2xl font-bold text-white">Create your account</h1>
 
       <div className="flex flex-col gap-1">
 

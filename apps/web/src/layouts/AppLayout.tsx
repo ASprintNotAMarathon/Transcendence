@@ -1,8 +1,7 @@
 import { NavLink, Outlet } from 'react-router'
 
 function AppLayout() {
-  const navButtonClass =
-    'cursor-pointer rounded-full border-2 border-[#B23A2E] bg-transparent px-4 py-1.5 text-sm font-medium tracking-wide text-[#ECE7DE] transition-colors duration-300 hover:bg-[#B23A2E]'
+  const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
   function handleLogout() {
     console.log('logout clicked')
   }
@@ -10,8 +9,8 @@ function AppLayout() {
   return (
     <div className="min-h-screen">
       <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-        <NavLink to="/home" className="font-barrio text-4xl text-[#ECE7DE]">
-          <span className="glow-pulse text-[#B23A2E]">GO</span>MOKU FRIENDS
+        <NavLink to="/home" className="font-barrio text-4xl text-(--color-primary-content)">
+          <span className="glow-pulse text-(--color-primary)">GO</span>MOKU FRIENDS
         </NavLink>
 
         <div className="flex items-center gap-3">

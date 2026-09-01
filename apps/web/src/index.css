@@ -1,32 +1,37 @@
 /*
-CSS decision (issue #18): Tailwind, chosen for its wide adoption and utility
-first workflow. DaisyUI (component library on top of Tailwind) is still
-unconfirmed, added separately if we want it.
+CSS decision (issue #18):
+- Tailwind chosen for its wide adoption and utility first workflow.
+- DaisyUI added as component library on top of it.
+Brand colors live in the daisyUI theme below (single source of truth);
+custom classes reference those theme variables instead of repeating hex
+values, so changing a color only requires editing it in one place.
 */
 
 @import "tailwindcss";
-
-@theme {
-  /* Brand colors */
-  --color-vermilion: rgba(178, 58, 46, 1);
-  --color-washi: rgba(236, 231, 222, 1);
-  --color-mint: rgba(201, 214, 181, 1);
-  --color-ink: rgba(20, 22, 27, 1);
-  --color-void: rgba(10, 11, 13, 1);
-
-  /* Functional names, reference the colors above */
-  --color-accent: var(--color-vermilion);
-  --color-surface: var(--color-ink);
-  --color-text: var(--color-washi);
-  --color-text-muted: color-mix(in srgb, var(--color-washi) 60%, transparent);
+@plugin "daisyui" {
+  themes: gomoku --default;
+}
+@plugin "daisyui/theme" {
+  name: "gomoku";
+  --color-primary: #B23A2E;
+  --color-primary-content: #ECE7DE;
+  --color-secondary: #C9D6B5;
+  --color-base-100: #14161B;
+  --color-base-200: #0A0B0D;
+  --color-base-content: #ECE7DE;
+  --radius-field: 9999px;
 }
 
 body {
   margin: 0;
   font-family: 'Valley Sans', system-ui, sans-serif;
   background:
-  radial-gradient(ellipse 900px 600px at 15% 100%, rgba(178, 58, 46, 0.85) 0%, transparent 55%),
-  #0A0B0D;
+    radial-gradient(
+      ellipse 900px 600px at 15% 100%,
+      color-mix(in srgb, var(--color-primary) 85%, transparent) 0%,
+      transparent 55%
+    ),
+    var(--color-base-200);
   min-height: 100vh;
 }
 
@@ -34,9 +39,26 @@ body {
   font-family: 'Barrio', system-ui, sans-serif;
 }
 
-.text-muted {
-  color: rgba(239, 219, 219, 0.934);
+.btn-outline-accent {
+  border-color: var(--color-primary);
+  background-color: transparent;
+  color: var(--color-primary-content);
 }
+
+.btn-outline-accent:hover {
+  background-color: var(--color-primary);
+}
+
+.text-muted {
+  color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
+}
+
+/*
+Board illustration animations (LandingPage's Gomoku board):
+stones pop in one by one, then the winning line and winning stones
+glow together once the last stone lands. See the timing note on
+.stone-win-glow below for how these four pieces stay in sync.
+*/
 
 @keyframes stone-pop {
   from {
@@ -58,6 +80,7 @@ body {
 .stone-pop {
   animation: stone-pop 0.25s ease-out backwards;
 }
+
 @keyframes win-line-draw {
   from {
     opacity: 0;
@@ -73,25 +96,28 @@ body {
 
 @keyframes stone-glow {
   from {
-    filter: drop-shadow(0 0 0 rgba(201, 214, 181, 0));
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-secondary) 0%, transparent));
   }
   to {
-    filter: drop-shadow(0 0 8px rgba(201, 214, 181, 0.9));
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
   }
 }
 
+/* Win line + winning stones glow together at 1.3s, synced with the
+   last stone's pop-in animation finishing (10 stones x 0.12s delay). */
 .stone-win-glow {
   animation:
     stone-pop 0.25s ease-out backwards,
     stone-glow 0.4s ease-out 1.3s backwards;
 }
 
+/* Accent glow used on the "GO" in the logo/title */
 @keyframes title-glow {
   0%, 100% {
-    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px rgba(178, 58, 46, 0.4);
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
   50% {
-    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px rgba(178, 58, 46, 0.6);
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px color-mix(in srgb, var(--color-primary) 60%, transparent);
   }
 }
 
@@ -107,11 +133,11 @@ body {
 
   .stone-win-glow {
     animation: none;
-    filter: drop-shadow(0 0 8px rgba(201, 214, 181, 0.9));
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
   }
 
   .glow-pulse {
     animation: none;
-    text-shadow: 0 0 18px rgba(178, 58, 46, 0.6);
+    text-shadow: 0 0 18px color-mix(in srgb, var(--color-primary) 60%, transparent);
   }
 }

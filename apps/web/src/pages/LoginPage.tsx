@@ -46,9 +46,12 @@ function LoginPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="font-barrio text-2xl font-bold text-white">Welcome back!</h1>
+      <h1 className="font-barrio text-2xl text-(--color-primary-content)">Welcome back!</h1>
 
       <div className="flex flex-col gap-1">
+        <label htmlFor="email" className="sr-only">
+          Email
+        </label>
         <input
           id="email"
           type="email"
@@ -56,20 +59,23 @@ function LoginPage() {
           placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)"
         />
         {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
       </div>
 
       <div className="flex flex-col gap-1">
+        <label htmlFor="password" className="sr-only">
+          Password
+        </label>
         <input
           id="password"
           type="password"
           autoComplete="current-password"
-          placeholder="Enter your password"
+          placeholder="••••••••"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
+          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)"
         />
         {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
       </div>
@@ -78,7 +84,7 @@ function LoginPage() {
 
       <p className="text-center text-sm text-muted">
         No account yet?{' '}
-        <Link to="/register" className="text-white underline">
+        <Link to="/register" className="text-(--color-primary-content) underline">
           Register
         </Link>
       </p>
