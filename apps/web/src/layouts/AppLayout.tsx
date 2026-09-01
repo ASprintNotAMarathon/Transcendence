@@ -1,38 +1,24 @@
 import { NavLink, Outlet } from 'react-router'
 
-/**
- * Layout for authenticated screens. The header (nav, profile, logout) sits
- * above <Outlet /> so it never unmounts while the user navigates between
- * pages, per issue #18.
- */
 function AppLayout() {
-  const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `text-sm transition-colors ${isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200'}`
-
+  const navButtonClass =
+    'cursor-pointer rounded-full border-2 border-[#B23A2E] bg-transparent px-4 py-1.5 text-sm font-medium tracking-wide text-[#ECE7DE] transition-colors duration-300 hover:bg-[#B23A2E]'
   function handleLogout() {
-    // Wiring to the API happens once auth exists. For now this is a no-op
-    // placeholder so the header shape is agreed on.
     console.log('logout clicked')
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen">
       <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-        <nav className="flex items-center gap-6">
-			<NavLink to="/home" className={linkClass}>
-			Home
-			</NavLink>
-        </nav>
+        <NavLink to="/home" className="font-barrio text-4xl text-[#ECE7DE]">
+          <span className="glow-pulse text-[#B23A2E]">GO</span>MOKU FRIENDS
+        </NavLink>
 
-        <div className="flex items-center gap-4">
-          <NavLink to="/profile" className={linkClass}>
+        <div className="flex items-center gap-3">
+          <NavLink to="/profile" className={navButtonClass}>
             Profile
           </NavLink>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-md border border-slate-700 px-3 py-1.5 text-sm text-slate-200 hover:bg-slate-800"
-          >
+          <button type="button" onClick={handleLogout} className={navButtonClass}>
             Log out
           </button>
         </div>

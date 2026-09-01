@@ -7,7 +7,7 @@ import { Outlet } from 'react-router'
 
 function PublicLayout() {
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen">
       <Outlet />
     </div>
   )

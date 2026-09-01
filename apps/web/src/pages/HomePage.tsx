@@ -1,10 +1,7 @@
+import EmptyState from '../components/EmptyState'
+
 function HomePage() {
-  return (
-    <div>
-      <h1 className="text-2xl font-bold text-white">ft_transcendence</h1>
-      <p className="mt-2 text-slate-400">Authenticated home, no interface yet.</p>
-    </div>
-  )
+  return <EmptyState title="Lobby" message="Authenticated home, no interface yet." />
 }
 
 export default HomePage

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
+import PrimaryButton from '../components/PrimaryButton'
 
 type Errors = {
   displayName?: string
@@ -54,15 +55,15 @@ function RegisterPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="text-2xl font-bold text-white">Create an account</h1>
+      <h1 className="font-barrio text-2xl font-bold text-white">Create an account</h1>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="displayName" className="text-sm text-slate-300">
-          Display name
-        </label>
+
         <input
           id="displayName"
           type="text"
+          autoComplete="name"
+          placeholder="Choose a nickname"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
@@ -71,12 +72,11 @@ function RegisterPage() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm text-slate-300">
-          Email
-        </label>
         <input
           id="email"
           type="email"
+          autoComplete="email"
+          placeholder="Enter your email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
@@ -85,12 +85,11 @@ function RegisterPage() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm text-slate-300">
-          Password
-        </label>
         <input
           id="password"
           type="password"
+          autoComplete="new-password"
+          placeholder="Choose a password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
@@ -98,14 +97,9 @@ function RegisterPage() {
         {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-200"
-      >
-        Create account
-      </button>
+      <PrimaryButton type="submit">Get started</PrimaryButton>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-muted">
         Already have an account?{' '}
         <Link to="/login" className="text-white underline">
           Log in

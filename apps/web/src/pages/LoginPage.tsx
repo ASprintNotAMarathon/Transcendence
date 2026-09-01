@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
+import PrimaryButton from '../components/PrimaryButton'
 
 type Errors = {
   email?: string
@@ -45,15 +46,14 @@ function LoginPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="text-2xl font-bold text-white">Log in</h1>
+      <h1 className="font-barrio text-2xl font-bold text-white">Welcome back!</h1>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="text-sm text-slate-300">
-          Email
-        </label>
         <input
           id="email"
           type="email"
+          autoComplete="email"
+          placeholder="you@example.com"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
@@ -62,12 +62,11 @@ function LoginPage() {
       </div>
 
       <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="text-sm text-slate-300">
-          Password
-        </label>
         <input
           id="password"
           type="password"
+          autoComplete="current-password"
+          placeholder="Enter your password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
@@ -75,14 +74,9 @@ function LoginPage() {
         {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
       </div>
 
-      <button
-        type="submit"
-        className="rounded-md bg-white px-3 py-2 text-sm font-medium text-slate-900 hover:bg-slate-200"
-      >
-        Log in
-      </button>
+      <PrimaryButton type="submit">Log in</PrimaryButton>
 
-      <p className="text-center text-sm text-slate-400">
+      <p className="text-center text-sm text-muted">
         No account yet?{' '}
         <Link to="/register" className="text-white underline">
           Register

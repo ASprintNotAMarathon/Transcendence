@@ -6,13 +6,36 @@ unconfirmed, added separately if we want it.
 
 @import "tailwindcss";
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
+@theme {
+  /* Brand colors */
+  --color-vermilion: rgba(178, 58, 46, 1);
+  --color-washi: rgba(236, 231, 222, 1);
+  --color-mint: rgba(201, 214, 181, 1);
+  --color-ink: rgba(20, 22, 27, 1);
+  --color-void: rgba(10, 11, 13, 1);
+
+  /* Functional names, reference the colors above */
+  --color-accent: var(--color-vermilion);
+  --color-surface: var(--color-ink);
+  --color-text: var(--color-washi);
+  --color-text-muted: color-mix(in srgb, var(--color-washi) 60%, transparent);
 }
 
-.font-display {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
+body {
+  margin: 0;
+  font-family: 'Valley Sans', system-ui, sans-serif;
+  background:
+  radial-gradient(ellipse 900px 600px at 15% 100%, rgba(178, 58, 46, 0.85) 0%, transparent 55%),
+  #0A0B0D;
+  min-height: 100vh;
+}
+
+.font-barrio {
+  font-family: 'Barrio', system-ui, sans-serif;
+}
+
+.text-muted {
+  color: rgba(239, 219, 219, 0.934);
 }
 
 @keyframes stone-pop {
@@ -26,12 +49,15 @@ body {
   }
 }
 
-.stone-pop {
+.stone-pop,
+.stone-win-glow {
   transform-origin: center;
   transform-box: fill-box;
-  animation: stone-pop 0.25s ease-out backwards;
 }
 
+.stone-pop {
+  animation: stone-pop 0.25s ease-out backwards;
+}
 @keyframes win-line-draw {
   from {
     opacity: 0;
@@ -45,9 +71,47 @@ body {
   animation: win-line-draw 0.4s ease-out 1.3s backwards;
 }
 
+@keyframes stone-glow {
+  from {
+    filter: drop-shadow(0 0 0 rgba(201, 214, 181, 0));
+  }
+  to {
+    filter: drop-shadow(0 0 8px rgba(201, 214, 181, 0.9));
+  }
+}
+
+.stone-win-glow {
+  animation:
+    stone-pop 0.25s ease-out backwards,
+    stone-glow 0.4s ease-out 1.3s backwards;
+}
+
+@keyframes title-glow {
+  0%, 100% {
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px rgba(178, 58, 46, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px rgba(178, 58, 46, 0.6);
+  }
+}
+
+.glow-pulse {
+  animation: title-glow 2.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .stone-pop,
   .stone-win-line {
     animation: none;
+  }
+
+  .stone-win-glow {
+    animation: none;
+    filter: drop-shadow(0 0 8px rgba(201, 214, 181, 0.9));
+  }
+
+  .glow-pulse {
+    animation: none;
+    text-shadow: 0 0 18px rgba(178, 58, 46, 0.6);
   }
 }
