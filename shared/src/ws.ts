@@ -79,8 +79,10 @@ export type MatchErrorCode =
 	| "match.already_over";
 
 /** Failures in chat and presence. */
-// TODO(#17, Sara): chat codes.
-export type ChatErrorCode = never;
+export type ChatErrorCode =
+	| "chat.not_found"
+	| "chat.empty_message"
+	| "chat.message_too_long";
 
 /* ==========================================================================
  * Match events
@@ -185,12 +187,91 @@ export type MatchServerEvent =
 	| Envelope<"match.rejected", MatchRejectedPayload>;
 
 /* ==========================================================================
- * Chat and presence events
+ * Chat events
  * ========================================================================== */
 
-// TODO(#17, Sara): chat.* and presence.
-export type ChatClientEvent = never;
-export type ChatServerEvent = never;
+/** Send a new message to a conversation. */
+export interface ChatSendPayload {
+	readonly conversationId: string;
+	readonly body: string;
+}
+
+/** A message that was successfully created. */
+export interface ChatMessagePayload {
+	readonly conversationId: string;
+	readonly messageId: string;
+	readonly senderId: string;
+	readonly senderName: string;
+	readonly body: string;
+	readonly createdAt: string;
+}
+
+/** Request the previous messages in a conversation. */
+export interface ChatHistoryRequestPayload {
+	readonly conversationId: string;
+}
+
+/** The previous messages in a conversation. */
+export interface ChatHistoryPayload {
+	readonly conversationId: string;
+	readonly messages: readonly ChatMessagePayload[];
+}
+
+/** A message the server refused. */
+export interface ChatRejectedPayload {
+	readonly conversationId: string;
+	readonly code: ChatErrorCode;
+}
+
+/** Client to server. */
+export type ChatClientEvent =
+	| Envelope<"chat.send", ChatSendPayload>
+	| Envelope<"chat.history", ChatHistoryRequestPayload>;
+
+/** Server to client. */
+export type ChatServerEvent =
+	| Envelope<"chat.message", ChatMessagePayload>
+	| Envelope<"chat.history", ChatHistoryPayload>
+	| Envelope<"chat.rejected", ChatRejectedPayload>;
+
+
+/* ==========================================================================
+ * Presence events
+ * ========================================================================== */
+
+/** A user whose online status is known to the socket layer. */
+export interface PresenceUser {
+	readonly userId: string;
+	readonly displayName: string;
+}
+
+/** The list of users currently online. */
+export interface PresenceListPayload {
+	readonly users: readonly PresenceUser[];
+}
+
+/** A user has come online. */
+export interface PresenceOnlinePayload {
+	readonly user: PresenceUser;
+}
+
+/** A user has gone offline. */
+export interface PresenceOfflinePayload {
+	readonly userId: string;
+}
+
+/** Request the current list of online users. */
+export interface PresenceListRequestPayload {}
+
+/** Client to server. */
+export type PresenceClientEvent =
+	| Envelope<"presence.list", PresenceListRequestPayload>;
+
+/** Server to client. */
+export type PresenceServerEvent =
+	| Envelope<"presence.list", PresenceListPayload>
+	| Envelope<"presence.online", PresenceOnlinePayload>
+	| Envelope<"presence.offline", PresenceOfflinePayload>;
 
 /* ==========================================================================
  * Connection lifecycle events
@@ -209,10 +290,12 @@ export type LifecycleServerEvent = never;
 export type ClientEvent =
 	| LifecycleClientEvent
 	| MatchClientEvent
-	| ChatClientEvent;
+	| ChatClientEvent
+	| PresenceClientEvent;
 
 /** Everything a server may send. */
 export type ServerEvent =
 	| LifecycleServerEvent
 	| MatchServerEvent
-	| ChatServerEvent;
+	| ChatServerEvent
+	| PresenceServerEvent;
