@@ -6,7 +6,7 @@
  * the web app imports the same file to know what it is allowed to send and expect.
  * If a message is not in this file, it is not part of the protocol.
  *
- * Like the game engines, this file is pure types: no I/O, no Socket.IO import, no Node APIs.
+ * Like the game engines, this file is pure types.
  * It describes the shape of what crosses the wire, not how it gets there.
  */
 
