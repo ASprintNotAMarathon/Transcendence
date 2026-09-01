@@ -31,4 +31,4 @@ RUN npm ci
 # the re-build faster and cheaper
 COPY apps/api apps/api
 
-CMD ["npm", "run", "start:dev", "--workspace", "api"]
+CMD ["npm", "run", "start:dev", "--workspace", "api", "--", "--no-shell"]
