@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    init: true
     depends_on:
       api:
         condition: service_healthy
@@ -26,6 +27,7 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    init: true
     depends_on:
       db:
         condition: service_healthy

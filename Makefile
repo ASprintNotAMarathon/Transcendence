@@ -28,13 +28,16 @@ check-env: .env
 			echo "	actual:		$$DATABASE_URL"; exit 1; }
 
 up: check-env build	## Start everything
-	$(COMPOSE) up -d --build --wait
+	$(COMPOSE) up -d --build --wait --wait-timeout 180
 
 down:	## Stop and remove the containers, keeping the database
-	$(COMPOSE) down
 # Anonymous volumes are the node_modules holes, one set per container generation, cca 370MB each.
 # They get orphaned by `down` and are never reused.
-	@docker volume prune -f --filter label=com.docker.volume.anonymous >/dev/null
+	@vols=$$($(COMPOSE) ps -aq | xargs -r docker inspect \
+		-f '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{end}}{{end}}'); \
+	$(COMPOSE) down; \
+	echo "$$vols" | tr ' ' '\n' | grep -E '^[0-9a-f]{64}$$' \
+		| xargs -r docker volume rm -f >/dev/null 2>&1 || true
 
 logs:	## Follow logs
 	$(COMPOSE) logs -f
