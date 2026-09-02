@@ -11,7 +11,7 @@ The file is pure types, so it compiles to an empty module and adds nothing to ei
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/ws-protocol-dark.svg">
-  <img alt="Match payload interfaces are wrapped by the Envelope generic into MatchClientEvent, which combines with the empty LifecycleClientEvent and ChatClientEvent to form ClientEvent. The server payloads follow the mirrored path into ServerEvent." src="docs/ws-protocol-light.svg">
+  <img alt="Match payload interfaces are wrapped by the Envelope generic into MatchClientEvent, which combines with the empty LifecycleClientEvent, ChatClientEvent and PresenceClientEvent to form ClientEvent. The server payloads follow the mirrored path into ServerEvent." src="docs/ws-protocol-light.svg">
 </picture>
 
 ### The envelope
@@ -49,8 +49,27 @@ Two details worth knowing before you build against this:
   last. A client that sees a gap knows it missed a move and should rejoin for a fresh board.
 
 Errors are events carrying machine readable codes, never prose the client is expected to display.
-`ErrorCode` splits into `TransportErrorCode`, `MatchErrorCode` and `ChatErrorCode`, each namespaced
+`ErrorCode` splits into `TransportErrorCode`, `MatchErrorCode` , `ChatErrorCode` and `PresenceErrorCode`, each namespaced
 with the same prefix as its events so the three sets cannot collide as they grow.
+
+### Chat events
+
+| Event | Direction | Purpose |
+| --- | --- | --- |
+| `chat.send` | client to server | Send a new message |
+| `chat.history` | client to server | Request previous messages |
+| `chat.message` | server to client | A successfully created message |
+| `chat.history_result` | server to client | Previous messages returned in response to a history request |
+| `chat.rejected` | server to client | A chat message refused by the server |
+
+### Presence events
+
+| Event | Direction | Purpose |
+| --- | --- | --- |
+| `presence.list` | client to server | Request the current list of online users |
+| `presence.state` | server to client | Current list of online users |
+| `presence.online` | server to client | A user has come online |
+| `presence.offline` | server to client | A user has gone offline |
 
 ### What is still open
 
@@ -59,7 +78,6 @@ typecheck today and `ClientEvent` and `ServerEvent` widen on their own once they
 No edit to the top level unions is needed.
 
 - Transport: `TransportErrorCode` plus connect, authenticate, disconnect and reconnect.
-- Chat and presence: `ChatErrorCode` plus the `chat.*` events.
 
 Note that types are erased at build time, so nothing stops a malformed frame from arriving over
 the wire. Validating incoming messages at the door is part of the transport work.

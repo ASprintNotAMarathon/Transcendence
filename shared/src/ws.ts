@@ -57,7 +57,7 @@ export interface Envelope<TType extends string, TPayload> {
  * Codes are namespaced with the same prefixes as the event names,
  * so the three sections below cannot collide as they grow.
  */
-export type ErrorCode = TransportErrorCode | MatchErrorCode | ChatErrorCode;
+export type ErrorCode = TransportErrorCode | MatchErrorCode | ChatErrorCode | PresenceErrorCode;
 
 /** Failures below the game layer: auth, envelope shape, unknown events. */
 // TODO(#17, Renata): transport codes. `never` until then, so the union typechecks while this section is empty.
@@ -83,6 +83,13 @@ export type ChatErrorCode =
 	| "chat.not_found"
 	| "chat.empty_message"
 	| "chat.message_too_long";
+
+
+/** Failures in presence. */
+export type PresenceErrorCode =
+	| "presence.not_found"
+	| "presence.already_online"
+	| "presence.already_offline";
 
 /* ==========================================================================
  * Match events
@@ -231,7 +238,7 @@ export type ChatClientEvent =
 /** Server to client. */
 export type ChatServerEvent =
 	| Envelope<"chat.message", ChatMessagePayload>
-	| Envelope<"chat.history", ChatHistoryPayload>
+	| Envelope<"chat.history_result", ChatHistoryPayload>
 	| Envelope<"chat.rejected", ChatRejectedPayload>;
 
 
@@ -261,7 +268,7 @@ export interface PresenceOfflinePayload {
 }
 
 /** Request the current list of online users. */
-export interface PresenceListRequestPayload {}
+export type PresenceListRequestPayload = Record<string, never>;
 
 /** Client to server. */
 export type PresenceClientEvent =
@@ -269,7 +276,7 @@ export type PresenceClientEvent =
 
 /** Server to client. */
 export type PresenceServerEvent =
-	| Envelope<"presence.list", PresenceListPayload>
+	| Envelope<"presence.state", PresenceListPayload>
 	| Envelope<"presence.online", PresenceOnlinePayload>
 	| Envelope<"presence.offline", PresenceOfflinePayload>;
 
