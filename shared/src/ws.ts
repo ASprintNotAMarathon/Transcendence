@@ -311,7 +311,11 @@ export interface TransportErrorPayload {
  * handshake, so a failure means there is no socket to send anything on: the
  * client gets an HTTP 401 and no connection at all. A token that expires
  * mid-session is a close code, not an event.
- * */
+ *
+ * Rooms are server-internal. A room name is derived from ids the payloads
+ * already carry (a match room from matchId) and never crosses the wire.
+ * That is why no roomId field appears anywhere in this file.
+ */
 export type LifecycleClientEvent = never;
 export type LifecycleServerEvent = Envelope<"transport.error", TransportErrorPayload>;
 
