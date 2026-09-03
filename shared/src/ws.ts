@@ -55,13 +55,22 @@ export interface Envelope<TType extends string, TPayload> {
  * The server never sends prose the client is expected to display.
  *
  * Codes are namespaced with the same prefixes as the event names,
- * so the three sections below cannot collide as they grow.
+ * so the four sections below cannot collide as they grow.
+ * The ErrorCode union isn't used yet, it exists so a single error-display component can look up
+ * wording for any code without knowing which family it came from.
  */
 export type ErrorCode = TransportErrorCode | MatchErrorCode | ChatErrorCode | PresenceErrorCode;
 
-/** Failures below the game layer: auth, envelope shape, unknown events. */
-// TODO(#17, Renata): transport codes. `never` until then, so the union typechecks while this section is empty.
-export type TransportErrorCode = never;
+/** Failures below the game and chat layers */
+export type TransportErrorCode =
+	/** Unreadable - invalid JSON or not shaped like an envelope */
+	| "transport.malformed"
+	/** Readable but not in protocol - type is one we never heard of */
+	| "transport.unknown_event"
+	/** Type is real but the payload is wrong */
+	| "transport.invalid_payload"
+	/** Too many messages too quickly. Socket stays open. */
+	| "transport.rate_limited";
 
 /** Failures the match runtime raises. */
 export type MatchErrorCode =
@@ -284,10 +293,27 @@ export type PresenceServerEvent =
  * Connection lifecycle events
  * ========================================================================== */
 
-// TODO(#17, Renata): connect, authenticate, disconnect, reconnect,
-// and the generic transport error event if we decide errors are generic rather than per-domain.
+/** A failure below the game and chat layers */
+export interface TransportErrorPayload {
+	readonly code: TransportErrorCode;
+}
+
+/**
+ * Transport-level events: the connection itself, rather than a game or a
+ * conversation.
+ *
+ * The client side is empty on purpose. Everything a client might say about
+ * the connection is an action rather than a message: connecting and authenticating
+ * are the HTTP handshake, disconnecting is a close frame, and the heartbeat is
+ * RFC 6455 ping/pong, which the ws library answers below this layer.
+ *
+ * Authentication never appears here for the same reason. It happens during the
+ * handshake, so a failure means there is no socket to send anything on: the
+ * client gets an HTTP 401 and no connection at all. A token that expires
+ * mid-session is a close code, not an event.
+ * */
 export type LifecycleClientEvent = never;
-export type LifecycleServerEvent = never;
+export type LifecycleServerEvent = Envelope<"transport.error", TransportErrorPayload>;
 
 /* ==========================================================================
  * The protocol
