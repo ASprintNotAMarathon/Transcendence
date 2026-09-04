@@ -58,7 +58,9 @@ function RegisterPage() {
       <h1 className="font-barrio text-2xl font-bold text-white">Create your account</h1>
 
       <div className="flex flex-col gap-1">
-
+        <label htmlFor="displayName" className="sr-only">
+          Display name
+        </label>
         <input
           id="displayName"
           type="text"
@@ -72,6 +74,9 @@ function RegisterPage() {
       </div>
 
       <div className="flex flex-col gap-1">
+        <label htmlFor="email" className="sr-only">
+          Email
+        </label>
         <input
           id="email"
           type="email"
@@ -85,6 +90,9 @@ function RegisterPage() {
       </div>
 
       <div className="flex flex-col gap-1">
+        <label htmlFor="password" className="sr-only">
+          Password
+        </label>
         <input
           id="password"
           type="password"

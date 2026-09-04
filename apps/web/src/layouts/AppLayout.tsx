@@ -8,7 +8,7 @@ function AppLayout() {
 
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
+      <header className="relative z-10 flex items-center justify-between bg-(--color-base-200)/50 px-6 py-5 backdrop-blur-md">
         <NavLink to="/home" className="font-barrio text-4xl text-(--color-primary-content)">
           <span className="glow-pulse text-(--color-primary)">GO</span>MOKU FRIENDS
         </NavLink>
