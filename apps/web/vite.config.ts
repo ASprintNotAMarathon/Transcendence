@@ -9,6 +9,14 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+/* 
+this is where the api is, as host:port.
+Inside compose the service name is 'localhost', and localhost inside of container means that container.
+so proxying to localhost:3000 would search for the api inside of the web container.
+Outside of compose (npm run dev) the default is right
+*/
+const apiHost = process.env.API_HOST ?? 'localhost:3000'
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
@@ -17,9 +25,9 @@ export default defineConfig({
     strictPort: true, //if 5173 is not available, fail and say so
 
     proxy: {
-      '/api' : 'http://localhost:3000',
+      '/api' : `http://${apiHost}`,
       '/ws' : {
-        target: 'ws://localhost:3000', //when the upgrade completes, connection is done speaking http, and we start speaking WebSocket
+        target: `ws://${apiHost}`, //when the upgrade completes, connection is done speaking http, and we start speaking WebSocket
         ws: true, //the opt-in: this tells Vite to handle upgrade requests on this path, and once it's upgraded, to pipe bytes both ways
       },
     },

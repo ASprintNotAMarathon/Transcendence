@@ -1,0 +1,34 @@
+# Filters what gets sent to Docker daemon on build.
+# Paths are relative to the build context (the repo root).
+
+# Dependencies: installed inside the image by 'npm ci'.
+# Host copies are built for the host's OS, arch and Node version.
+
+node_modules
+**/node_modules
+
+# Build output: regenerated inside the image, and supplied at runtime by the bind mount
+# that 'make up' now guarantees is built.
+
+dist
+**/dist
+*.tsbuildinfo
+
+# Secrets: compose passes these at runtime. A file copied into a layer stays in the image
+# even if a later layer deletes it.
+.env
+*.local
+
+# Not needed to build or run the app
+.git
+.github
+.gitignore
+.dockerignore
+
+# Editor and OS noise
+.vscode
+.idea
+
+# Logs
+logs
+*.log
