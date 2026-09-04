@@ -1,10 +1,182 @@
 /*
-Deliberately minimal. Vite's template CSS was styling its own demo page and is
-gone with it. Real styling waits on the CSS framework decision (Tailwind +
-DaisyUI, unconfirmed).
+CSS decision (issue #18):
+- Tailwind chosen for its wide adoption and utility first workflow.
+- DaisyUI added as component library on top of it.
+Brand colors live in the daisyUI theme below (single source of truth);
+custom classes reference those theme variables instead of repeating hex
+values, so changing a color only requires editing it in one place.
 */
+
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: gomoku --default;
+}
+@plugin "daisyui/theme" {
+  name: "gomoku";
+  --color-primary: #B23A2E;
+  --color-primary-content: #ECE7DE;
+  --color-secondary: #C9D6B5;
+  --color-base-100: #14161B;
+  --color-base-200: #0A0B0D;
+  --color-base-content: #ECE7DE;
+  --radius-field: 9999px;
+}
 
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  font-family: 'Valley Sans', system-ui, sans-serif;
+  background:
+    radial-gradient(
+      ellipse 900px 600px at 15% 100%,
+      color-mix(in srgb, var(--color-primary) 85%, transparent) 0%,
+      transparent 55%
+    ),
+    var(--color-base-200);
+  min-height: 100vh;
+  position: relative;
+}
+
+.font-barrio {
+  font-family: 'Barrio', system-ui, sans-serif;
+}
+
+.btn-outline-accent {
+  border-color: var(--color-primary);
+  background-color: transparent;
+  color: var(--color-primary-content);
+}
+
+.btn-outline-accent:hover {
+  background-color: var(--color-primary);
+}
+
+.text-muted {
+  color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
+}
+
+/* Soft red light at the top, present on every page. */
+body::before {
+  content: '';
+  position: fixed;
+  top: -100px;
+  left: 0;
+  right: 0;
+  height: 350px;
+  background: radial-gradient(
+    ellipse 1000px 350px at 80% 30%,
+    color-mix(in srgb, var(--color-primary) 45%, transparent) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+/*
+Five-in-a-row inspired animations (LandingPage's Gomoku board):
+stones pop in one by one, winning line and winning stones
+glow together once the last stone lands. See the timing note on
+.stone-win-glow below for how these four pieces stay in sync.
+*/
+
+@keyframes stone-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.stone-pop,
+.stone-win-glow {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.stone-pop {
+  animation: stone-pop 0.25s ease-out backwards;
+}
+
+@keyframes win-line-draw {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.stone-win-line {
+  animation: win-line-draw 0.4s ease-out 1.3s backwards;
+}
+
+@keyframes stone-glow {
+  from {
+    filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-secondary) 0%, transparent));
+  }
+  to {
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
+  }
+}
+
+/* Win line + winning stones glow together at 1.3s, synced with the
+   last stone's pop-in animation finishing (10 stones x 0.12s delay). */
+.stone-win-glow {
+  animation:
+    stone-pop 0.25s ease-out backwards,
+    stone-glow 0.4s ease-out 1.3s backwards;
+}
+
+/* Accent glow used on the "GO" in the logo/title */
+@keyframes title-glow {
+  0%, 100% {
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  }
+  50% {
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  }
+}
+
+.glow-pulse {
+  animation: title-glow 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stone-pop,
+  .stone-win-line {
+    animation: none;
+  }
+
+  .stone-win-glow {
+    animation: none;
+    filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
+  }
+
+  .glow-pulse {
+    animation: none;
+    text-shadow: 0 0 18px color-mix(in srgb, var(--color-primary) 60%, transparent);
+  }
+
+  .stone-loading-dot {
+    animation: none;
+    opacity: 1;
+}
+}
+
+/* "Five-in-a-row" inspired spinner (this is the icon for Loading... ) */
+@keyframes stone-loading-pulse {
+  0%, 80%, 100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.stone-loading-dot {
+  animation: stone-loading-pulse 1.2s ease-in-out infinite;
 }
