@@ -46,4 +46,5 @@ export type {
 	PresenceUser,
 	ServerEvent,
 	TransportErrorCode,
+	TransportErrorPayload,
 } from "./ws.js";
