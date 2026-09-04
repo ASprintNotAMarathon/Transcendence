@@ -14,6 +14,9 @@ COPY apps/web/package.json apps/web/
 COPY shared/tsconfig.json shared/tsconfig.build.json shared/
 COPY shared/src shared/src
 
+COPY apps/api/prisma.config.ts apps/api/
+COPY apps/api/prisma apps/api/prisma
+
 RUN npm ci
 
 COPY apps/web apps/web

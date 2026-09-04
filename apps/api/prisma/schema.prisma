@@ -1,0 +1,36 @@
+// The database schema. One model per table; `prisma migrate dev` turns a change
+// here into a file under prisma/migrations/, and that file is what actually runs
+// against a database. The conventions every model follows are in CONTRIBUTING.md.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// A person with an account. Referenced by everything else in the schema,
+/// which is why it lands first and on its own.
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// Used to log in. @unique is a real UNIQUE index, so a duplicate registration
+  /// fails in the database rather than in a check the application might skip.
+  email String @unique
+
+  /// Shown to other people. Also unique, so two players are never ambiguous
+  /// in a match list or a chat.
+  displayName String @unique
+
+  /// argon2 output, which embeds its own salt and parameters. Never the password.
+  passwordHash String
+
+  /// Every table carries these two. @db.Timestamptz stores an absolute instant
+  /// rather than a wall-clock reading with no timezone, so `now()` in raw SQL
+  /// and a Date from Node mean the same thing.
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
