@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import PrimaryButton from '../components/PrimaryButton'
+import { useAuth } from '../context/AuthContext'
+import { ApiError } from '../lib/api'
 
 type Errors = {
   displayName?: string
@@ -11,11 +13,27 @@ type Errors = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 
+/*
+#20 says a duplicate email or displayName both come back as a 409, from
+catching the database constraint. We don't yet know from #20's real PR
+whether the message says which field it was. Until we can check that,
+this reads the field name out of the message text as a best guess, and
+falls back to a message under the email field, our first form field,
+if that guess fails. Revisit this once Kimia's PR for #20 is up.
+*/
+function fieldForConflict(message: string): 'email' | 'displayName' {
+  return message.toLowerCase().includes('display') ? 'displayName' : 'email'
+}
+
 function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const { register } = useAuth()
+  const navigate = useNavigate()
 
   function validate(): boolean {
     const next: Errors = {}
@@ -40,13 +58,24 @@ function RegisterPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     if (!validate()) return
 
-    // Posting to the API happens once issue #? (auth) lands. For now this
-    // only confirms the form validates correctly.
-    console.log('register submit', { displayName, email, password })
+    setSubmitting(true)
+    try {
+      await register({ displayName, email, password })
+      navigate('/home', { replace: true })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        const field = fieldForConflict(error.message)
+        setErrors({ [field]: 'That ' + (field === 'email' ? 'email' : 'display name') + ' is already taken.' })
+      } else {
+        setErrors({ email: 'Something went wrong. Please try again.' })
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -105,7 +134,9 @@ function RegisterPage() {
         {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
       </div>
 
-      <PrimaryButton type="submit">Get started</PrimaryButton>
+      <PrimaryButton type="submit" disabled={submitting}>
+        {submitting ? 'Creating account…' : 'Get started'}
+      </PrimaryButton>
 
       <p className="text-center text-sm text-muted">
         Already have an account?{' '}
