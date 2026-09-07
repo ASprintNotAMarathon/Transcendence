@@ -1,9 +1,18 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../context/AuthContext'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
-  function handleLogout() {
-    console.log('logout clicked')
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    // logout() only clears the session cookie and our own context for now.
+    // Once #24 lands there is a socket to close here too, see 1.2's "Done
+    // when": "Logout clears the context, closes the socket, returns to
+    // the public layout."
+    await logout()
+    navigate('/', { replace: true })
   }
 
   return (
