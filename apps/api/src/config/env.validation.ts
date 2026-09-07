@@ -9,9 +9,10 @@
 export interface EnvConfig {
   API_PORT: number;
   DATABASE_URL: string;
+  JWT_SECRET: string;
 }
 
-const REQUIRED = ['DATABASE_URL'] as const;
+const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const;
 
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   const missing = REQUIRED.filter((key) => !config[key]);
@@ -29,8 +30,16 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     );
   }
 
+  const secret = String(config.JWT_SECRET);
+  if (secret.length < 32) {
+    throw new Error(
+      `JWT_SECRET must be at least 32 characters, got ${secret.length}. Generate one with: openssl rand -hex 32`,
+    );
+  }
+
   return {
     API_PORT: port,
     DATABASE_URL: String(config.DATABASE_URL),
+    JWT_SECRET: secret,
   };
 }
