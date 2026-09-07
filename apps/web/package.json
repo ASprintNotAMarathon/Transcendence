@@ -11,10 +11,13 @@
     "typecheck": "tsc -b"
   },
   "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@transcendence/shared": "*",
+    "daisyui": "^5.7.25",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "react-router": "^7.18.2"
+    "react-router": "^7.18.2",
+    "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

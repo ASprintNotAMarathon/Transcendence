@@ -7,6 +7,7 @@ vite.config.ts is the instructions for the Vite tool.
 
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 
 /* 
 this is where the api is, as host:port.
@@ -17,7 +18,7 @@ Outside of compose (npm run dev) the default is right
 const apiHost = process.env.API_HOST ?? 'localhost:3000'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
 
   server: {
     port: 5173,
