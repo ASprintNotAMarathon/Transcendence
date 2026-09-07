@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { validateEnv } from './config/env.validation';
 import { PrismaModule } from './prisma/prisma.module';
+import { WsModule } from './ws/ws.module';
 
 // The repo keeps a single .env at its root. Without this, @nestjs/config looks
 // for .env in the current working directory, so `npm start` would read a
@@ -22,6 +23,7 @@ const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
       validate: validateEnv,
     }),
     PrismaModule,
+    WsModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],
