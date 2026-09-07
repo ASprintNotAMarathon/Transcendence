@@ -93,6 +93,17 @@ import { joinMatch, sendMove } from './lib/protocol'
 socket.send(joinMatch(matchId, 'a1'))
 socket.send(sendMove(matchId, { x: 7, y: 7 }))
 ```
+
+## The database
+
+Postgres, through Prisma. One schema file, `apps/api/prisma/schema.prisma`, and
+one migrations folder beside it — every table anyone adds goes there.
+
+[**docs/database.md**](docs/database.md) explains it from scratch: what the
+pieces are, the conventions every table follows, how to add your own, and what
+to do when something looks off. The migration rules are in
+[CONTRIBUTING](CONTRIBUTING.md#database).
+
 ## Getting started
 
 ### Requirements

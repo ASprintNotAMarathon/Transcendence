@@ -22,6 +22,11 @@ COPY apps/web/package.json apps/web/
 COPY shared/tsconfig.json shared/tsconfig.build.json shared/
 COPY shared/src shared/src
 
+# apps/api's postinstall runs `prisma generate` during the npm ci below, and it
+# reads these two. They sit above the install for that reason alone.
+COPY apps/api/prisma.config.ts apps/api/
+COPY apps/api/prisma apps/api/prisma
+
 # this one is the expensive step - it's 790 packages and lasts cca 26 sec, so everything it needs goes
 # above it, and everything that changes, goes below it.
 RUN npm ci
