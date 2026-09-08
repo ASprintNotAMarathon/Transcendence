@@ -28,3 +28,5 @@ lerna-debug.log*
 # Prisma Client is generated from schema.prisma at install time (apps/api postinstall).
 # Generated code is not reviewed, so it is not committed; prisma/migrations/ is.
 apps/api/src/generated/
+
+docs/auth_foundation.txt
