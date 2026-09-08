@@ -1,13 +1,15 @@
 /*
-Mirror image of ProtectedRoute. Someone who is already logged in and
-opens /login or /register shouldn't see the form, they should just land
-in the app. Same loading rule applies: don't decide anything until the
-initial GET /api/auth/me has resolved.
-*/
+  GuestOnlyRoute. Used in main.tsx around /login and /register. 
+  Mirror image of ProtectedRoute.
+ 
+    status === 'loading'        -> show LoadingState
+    status === 'authenticated'  -> redirect to /home
+    status === 'anonymous'      -> render the route (the actual form)
 
+*/
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '../context/AuthContext'
-import LoadingState from './LoadingState'
+import LoadingState from './states/LoadingState'
 
 function GuestOnlyRoute() {
   const { status } = useAuth()

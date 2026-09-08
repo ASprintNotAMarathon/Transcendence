@@ -1,3 +1,11 @@
+/*
+    ErrorState. 
+    Shown if something fails. Not used anywhere yet in this project.
+ 
+    SOMETHING WENT WRONG   <- message, customizable
+    [ Try again ]          <- button, only shown if onRetry is passed
+*/
+
   type ErrorStateProps = {
   message?: string
   onRetry?: () => void
