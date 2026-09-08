@@ -7,7 +7,7 @@ flash is what a guard is meant to prevent.
 
 import { Navigate, Outlet, useLocation } from 'react-router'
 import { useAuth } from '../context/AuthContext'
-import LoadingState from './LoadingState'
+import LoadingState from './states/LoadingState'
 
 function ProtectedRoute() {
   const { status } = useAuth()

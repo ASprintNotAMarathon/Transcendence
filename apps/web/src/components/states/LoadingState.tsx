@@ -1,3 +1,11 @@
+/*
+  LoadingState. Shown while something is loading 
+  (for example ProtectedRoute waiting on GET /api/auth/me).
+ 
+  ● ● ● ● ●   <- 5 dots, pulsing one after another
+  Loading…    <- message, customizable
+*/
+
 type LoadingStateProps = {
   message?: string
 }
