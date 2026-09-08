@@ -23,7 +23,20 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [status, setStatus] = useState<AuthContextValue['status']>('loading')
-
+  
+  // ⚠️ TODO: @Kimia, this only checks the session once, on startup. If the
+  // JWT expires while someone is already using the app, nothing here
+  // notices, status stays 'authenticated' until the next page refresh.
+  // Suggestion: make the JWT valid for a day or more. The cookie is
+  // already HttpOnly, and this is a school project, not production, so a
+  // long expiry should be fine. That way this case likely never comes up
+  // during testing or the demo, and we don't need to build anything for
+  // it. Sound OK, or do you want it shorter?
+  //
+  // If OK: Kimia sets the expiry where she creates the JWT (apps/api,
+  // AuthService). Nothing changes here.
+  // If shorter is needed: I add handling here in AuthContext, and in
+  // request() in lib/api.ts, so any 401 resets status to 'anonymous'.
   useEffect(() => {
     authApi
       .me()

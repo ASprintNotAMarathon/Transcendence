@@ -9,6 +9,7 @@ type Errors = {
   password?: string
 }
 
+// ⚠️ TODO: @Kimia, does your backend check email format too? Same pattern, or stricter?
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 /*
