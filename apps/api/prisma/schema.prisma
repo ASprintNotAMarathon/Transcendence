@@ -33,4 +33,75 @@ model User {
   /// and a Date from Node mean the same thing.
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// The other end of the three Match relations. No columns: Prisma needs a
+  /// field on both sides, and the names pair them up.
+  matchesAsPlayer0 Match[] @relation("MatchPlayer0")
+  matchesAsPlayer1 Match[] @relation("MatchPlayer1")
+  matchesWon       Match[] @relation("MatchWinner")
+}
+
+/// Which engine runs a match. The values match GameEngine.name in shared/.
+enum GameName {
+  gomoku
+  reversi
+}
+
+enum MatchStatus {
+  active
+  finished
+}
+
+/// One game between two players.
+/// The board is not a column: it is rebuilt by using the engine's apply() over this match's Move rows.
+model Match {
+  id String @id @default(uuid()) @db.Uuid
+
+  game   GameName
+  status MatchStatus @default(active)
+
+  /// Player 0 moves first, matching PlayerIndex in shared/.
+  /// Both are set when the match is created and never change.
+  player0Id String @db.Uuid
+  player1Id String @db.Uuid
+  player0   User   @relation("MatchPlayer0", fields: [player0Id], references: [id])
+  player1   User   @relation("MatchPlayer1", fields: [player1Id], references: [id])
+
+  /// Set together with status = finished. Still null then means a draw.
+  winnerId String? @db.Uuid
+  winner   User?   @relation("MatchWinner", fields: [winnerId], references: [id])
+
+  moves Move[]
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// "The matches I am in" is two indexed lookups rather than a scan.
+  @@index([player0Id])
+  @@index([player1Id])
+}
+
+/// One accepted move.
+/// Rows are written once and never updated; together they are the whole history of a match.
+model Move {
+  id String @id @default(uuid()) @db.Uuid
+
+  matchId String @db.Uuid
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  /// 1 for the first move of a match, then one higher per accepted move.
+  moveNumber Int
+
+  /// 0 or 1: the PlayerIndex of whoever played this move.
+  by Int
+
+  /// The move as the engine's parseMove returned it, e.g. { "row": 7, "col": 7 }.
+  payload Json
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// Two moves cannot claim the same number,
+  /// so a double submit or two racing writers lose at the insert instead of both landing.
+  @@unique([matchId, moveNumber])
 }
