@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { isEmail } from 'validator'
+import FormField from '../components/FormField'
 import PrimaryButton from '../components/PrimaryButton'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
@@ -10,19 +12,12 @@ type Errors = {
   password?: string
 }
 
-// ⚠️ TODO: @Kimia, does your backend check email format too? Same pattern or stricter?
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 
-
-// ⚠️ TODO: @Kimia, what's the real minimum password length on your side? Match this to it.
+// Per Kimia's Auth contract (decision 02, proposal): password minimum 8
+// characters, displayName 3-20 characters, letters/digits/underscore/hyphen only.
 const MIN_PASSWORD_LENGTH = 8
+const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/
 
-// ⚠️ TODO: @Kimia, when a 409 happens, does the response say which field
-// conflicted (email or displayName), in some structured way? Or only a
-// free text message? Right now this guesses from the text, that's fragile.
-function fieldForConflict(message: string): 'email' | 'displayName' {
-  return message.toLowerCase().includes('display') ? 'displayName' : 'email'
-}
-
+// Where someone creates a new account for the first time.
 function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
@@ -38,17 +33,23 @@ function RegisterPage() {
 
     if (!displayName) {
       next.displayName = 'Display name is required.'
+    } else if (!DISPLAY_NAME_PATTERN.test(displayName)) {
+      next.displayName = 'Use 3 to 20 letters, numbers, underscores or hyphens.'
     }
 
     if (!email) {
       next.email = 'Email is required.'
-    } else if (!EMAIL_PATTERN.test(email)) {
+    } else if (!isEmail(email)) {
+      // `validator`'s isEmail(), same library NestJS's class-validator
+      // uses under the hood for @IsEmail(). Kimia's auth contract also
+      // lowercases the email before storing it, so what /me and friends
+      // return may not match the casing someone typed here, that's expected.
       next.email = 'Enter a valid email address.'
     }
 
     if (!password) {
       next.password = 'Password is required.'
-    } else if (password.length < MIN_PASSWORD_LENGTH) { // ⚠️
+    } else if (password.length < MIN_PASSWORD_LENGTH) {
       next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
     }
 
@@ -65,9 +66,10 @@ function RegisterPage() {
       await register({ displayName, email, password })
       navigate('/home', { replace: true })
     } catch (error) {
-      if (error instanceof ApiError && error.status === 409) {
-        const field = fieldForConflict(error.message)
-        setErrors({ [field]: 'That ' + (field === 'email' ? 'email' : 'display name') + ' is already taken.' })
+      // Confirmed with Kimia: 400 and 409 both return
+      // { errors: { fieldName: "message" } }, handled the same way here.
+      if (error instanceof ApiError && error.fieldErrors) {
+        setErrors(error.fieldErrors)
       } else {
         setErrors({ email: 'Something went wrong. Please try again.' })
       }
@@ -82,55 +84,40 @@ function RegisterPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="font-barrio text-2xl font-bold text-white">Create your account</h1>
+      <h1 className="font-barrio text-2xl font-bold text-(--color-primary-content)">Create your account</h1>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="displayName" className="sr-only">
-          Display name
-        </label>
-        <input
-          id="displayName"
-          type="text"
-          autoComplete="name"
-          placeholder="Choose a nickname"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.displayName && <p className="text-sm text-red-400">{errors.displayName}</p>}
-      </div>
+      <FormField
+        id="displayName"
+        label="Display name"
+        type="text"
+        autoComplete="name"
+        placeholder="Choose a nickname"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+        error={errors.displayName}
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="sr-only">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
-      </div>
+      <FormField
+        id="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="Enter your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={errors.email}
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="sr-only">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Choose a password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
-      </div>
+      <FormField
+        id="password"
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        placeholder="Choose a password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={errors.password}
+      />
 
       <PrimaryButton type="submit" disabled={submitting}>
         {submitting ? 'Creating account…' : 'Get started'}
@@ -138,7 +125,7 @@ function RegisterPage() {
 
       <p className="text-center text-sm text-muted">
         Already have an account?{' '}
-        <Link to="/login" className="text-white underline">
+        <Link to="/login" className="text-(--color-primary-content) underline">
           Log in
         </Link>
       </p>
