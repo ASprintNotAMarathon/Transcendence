@@ -3,24 +3,20 @@
  * This mock client hardcodes the simulation of the server, without a real server.
  */
 
-
 /*
  * typescript types needed for the chat client.
  */
-import type {
-  ChatMessagePayload,
-  ChatServerEvent,
-} from '@transcendence/shared'
+import type { ChatMessagePayload, ChatServerEvent } from '@transcendence/shared'
 
 /**
  * functions that any chat client must implement
  */
 export interface ChatClient {
-  sendMessage(conversationId: string, body: string): void
+	sendMessage(conversationId: string, body: string): void
 
-  subscribe(listener: (event: ChatServerEvent) => void): () => void
+	subscribe(listener: (event: ChatServerEvent) => void): () => void
 
-  loadHistory(conversationId: string): ChatMessagePayload[]
+	loadHistory(conversationId: string): ChatMessagePayload[]
 }
 
 /*
@@ -28,30 +24,30 @@ export interface ChatClient {
  * TODO: messages → will be replaced by real backend/database data.
  */
 const messages: ChatMessagePayload[] = [
-  {
-    conversationId: 'conversation-1',
-    messageId: 'message-1',
-    senderId: 'user-1',
-    senderName: 'Alice',
-    body: 'Hey! How are you?',
-    createdAt: '2026-09-02T10:00:00.000Z',
-  },
-  {
-    conversationId: 'conversation-1',
-    messageId: 'message-2',
-    senderId: 'user-2',
-    senderName: 'Bob',
-    body: 'I am good! Working on the project.',
-    createdAt: '2026-09-02T10:01:00.000Z',
-  },
-  {
-    conversationId: 'conversation-2',
-    messageId: 'message-3',
-    senderId: 'user-3',
-    senderName: 'Charlie',
-    body: 'Hello!',
-    createdAt: '2026-09-02T11:00:00.000Z',
-  },
+	{
+		conversationId: 'conversation-1',
+		messageId: 'message-1',
+		senderId: 'user-1',
+		senderName: 'Alice',
+		body: 'Hey! How are you?',
+		createdAt: '2026-09-02T10:00:00.000Z',
+	},
+	{
+		conversationId: 'conversation-1',
+		messageId: 'message-2',
+		senderId: 'user-2',
+		senderName: 'Bob',
+		body: 'I am good! Working on the project.',
+		createdAt: '2026-09-02T10:01:00.000Z',
+	},
+	{
+		conversationId: 'conversation-2',
+		messageId: 'message-3',
+		senderId: 'user-3',
+		senderName: 'Charlie',
+		body: 'Hello!',
+		createdAt: '2026-09-02T11:00:00.000Z',
+	},
 ]
 
 /*
@@ -61,7 +57,6 @@ const messages: ChatMessagePayload[] = [
  */
 const listeners = new Set<(event: ChatServerEvent) => void>()
 
-
 /**
  * The browser/client sends a message to the specified conversation.
  * @param conversationId - The ID of the conversation to send the message to.
@@ -70,19 +65,19 @@ const listeners = new Set<(event: ChatServerEvent) => void>()
 // TODO: Replace local message creation/storage with backend message sending.
 function sendMessage(conversationId: string, body: string): void {
 	const message: ChatMessagePayload = {
-    conversationId,
-    messageId: `message-${messages.length + 1}`,
-    senderId: 'current-user',
-    senderName: 'You',
-    body,
-    createdAt: new Date().toISOString(), 
-  }
-  messages.push(message)
-  const event: ChatServerEvent = {
-    type: 'chat.message',
-    payload: message,
-  }
-  listeners.forEach((listener) => listener(event))
+		conversationId,
+		messageId: `message-${messages.length + 1}`,
+		senderId: 'current-user',
+		senderName: 'You',
+		body,
+		createdAt: new Date().toISOString(),
+	}
+	messages.push(message)
+	const event: ChatServerEvent = {
+		type: 'chat.message',
+		payload: message,
+	}
+	listeners.forEach((listener) => listener(event))
 }
 /**
  * Subscribe registers the given listener function to receive future chat events. Unsubscribe reverses it
@@ -91,14 +86,12 @@ function sendMessage(conversationId: string, body: string): void {
  * @returns A function that can be called to unsubscribe the listener.
  */
 // TODO: Replace local listener Set with WebSocket subscription.
-function subscribe(
-    listener: (event: ChatServerEvent) => void
-): () => void {
-    listeners.add(listener)
-    function unsubscribe(): void {
-        listeners.delete(listener)
-    }
-    return unsubscribe
+function subscribe(listener: (event: ChatServerEvent) => void): () => void {
+	listeners.add(listener)
+	function unsubscribe(): void {
+		listeners.delete(listener)
+	}
+	return unsubscribe
 }
 /**
  * Loads the chat history for given conversationID.
@@ -108,9 +101,9 @@ function subscribe(
  */
 // TODO: Replace local array filtering with fetching history from the backend
 function loadHistory(conversationId: string): ChatMessagePayload[] {
-  return messages.filter(
-    (message) => message.conversationId === conversationId,
-  )
+	return messages.filter(
+		(message) => message.conversationId === conversationId,
+	)
 }
 
 /*
@@ -118,9 +111,9 @@ function loadHistory(conversationId: string): ChatMessagePayload[] {
  * and only part to remain unchanged when the backend is implemented.
  */
 export const chatClient: ChatClient = {
-  sendMessage,
-  subscribe,
-  loadHistory,
+	sendMessage,
+	subscribe,
+	loadHistory,
 }
 
 /**
@@ -129,12 +122,15 @@ export const chatClient: ChatClient = {
  * This is only to test the delayed message functionality in the mock chat client.
  */
 export function deliverIncomingAfter(
-  message: ChatMessagePayload,
-  delayMs: number,
+	message: ChatMessagePayload,
+	delayMs: number,
 ): void {
-  setTimeout(() => {
-    messages.push(message)
-    const event: ChatServerEvent = { type: 'chat.message', payload: message }
-    listeners.forEach((listener) => listener(event))
-  }, delayMs)
+	setTimeout(() => {
+		messages.push(message)
+		const event: ChatServerEvent = {
+			type: 'chat.message',
+			payload: message,
+		}
+		listeners.forEach((listener) => listener(event))
+	}, delayMs)
 }
