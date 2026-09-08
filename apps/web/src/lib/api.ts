@@ -14,6 +14,9 @@ Three layers:
 
 */
 
+// ⚠️ TODO: @Kimia: What fields do your AuthController return exactly? 
+// Just id/email/displayName, or also things like createdAt? So will I adapt to it.
+
 /*
 	LAYER 3: Shapes of data that go in and out:
 	- RegisterInput:	frontend input we send to server (raw input)
@@ -24,10 +27,9 @@ Three layers:
 	- register: new input → new row in database → give back AuthUser 
 	- login: input to check → search in database → give back AuthUser 
 
-	NOTE! As soon #20 Kimia's PR #20 is open: check what her 
-	AuthController gives back exactly and adapt to it.
+	
 */
-export type AuthUser = {
+export type AuthUser = { // ⚠️
   id: string
   email: string
   displayName: string
@@ -73,11 +75,8 @@ export const authApi = {
   },
 }
 
-/* 
-	LAYER 1:  
-	request(): one function that for each call does the same:
-	send to /api, send cookies with it, checks if it succeed, if not, send an ApiError.
-*/ 
+// Small building block, used by request() below to report a failed call
+// with its status code attached, instead of a plain generic error.
 export class ApiError extends Error {
   status: number
 
@@ -88,8 +87,19 @@ export class ApiError extends Error {
   }
 }
 
+/* 
+	LAYER 1:  
+	request(): one function that for each call does the same:
+	send to /api, send cookies with it, checks if it succeed, if not, send an ApiError.
+*/ 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
+    // ⚠️ TODO: @Kimia, two things to confirm about this cookie:
+    // 1. Your JWT cookie is Secure, meaning https only. We run http://localhost
+    //    in dev, does the browser still accept and store it here?
+    // 2. credentials: 'include' below needs your API to send
+    //    Access-Control-Allow-Credentials: true, and a specific origin
+    //    (not *) in Access-Control-Allow-Origin. Is that already set up?
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

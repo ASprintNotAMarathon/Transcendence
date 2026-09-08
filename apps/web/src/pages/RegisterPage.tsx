@@ -10,17 +10,15 @@ type Errors = {
   password?: string
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// ⚠️ TODO: @Kimia, does your backend check email format too? Same pattern or stricter?
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/ 
+
+// ⚠️ TODO: @Kimia, what's the real minimum password length on your side? Match this to it.
 const MIN_PASSWORD_LENGTH = 8
 
-/*
-#20 says a duplicate email or displayName both come back as a 409, from
-catching the database constraint. We don't yet know from #20's real PR
-whether the message says which field it was. Until we can check that,
-this reads the field name out of the message text as a best guess, and
-falls back to a message under the email field, our first form field,
-if that guess fails. Revisit this once Kimia's PR for #20 is up.
-*/
+// ⚠️ TODO: @Kimia, when a 409 happens, does the response say which field
+// conflicted (email or displayName), in some structured way? Or only a
+// free text message? Right now this guesses from the text, that's fragile.
 function fieldForConflict(message: string): 'email' | 'displayName' {
   return message.toLowerCase().includes('display') ? 'displayName' : 'email'
 }
@@ -50,7 +48,7 @@ function RegisterPage() {
 
     if (!password) {
       next.password = 'Password is required.'
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
+    } else if (password.length < MIN_PASSWORD_LENGTH) { // ⚠️
       next.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`
     }
 
