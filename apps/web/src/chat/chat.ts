@@ -1,6 +1,11 @@
 /*
+ * chatClient is the browser-side code that communicates with the chat server.
+ * This mock client hardcodes the simulation of the server, without a real server.
+ */
+
+
+/*
  * typescript types needed for the chat client.
- *
  */
 import type {
   ChatMessagePayload,
@@ -50,17 +55,18 @@ const messages: ChatMessagePayload[] = [
 ]
 
 /*
- * This set of listeners is a mock implementation of a real-time chat system.
+ * These listeners belong to the frontend code.
+ * They let the chat client notify the browser when a chat event(incoming/outgoing) arrives.
  * TODO:listeners → will be replaced by the real WebSocket/socket event mechanism.
  */
 const listeners = new Set<(event: ChatServerEvent) => void>()
 //new creates a new object/instance(here Set object) from a class by calling it's constructor function.
 //Set is a built-in JavaScript object that allows to store unique values(here function listeners) of any type.
-//ChatSerrverEvent type of the function's received parameter
+//ChatServerEvent type of the function's received parameter
 
 
 /**
- * Sends a message to the specified conversation.
+ * The browser/client sends a message to the specified conversation.
  * @param conversationId - The ID of the conversation to send the message to.
  * @param body - The content of the message to be sent.
  */
@@ -84,7 +90,7 @@ function sendMessage(conversationId: string, body: string): void {
   listeners.forEach((listener) => listener(event))//notify all subscribed listeners about the new chat message.
 }
 /**
- * Subscribes a listener to chat events.
+ * Subscribe registers the given listener function to receive future chat events. Unsubscribe reverses it
  *
  * @param listener - A function that will be called whenever a new chat event occurs.
  * @returns A function that can be called to unsubscribe the listener.
@@ -105,7 +111,7 @@ function subscribe(
     return unsubscribe
 }
 /**
- * Loads the chat history for a specific conversation.
+ * Loads the chat history for given conversationID. 
  *
  * @param conversationId - The ID of the conversation to load history for.
  * @returns An array of chat messages for the specified conversation.
@@ -130,7 +136,7 @@ export const chatClient: ChatClient = {
 /**
  * Mock-only: simulates a message arriving from someone else after a delay.
  * TODO: Remove this function entirely when the backend is implemented.
- * This is only to test the delayed message functionality in the mock chat client.
+ * This is only to simulate the chat server sending a message to the browser after a delay.
  */
 export function deliverIncomingAfter(
   message: ChatMessagePayload,
