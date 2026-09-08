@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
+import { isEmail } from 'validator'
 import PrimaryButton from '../components/PrimaryButton'
 import { useAuth } from '../context/AuthContext'
 import { ApiError } from '../lib/api'
@@ -9,17 +10,16 @@ type Errors = {
   password?: string
 }
 
-// ⚠️ TODO: @Kimia, does your backend check email format too? Same pattern, or stricter?
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-
 /*
-  Wrong email or password come back as a plain 401 from the
-  server, on purpose (see issue #20: "without revealing which field was
-  wrong"). So this is one error message for both cases, it's not
-  attached to a specific field.
+  Wrong email or wrong password return a generic 401 from server.
+  On purpose: see issue #20, requiring: without revealing which field was wrong.
 */
 const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password.'
 
+
+/*
+  Login Page 
+*/ 
 function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -36,7 +36,9 @@ function LoginPage() {
 
     if (!email) {
       next.email = 'Email is required.'
-    } else if (!EMAIL_PATTERN.test(email)) {
+    } else if (!isEmail(email)) {
+      // Same isEmail() from `validator` as RegisterPage.tsx uses, see the
+      // comment there for why (matches class-validator's @IsEmail()).
       next.email = 'Enter a valid email address.'
     }
 

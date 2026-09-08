@@ -1,38 +1,30 @@
-/* 
+/*
+  Api.ts: The ONLY place our frontend talks to the backend.
 
-Api.ts - The bigger picture
+  Every other file just calls authApi.login(...) or authApi.me(), 
+  no need to know about fetch, cookies, or errors.
 
-This is the only place our frontend knows how to talk with our backend.
-It's the border between the app and the server. Every other file
-(LoginPage, RegisterPage, AuthContext) just calls authApi.login(...) or
-authApi.me(), without needing to know about fetch, cookies, or errors.
-
-Three layers:
-1. One function every call goes through: request() (LAYER 1)
-2. Four functions in authApi the rest of the app actually calls (LAYER 2)
-3. The shapes of data that go in and out (LAYER 3)
-
+  Three layers:
+  1. The shapes of data (LAYER 1)
+  2. request(), the one function every call goes through (LAYER 2)
+  3. authApi, the functions the rest of the app calls (LAYER 3)
 */
+ 
 
-// ⚠️ TODO: @Kimia: What fields do your AuthController return exactly? 
-// Just id/email/displayName, or also things like createdAt? So will I adapt to it.
 
 /*
-	LAYER 3: Shapes of data that go in and out:
-	- RegisterInput:	frontend input we send to server (raw input)
-	- LoginInput: 		frontend input we send to server (raw input) 
-	- AuthUser:			what server sends back (shaped as id, email, displayName)
-
-	Two different ways to get AuthUser data:
-	- register: new input → new row in database → give back AuthUser 
-	- login: input to check → search in database → give back AuthUser 
-
-	
+  LAYER 1: Shapes of data that go in / out:
+            - RegisterInput: what we send to register
+            - LoginInput: what we send to login
+            - AuthUser: what the server sends back
+        
+        Source: according our Auth contract, decision 03
 */
-export type AuthUser = { // ⚠️
+export type AuthUser = {
   id: string
   email: string
-  displayName: string
+  displayName: string 
+  createdAt: string
 }
 
 export type RegisterInput = {
@@ -46,10 +38,54 @@ export type LoginInput = {
   password: string
 }
 
+// Thrown when a request fails. Wraps response from server.
+// Shape of response is confirmed with Kimia: 400/409 return
+// { errors: { fieldName: "message" } }, 401 (login) is a single
+// form-level message instead, see LoginPage.
+export class ApiError extends Error {
+  status: number
+  fieldErrors?: Record<string, string>
+
+  constructor(status: number, message: string, fieldErrors?: Record<string, string>) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.fieldErrors = fieldErrors
+  }
+}
+
 /*
-	LAYER 2: contains four simple functions in authApi:
-	register, login, logout, me. Each of them call request() 
-	with the right path + data
+  LAYER 2   request(): function that for each call does the same:
+            send to /api, send cookies with it, checks if succeed, if not, send ApiError.
+*/
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`/api${path}`, {
+    // Goes through the Vite proxy, so this is same origin. No CORS needed.
+    // Cookie's Secure flag is off in dev, on in production.
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...init?.headers,
+    },
+    ...init,
+  })
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    const message = body?.message ?? `Request failed with status ${response.status}`
+    throw new ApiError(response.status, message, body?.errors)
+  }
+
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return response.json() as Promise<T>
+}
+
+/*
+  LAYER 3   authApi: contains 4 simple functions: register, login, logout, me.
+            Each calls request() with the right path + data.
 */
 export const authApi = {
   register(input: RegisterInput) {
@@ -73,50 +109,4 @@ export const authApi = {
   me() {
     return request<AuthUser>('/auth/me')
   },
-}
-
-// Small building block, used by request() below to report a failed call
-// with its status code attached, instead of a plain generic error.
-export class ApiError extends Error {
-  status: number
-
-  constructor(status: number, message: string) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-  }
-}
-
-/* 
-	LAYER 1:  
-	request(): one function that for each call does the same:
-	send to /api, send cookies with it, checks if it succeed, if not, send an ApiError.
-*/ 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    // ⚠️ TODO: @Kimia, two things to confirm about this cookie:
-    // 1. Your JWT cookie is Secure, meaning https only. We run http://localhost
-    //    in dev, does the browser still accept and store it here?
-    // 2. credentials: 'include' below needs your API to send
-    //    Access-Control-Allow-Credentials: true, and a specific origin
-    //    (not *) in Access-Control-Allow-Origin. Is that already set up?
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-    ...init,
-  })
-
-  if (!response.ok) {
-    const body = await response.json().catch(() => null)
-    const message = body?.message ?? `Request failed with status ${response.status}`
-    throw new ApiError(response.status, message)
-  }
-
-  if (response.status === 204) {
-    return undefined as T
-  }
-
-  return response.json() as Promise<T>
 }
