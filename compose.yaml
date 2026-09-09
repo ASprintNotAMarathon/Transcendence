@@ -37,6 +37,7 @@ services:
       # not using the DATABASE_URL from .env because that one says 'localhost' and localhost inside of a container
       # means the container itself (the api would then look for postgres inside it's own container and wouldn't find it)
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      WS_DEV_AUTH: ${WS_DEV_AUTH:-false}
     ports:
       - "127.0.0.1:${API_PORT}:${API_PORT}"
     volumes:
