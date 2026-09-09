@@ -1,10 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
 const NO_SOCKETS: ReadonlySet<string> = new Set();
 
 /**
  * Which socket belongs to which user.
- * 
+ *
  * One user can hold several sockets at once (a second tab, or a reconnect that briefly
  * overlaps the connection it is replacing). Everything above this layer addresses a user;
  * only this class knows a user is a set of sockets.
@@ -55,4 +55,3 @@ export class WsRegistry {
 		return this.byUser.get(userId) ?? NO_SOCKETS;
 	}
 }
-

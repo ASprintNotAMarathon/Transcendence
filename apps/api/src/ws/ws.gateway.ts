@@ -58,30 +58,30 @@ export class WsGateway
 
 	/**
 	 * Who is on the other end of this connection.
-	 * 
+	 *
 	 * DEV ONLY. Reads a userId straight off the connection URL and believes it.
 	 * There is no verification of any kind - any client can claim to be any user.
 	 * This is a stand-in until the auth module exports a verify fucntion, at which
 	 * point this reads and verifies the acces_token cookie instead and WS_DEV_AUTH
 	 * disappears.
-	 * 
+	 *
 	 * Returns null for "refuse this connection", which is also what happens when the flag
 	 * is off. There is no real check to fall back on yet, so off means nothing connects.
 	 */
 	private identify(socket: WsSocket): string | null {
-		if (!this.config.get('WS_DEV_AUTH', { infer: true})) {
+		if (!this.config.get('WS_DEV_AUTH', { infer: true })) {
 			return null;
 		}
 
 		const { userId } = socket.handshake.query;
 		return typeof userId === 'string' && userId.length > 0 ? userId : null;
 	}
-	
+
 	handleConnection(client: WsSocket): void {
 		const { userId } = client.data;
 		const cameOnline = this.registry.add(userId, client.id);
 		void client.join(userRoom(userId));
-		
+
 		this.logger.log(
 			`connected ${client.id} as ${userId}${cameOnline ? ' (now online)' : ''}`,
 		);
@@ -90,7 +90,7 @@ export class WsGateway
 	handleDisconnect(client: WsSocket): void {
 		const { userId } = client.data;
 		const wentOffline = this.registry.remove(userId, client.id);
-		
+
 		this.logger.log(
 			`disconnected ${client.id} as ${userId}${wentOffline ? ' (now offline)' : ''}`,
 		);
