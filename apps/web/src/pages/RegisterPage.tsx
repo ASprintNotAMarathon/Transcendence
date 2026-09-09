@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router'
 import { isEmail } from 'validator'
 import FormField from '../components/FormField'
 import PrimaryButton from '../components/PrimaryButton'
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../lib/api'
 
 type Errors = {
