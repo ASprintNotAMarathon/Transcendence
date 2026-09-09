@@ -11,6 +11,12 @@ export type { GameEngine, GameOutcome, PlayerIndex } from "./types.js";
 export { BOARD_SIZE, WIN_LENGTH, gomoku } from "./gomoku.js";
 export type { Cell, GomokuMove, GomokuState } from "./gomoku.js";
 
+export { allGameNames, getEngine, implementedGames, isGameName } from "./registry.js";
+export type { AnyGameEngine, GameName } from "./registry.js";
+
+export { outcomeOf, replay, seatOf, winnerIdOf } from "./match.js";
+export type { MatchSeats, MoveRow, ReplayResult } from "./match.js";
+
 export type {
 	ChatClientEvent,
 	ChatErrorCode,
