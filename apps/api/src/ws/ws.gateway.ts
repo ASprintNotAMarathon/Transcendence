@@ -6,8 +6,9 @@ import {
 	OnGatewayInit,
 	WebSocketGateway,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
 import type { EnvConfig } from '../config/env.validation';
+import { WsServer, WsSocket } from './ws.types';
+import { WsRegistry } from './ws.registry';
 
 /**
  * The single socket entry point. Every real-time message in the app arrives
@@ -28,19 +29,22 @@ import type { EnvConfig } from '../config/env.validation';
 @WebSocketGateway({ path: '/ws' })
 export class WsGateway
 	implements
-		OnGatewayInit<Server>,
-		OnGatewayConnection<Socket>,
-		OnGatewayDisconnect<Socket>
+		OnGatewayInit<WsServer>,
+		OnGatewayConnection<WsSocket>,
+		OnGatewayDisconnect<WsSocket>
 {
 	private readonly logger = new Logger(WsGateway.name);
 
-	constructor(private readonly config: ConfigService<EnvConfig, true>) {}
+	constructor(
+		private readonly config: ConfigService<EnvConfig, true>,
+		private readonly registry: WsRegistry,
+	) {}
 
 	/**
 	 * Runs once, when Socket.IO is ready but before any client has connected.
 	 * Installs the handshake middleware.
 	 */
-	afterInit(server: Server): void {
+	afterInit(server: WsServer): void {
 		server.use((socket, next) => {
 			const userId = this.identify(socket);
 			if (userId === null) {
@@ -64,7 +68,7 @@ export class WsGateway
 	 * Returns null for "refuse this connection", which is also what happens when the flag
 	 * is off. There is no real check to fall back on yet, so off means nothing connects.
 	 */
-	private identify(socket: Socket): string | null {
+	private identify(socket: WsSocket): string | null {
 		if (!this.config.get('WS_DEV_AUTH', { infer: true})) {
 			return null;
 		}
@@ -73,11 +77,26 @@ export class WsGateway
 		return typeof userId === 'string' && userId.length > 0 ? userId : null;
 	}
 	
-	handleConnection(client: Socket): void {
-		this.logger.log(`connected ${client.id} as ${client.data.userId}`);
+	handleConnection(client: WsSocket): void {
+		const { userId } = client.data;
+		const cameOnline = this.registry.add(userId, client.id);
+		void client.join(userRoom(userId));
+		
+		this.logger.log(
+			`connected ${client.id} as ${userId}${cameOnline ? ' (now online)' : ''}`,
+		);
 	}
 
-	handleDisconnect(client: Socket): void {
-		this.logger.log(`disconnected ${client.id} as ${client.data.userId}`);
+	handleDisconnect(client: WsSocket): void {
+		const { userId } = client.data;
+		const wentOffline = this.registry.remove(userId, client.id);
+		
+		this.logger.log(
+			`disconnected ${client.id} as ${userId}${wentOffline ? ' (now offline)' : ''}`,
+		);
 	}
+}
+
+export function userRoom(userId: string): string {
+	return `user:${userId}`;
 }
