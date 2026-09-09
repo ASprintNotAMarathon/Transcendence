@@ -1,11 +1,11 @@
 import type { ButtonHTMLAttributes } from 'react'
 
 /*
-  PrimaryButton. Generic outlined button, for actions (form submit),
-  reused wherever needed, currently LoginPage and RegisterPage. 
-  For navigation instead, see PrimaryLink.
- 
-    [ Log in ]   <- outlined pill shape
+    PrimaryButton. Our red outlined button, for actions (like form submit),
+    used wherever needed, for example in LoginPage and RegisterPage. 
+    For navigation instead, see PrimaryLink.
+  
+      [ Log in ]   <- outlined pill shape
 */
 
 type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
