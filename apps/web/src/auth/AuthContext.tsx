@@ -18,7 +18,7 @@ A 401 here just means nobody's logged in, don't treat it as an error.
 */
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { ApiError, authApi, type AuthUser, type LoginInput, type RegisterInput } from '../lib/api'
+import { authApi, type AuthUser, type LoginInput, type RegisterInput } from '../lib/api'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 
@@ -36,11 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [status, setStatus] = useState<AuthStatus>('loading')
 
-// Checks session once, on startup. According to our auth contract: JWT
-// lifetime is 24h --> longer than play session, so expiry doesn't happen
-// during demo. Logout only clears browser's cookie, it can't
-// cancel the token, a copy elsewhere stays valid. We are aware of this
-// 'limitation'.
+  // Checks the session once, on startup. JWT lifetime is 24h, longer
+  // than a play session, so expiry doesnt happen during demo
+  // (decision 05 in Auth Contract).
   useEffect(() => {
     authApi
       .me()
@@ -67,6 +65,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
+    // Clears this browser's cookie only. Can't invalidate the token
+    // itself, a copy elsewhere (another browser, another tab that
+    // copied it) stays valid until it expires. Accepted trade-off,
+    // see decision 05.
     await authApi.logout()
     setUser(null)
     setStatus('anonymous')
@@ -86,5 +88,3 @@ export function useAuth() {
   }
   return ctx
 }
-
-export { ApiError }
