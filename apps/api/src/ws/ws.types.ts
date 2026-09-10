@@ -1,4 +1,8 @@
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
+import type { WsMessageEvent } from '@transcendence/shared';
+
+
+export const EVENT: WsMessageEvent = 'msg';
 
 /**
  * What the handshake middleware hangs on every socket it lets through.

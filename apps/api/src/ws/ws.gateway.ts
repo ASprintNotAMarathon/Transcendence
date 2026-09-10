@@ -9,17 +9,15 @@ import {
 	OnGatewayInit,
 	WebSocketGateway,
 } from '@nestjs/websockets';
-import type { LifecycleServerEvent, WsMessageEvent } from '@transcendence/shared';
+import type { LifecycleServerEvent } from '@transcendence/shared';
 import { parseEnvelope } from './ws.envelope';
 import type { EnvConfig } from '../config/env.validation';
+import { EVENT } from './ws.types';
 import type { WsServer, WsSocket } from './ws.types';
 import { WsRegistry } from './ws.registry';
-
-const EVENT: WsMessageEvent = 'msg';
-
-export function userRoom(userId: string): string {
-	return `user:${userId}`;
-}
+import { userRoom } from './ws.rooms';
+import { WsDispatcher } from './ws.dispatch';
+import { WsSender } from './ws.sender';
 
 /**
  * The single socket entry point. Every real-time message in the app arrives
@@ -49,6 +47,8 @@ export class WsGateway
 	constructor(
 		private readonly config: ConfigService<EnvConfig, true>,
 		private readonly registry: WsRegistry,
+		private readonly dispatcher: WsDispatcher,
+		private readonly sender: WsSender,
 	) {}
 
 	/**
@@ -56,6 +56,10 @@ export class WsGateway
 	 * Installs the handshake middleware.
 	 */
 	afterInit(server: WsServer): void {
+		// The sender cannot reach the server on its own. Only a gateway class can be handed it.
+		// Nothing may send before this line has run.
+		this.sender.bind(server);
+		
 		server.use((socket, next) => {
 			const userId = this.identify(socket);
 			if (userId === null) {
@@ -102,13 +106,12 @@ export class WsGateway
 				cid: result.cid,
 				payload: { code: result.code },
 			};
-			client.emit(EVENT, error);
+			this.sender.sendToSocket(client, error);
 			this.logger.log(`rejected ${result.code} from ${client.data.userId}`);
 			return;
 		}
 
-		//TO DO: route this to whoever handles that type, nothing to route yet.
-		this.logger.log(`${result.event.type} from ${client.data.userId}`);
+		this.dispatcher.dispatch(client, result.event);
 	}
 
 	handleConnection(client: WsSocket): void {
