@@ -1,8 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import PrimaryLink from '../components/PrimaryLink'
+import PrimaryButton from '../components/PrimaryButton'
 
 function AppLayout() {
-  const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
   const { logout } = useAuth()
   const navigate = useNavigate()
 
@@ -23,15 +24,11 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
-          <NavLink to="/profile" className={navButtonClass}>
-            Profile
-          </NavLink>
-          <button type="button" onClick={handleLogout} className={navButtonClass}>
-            Log out
-          </button>
+          <PrimaryLink to="/profile" size="small">Profile</PrimaryLink>
+          <PrimaryButton type="button" onClick={handleLogout} size="small">Log out</PrimaryButton>
         </div>
       </header>
-
+      
       <main className="px-6 py-8">
         <Outlet />
       </main>
