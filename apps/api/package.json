@@ -18,7 +18,7 @@
     "start:debug": "prisma migrate deploy && nest start --debug --watch",
     "start:prod": "prisma migrate deploy && node dist/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-    "test": "jest",
+    "test": "jest --verbose --reporters=default",
     "typecheck": "tsc --noEmit",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
