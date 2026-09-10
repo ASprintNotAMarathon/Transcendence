@@ -1,8 +1,15 @@
+/*
+Every message from every browser tab enters the server here. Someone clicks a stone on the board, types in the chat,
+opens their friends list, it all arrives as bytes and hits this function before anything else looks at it.
+*/
+
 import type { ClientEvent, TransportErrorCode } from '@transcendence/shared';
 
-/** Every `type` a client may send, derived from the protocol rather than listed */
+/** Every `type` a client may send, derived from the ws.ts protocol rather than listed */
 type ClientEventType = ClientEvent['type'];
 
+// value is ... at COMPILE time means that if the function returns true,
+// than the argument(value) is a Record<string, unknown> or string in the isNonEmptyString case
 function isPlainObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -11,6 +18,7 @@ function isNonEmptyString(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0;
 }
 
+//this one is a table of event types connected with functions
 /**
  * One payload check per client event.
  *
@@ -20,10 +28,8 @@ function isNonEmptyString(value: unknown): value is string {
  * nonsense, not a schema validator. Anything deeper belongs to whoever handles
  * the event.
  */
-const PAYLOAD_CHECKS: Record<
-	ClientEventType,
-	(payload: Record<string, unknown>) => boolean
-> = {
+const PAYLOAD_CHECKS: Record<ClientEventType, (payload: Record<string, unknown>) => boolean> = 
+{
 	'match.join': (p) => isNonEmptyString(p.matchId),
 	'match.leave': (p) => isNonEmptyString(p.matchId),
 	'match.resign': (p) => isNonEmptyString(p.matchId),
@@ -43,11 +49,7 @@ function isKnownType(type: string): type is ClientEventType {
 
 export type EnvelopeResult =
 	| { readonly ok: true; readonly event: ClientEvent }
-	| {
-			readonly ok: false;
-			readonly code: TransportErrorCode;
-			readonly cid?: string;
-	  };
+	| { readonly ok: false; readonly code: TransportErrorCode; readonly cid?: string; };
 
 /**
  * Turn whatever arrived on the wire into either a ClientEvent the rest of the server
@@ -61,24 +63,27 @@ export function parseEnvelope(raw: unknown): EnvelopeResult {
 	}
 
 	// read cid first, so even a rejection can be correlated to the request
+	// if it has something in cid, but that something is not text
 	const { type, cid, payload } = raw;
 	if (cid !== undefined && typeof cid !== 'string') {
 		return { ok: false, code: 'transport.malformed' };
 	}
 
+	// type is not a string or payload is not good
 	if (typeof type !== 'string' || !isPlainObject(payload)) {
 		return { ok: false, code: 'transport.malformed', cid };
 	}
 
+	// the client asked to do something that's not a known type
 	if (!isKnownType(type)) {
 		return { ok: false, code: 'transport.unknown_event', cid };
 	}
 
+	// the type is known but the payload is not
 	if (!PAYLOAD_CHECKS[type](payload)) {
 		return { ok: false, code: 'transport.invalid_payload', cid };
 	}
 
-	// the only assertion in the file. the checks have established this, but
-	// TypeScript cannot follow that chain on it's own
+	// all is good
 	return { ok: true, event: raw as unknown as ClientEvent };
 }

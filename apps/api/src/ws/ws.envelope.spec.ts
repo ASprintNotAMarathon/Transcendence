@@ -1,3 +1,5 @@
+// claude written test for parsing the envelope
+
 import { parseEnvelope } from './ws.envelope';
 
 describe('accepts', () => {

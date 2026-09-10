@@ -1,14 +1,25 @@
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+	ConnectedSocket,
+	MessageBody,
+	SubscribeMessage,
 	OnGatewayConnection,
 	OnGatewayDisconnect,
 	OnGatewayInit,
 	WebSocketGateway,
 } from '@nestjs/websockets';
+import type { LifecycleServerEvent, WsMessageEvent } from '@transcendence/shared';
+import { parseEnvelope } from './ws.envelope';
 import type { EnvConfig } from '../config/env.validation';
-import { WsServer, WsSocket } from './ws.types';
+import type { WsServer, WsSocket } from './ws.types';
 import { WsRegistry } from './ws.registry';
+
+const EVENT: WsMessageEvent = 'msg';
+
+export function userRoom(userId: string): string {
+	return `user:${userId}`;
+}
 
 /**
  * The single socket entry point. Every real-time message in the app arrives
@@ -19,8 +30,8 @@ import { WsRegistry } from './ws.registry';
  * does not apply to it. The URL is /ws, not /api/ws. The client must be given
  * the same path — Socket.IO's default is /socket.io and it will not find us
  * otherwise.
- */
-
+ * 
+*/
 // @Something above a class means: hand this class to the function Something
 // It's a shorthand for a function call, and the argument is the class sitting underneath it
 // @ - a marker, WebSocketGateway - the function, ({ path: '/ws' }) - its argument
@@ -77,6 +88,29 @@ export class WsGateway
 		return typeof userId === 'string' && userId.length > 0 ? userId : null;
 	}
 
+	/**
+	 * Every message from every client arrives here. Validate first; nothing
+	 * downstream ever sees an envelope that has not been through parseEnvelope.
+	 */
+	@SubscribeMessage(EVENT)
+	handleMessage(@ConnectedSocket() client: WsSocket, @MessageBody() raw: unknown): void {
+		const result = parseEnvelope(raw);
+
+		if (!result.ok) {
+			const error: LifecycleServerEvent = {
+				type: 'transport.error',
+				cid: result.cid,
+				payload: { code: result.code },
+			};
+			client.emit(EVENT, error);
+			this.logger.log(`rejected ${result.code} from ${client.data.userId}`);
+			return;
+		}
+
+		//TO DO: route this to whoever handles that type, nothing to route yet.
+		this.logger.log(`${result.event.type} from ${client.data.userId}`);
+	}
+
 	handleConnection(client: WsSocket): void {
 		const { userId } = client.data;
 		const cameOnline = this.registry.add(userId, client.id);
@@ -97,6 +131,3 @@ export class WsGateway
 	}
 }
 
-export function userRoom(userId: string): string {
-	return `user:${userId}`;
-}
