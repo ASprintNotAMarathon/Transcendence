@@ -1,3 +1,7 @@
+// TEMP: we have to delete this first import row once #20 is merged 
+// also the switch in the end of the file
+import { mockAuthApi } from './mockAuth'
+
 /*
   Api.ts: The ONLY place our frontend talks to the backend.
 
@@ -61,7 +65,10 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     // Goes through the Vite proxy, so this is same origin. No CORS needed.
-    // Cookie's Secure flag is off in dev, on in production.
+    // Cookie is Secure in every environment, including localhost
+    // (decision 09). If login succeeds but the next /me returns 401
+    // with no cookie in DevTools, that is the browser rejecting it,
+    // see decision 09 in the Auth Contract.
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
@@ -87,7 +94,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   LAYER 3   authApi: contains 4 simple functions: register, login, logout, me.
             Each calls request() with the right path + data.
 */
-export const authApi = {
+const realAuthApi = {
   register(input: RegisterInput) {
     return request<AuthUser>('/auth/register', {
       method: 'POST',
@@ -110,3 +117,7 @@ export const authApi = {
     return request<AuthUser>('/auth/me')
   },
 }
+
+// TEMP switch, see the import note above. See lib/mockAuth.ts for
+// what the mock does and why.
+export const authApi = import.meta.env.VITE_MOCK_AUTH === 'true' ? mockAuthApi : realAuthApi

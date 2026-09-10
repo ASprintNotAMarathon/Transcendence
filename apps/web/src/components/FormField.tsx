@@ -23,12 +23,10 @@ function FormField({ id, label, error, className, ...inputProps }: FormFieldProp
       </label>
       <input
         id={id}
-        className={
-          className ?? 'rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)'
-        }
+        className={className ?? 'input'}
         {...inputProps}
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-error">{error}</p>}
     </div>
   )
 }

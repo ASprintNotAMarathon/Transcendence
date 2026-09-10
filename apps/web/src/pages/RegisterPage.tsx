@@ -12,17 +12,30 @@ type Errors = {
   password?: string
 }
 
-// Per Kimia's Auth contract (decision 02, proposal): password minimum 8
+// According our Auth contract (decision 02, proposal): password minimum 8
 // characters, displayName 3-20 characters, letters/digits/underscore/hyphen only.
 const MIN_PASSWORD_LENGTH = 8
 const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/
 
-// Where someone creates a new account for the first time.
+/*
+  RegisterPage
+
+  1. User fills in displayName, email, password, submits.
+  2. validate() checks first, client-side only. Invalid? Stop here,
+     show errors, no request sent yet.
+  3. Valid? Call authApi.register(). Server checks the real rules
+     (uniqueness, real validation).
+  4. Success: server logs the user in too. Go straight to /home.
+  5. 400/409 with fieldErrors: paint messages onto the matching fields.
+  6. Anything else (network error, 500): form-level / general message, not
+     in a specific field.
+*/
 function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   const { register } = useAuth()
@@ -40,10 +53,7 @@ function RegisterPage() {
     if (!email) {
       next.email = 'Email is required.'
     } else if (!isEmail(email)) {
-      // `validator`'s isEmail(), same library NestJS's class-validator
-      // uses under the hood for @IsEmail(). Kimia's auth contract also
-      // lowercases the email before storing it, so what /me and friends
-      // return may not match the casing someone typed here, that's expected.
+      // Matches backend's email check (same `validator` library).
       next.email = 'Enter a valid email address.'
     }
 
@@ -59,6 +69,7 @@ function RegisterPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setFormError(null) // Clear leftover error msg from previous attempt
     if (!validate()) return
 
     setSubmitting(true)
@@ -71,7 +82,7 @@ function RegisterPage() {
       if (error instanceof ApiError && error.fieldErrors) {
         setErrors(error.fieldErrors)
       } else {
-        setErrors({ email: 'Something went wrong. Please try again.' })
+        setFormError('Something went wrong. Please try again.')
       }
     } finally {
       setSubmitting(false)
@@ -118,7 +129,11 @@ function RegisterPage() {
         onChange={(e) => setPassword(e.target.value)}
         error={errors.password}
       />
-
+      {formError && (
+        <p role="alert" className="text-sm text-error">
+          {formError}
+        </p>
+      )}
       <PrimaryButton type="submit" disabled={submitting}>
         {submitting ? 'Creating account…' : 'Get started'}
       </PrimaryButton>
