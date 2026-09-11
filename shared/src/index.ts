@@ -47,4 +47,5 @@ export type {
 	ServerEvent,
 	TransportErrorCode,
 	TransportErrorPayload,
+	WsMessageEvent,
 } from "./ws.js";
