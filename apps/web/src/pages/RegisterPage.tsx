@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { isEmail } from 'validator'
+import FormField from '../components/FormField'
 import PrimaryButton from '../components/PrimaryButton'
+import { useAuth } from '../auth/AuthContext'
+import { ApiError } from '../lib/api'
 
 type Errors = {
   displayName?: string
@@ -8,25 +12,48 @@ type Errors = {
   password?: string
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+// According our Auth contract (decision 02, proposal): password minimum 8
+// characters, displayName 3-20 characters, letters/digits/underscore/hyphen only.
 const MIN_PASSWORD_LENGTH = 8
+const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/
 
+/*
+  RegisterPage
+
+  1. User fills in displayName, email, password, submits.
+  2. validate() checks first, client-side only. Invalid? Stop here,
+     show errors, no request sent yet.
+  3. Valid? Call authApi.register(). Server checks the real rules
+     (uniqueness, real validation).
+  4. Success: server logs the user in too. Go straight to /home.
+  5. 400/409 with fieldErrors: paint messages onto the matching fields.
+  6. Anything else (network error, 500): form-level / general message, not
+     in a specific field.
+*/
 function RegisterPage() {
   const [displayName, setDisplayName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const { register } = useAuth()
+  const navigate = useNavigate()
 
   function validate(): boolean {
     const next: Errors = {}
 
     if (!displayName) {
       next.displayName = 'Display name is required.'
+    } else if (!DISPLAY_NAME_PATTERN.test(displayName)) {
+      next.displayName = 'Use 3 to 20 letters, numbers, underscores or hyphens.'
     }
 
     if (!email) {
       next.email = 'Email is required.'
-    } else if (!EMAIL_PATTERN.test(email)) {
+    } else if (!isEmail(email)) {
+      // Matches backend's email check (same `validator` library).
       next.email = 'Enter a valid email address.'
     }
 
@@ -40,13 +67,26 @@ function RegisterPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setFormError(null) // Clear leftover error msg from previous attempt
     if (!validate()) return
 
-    // Posting to the API happens once issue #? (auth) lands. For now this
-    // only confirms the form validates correctly.
-    console.log('register submit', { displayName, email, password })
+    setSubmitting(true)
+    try {
+      await register({ displayName, email, password })
+      navigate('/home', { replace: true })
+    } catch (error) {
+      // Confirmed with Kimia: 400 and 409 both return
+      // { errors: { fieldName: "message" } }, handled the same way here.
+      if (error instanceof ApiError && error.fieldErrors) {
+        setErrors(error.fieldErrors)
+      } else {
+        setFormError('Something went wrong. Please try again.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -55,61 +95,52 @@ function RegisterPage() {
       noValidate
       className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
-      <h1 className="font-barrio text-2xl font-bold text-white">Create your account</h1>
+      <h1 className="font-barrio text-2xl font-bold text-(--color-primary-content)">Create your account</h1>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="displayName" className="sr-only">
-          Display name
-        </label>
-        <input
-          id="displayName"
-          type="text"
-          autoComplete="name"
-          placeholder="Choose a nickname"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.displayName && <p className="text-sm text-red-400">{errors.displayName}</p>}
-      </div>
+      <FormField
+        id="displayName"
+        label="Display name"
+        type="text"
+        autoComplete="name"
+        placeholder="Choose a nickname"
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
+        error={errors.displayName}
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="sr-only">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
-      </div>
+      <FormField
+        id="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="Enter your email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={errors.email}
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="sr-only">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="new-password"
-          placeholder="Choose a password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-white"
-        />
-        {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
-      </div>
-
-      <PrimaryButton type="submit">Get started</PrimaryButton>
+      <FormField
+        id="password"
+        label="Password"
+        type="password"
+        autoComplete="new-password"
+        placeholder="Choose a password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={errors.password}
+      />
+      {formError && (
+        <p role="alert" className="text-sm text-error">
+          {formError}
+        </p>
+      )}
+      <PrimaryButton type="submit" disabled={submitting}>
+        {submitting ? 'Creating account…' : 'Get started'}
+      </PrimaryButton>
 
       <p className="text-center text-sm text-muted">
         Already have an account?{' '}
-        <Link to="/login" className="text-white underline">
+        <Link to="/login" className="text-(--color-primary-content) underline">
           Log in
         </Link>
       </p>

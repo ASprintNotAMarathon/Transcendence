@@ -1,9 +1,19 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../auth/AuthContext'
+import PrimaryLink from '../components/PrimaryLink'
+import PrimaryButton from '../components/PrimaryButton'
 
 function AppLayout() {
-  const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
-  function handleLogout() {
-    console.log('logout clicked')
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    // logout() only clears the session cookie and our own context for now.
+    // Once #24 lands there is a socket to close here too, see 1.2's "Done
+    // when": "Logout clears the context, closes the socket, returns to
+    // the public layout."
+    await logout()
+    navigate('/', { replace: true })
   }
 
   return (
@@ -14,15 +24,11 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
-          <NavLink to="/profile" className={navButtonClass}>
-            Profile
-          </NavLink>
-          <button type="button" onClick={handleLogout} className={navButtonClass}>
-            Log out
-          </button>
+          <PrimaryLink to="/profile" size="small">Profile</PrimaryLink>
+          <PrimaryButton type="button" onClick={handleLogout} size="small">Log out</PrimaryButton>
         </div>
       </header>
-
+      
       <main className="px-6 py-8">
         <Outlet />
       </main>
