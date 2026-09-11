@@ -32,4 +32,4 @@ export default PrimaryLink
 //
 // ===  equals the value 'size' exactly 
 // (so as a string, not the equivalent integer value for example)
-// recommended in Typescript: use === and !=== instead of == and !=
+// recommended in Typescript: use === and !== instead of == and !=

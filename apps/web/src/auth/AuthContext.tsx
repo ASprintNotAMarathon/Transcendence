@@ -1,8 +1,10 @@
 /*
-AuthContext.tsx
- 
-Holds two things: who is logged in right now (user + status), and three
-functions to change that (login, register, logout). Every other file
+AuthContext.tsx - Holds two things: 
+
+1. Userinfo + status (from current user)
+2. The three functions to change that (login, register, logout) 
+
+Every other file (LoginPage, RegisterPage, AppLayout, ProtectedRoute)
 reads this instead of talking to the server directly.
  
 Exports:
@@ -52,6 +54,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
   }, [])
 
+
+/*  login, register and logout below all follow the same async/await
+  pattern: send the request, wait for the response, then update state.
+
+Why async: API calls are network requests, they take time and don't resolve
+right away. So 'async` + `await` means.
+
+Until then, the call returns a Promise (placeholder for value that isn't there yet).
+Promise = object with 3 possible states:
+- pending: waiting, no result yet
+- fulfilled:  succeeded, value is in (e.g. user data)
+- rejected: failed, error
+
+await = wait until pending is over, then give the value (fulfilled)
+or throw the error (rejected). Without await you get the Promise
+object itself back, not the value inside it.
+
+*/
   async function login(input: LoginInput) {
     const me = await authApi.login(input)
     setUser(me)
