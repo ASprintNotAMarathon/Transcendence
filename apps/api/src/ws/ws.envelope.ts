@@ -28,8 +28,10 @@ function isNonEmptyString(value: unknown): value is string {
  * nonsense, not a schema validator. Anything deeper belongs to whoever handles
  * the event.
  */
-const PAYLOAD_CHECKS: Record<ClientEventType, (payload: Record<string, unknown>) => boolean> = 
-{
+const PAYLOAD_CHECKS: Record<
+	ClientEventType,
+	(payload: Record<string, unknown>) => boolean
+> = {
 	'match.join': (p) => isNonEmptyString(p.matchId),
 	'match.leave': (p) => isNonEmptyString(p.matchId),
 	'match.resign': (p) => isNonEmptyString(p.matchId),
@@ -49,7 +51,11 @@ function isKnownType(type: string): type is ClientEventType {
 
 export type EnvelopeResult =
 	| { readonly ok: true; readonly event: ClientEvent }
-	| { readonly ok: false; readonly code: TransportErrorCode; readonly cid?: string; };
+	| {
+			readonly ok: false;
+			readonly code: TransportErrorCode;
+			readonly cid?: string;
+	  };
 
 /**
  * Turn whatever arrived on the wire into either a ClientEvent the rest of the server

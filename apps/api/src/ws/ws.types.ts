@@ -1,7 +1,6 @@
 import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 import type { WsMessageEvent } from '@transcendence/shared';
 
-
 export const EVENT: WsMessageEvent = 'msg';
 
 /**

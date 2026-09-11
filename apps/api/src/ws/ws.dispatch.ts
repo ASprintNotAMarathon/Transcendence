@@ -1,12 +1,12 @@
-import { Injectable, Logger } from "@nestjs/common";
-import type { ClientEvent } from "@transcendence/shared";
-import type { WsSocket } from "./ws.types";
+import { Injectable, Logger } from '@nestjs/common';
+import type { ClientEvent } from '@transcendence/shared';
+import type { WsSocket } from './ws.types';
 
 type ClientEventType = ClientEvent['type'];
 
 /**
  * What a slice provides in order to own one kind of message.
- * 
+ *
  * Extract picks the single member of the ClientEvent union whose type matches,
  * so a handler registered for 'match.move' is handed exactly a match.move
  * envelope and not the whole union to sort through.
@@ -16,10 +16,9 @@ export type WsHandler<T extends ClientEventType> = (
 	event: Extract<ClientEvent, { type: T }>,
 ) => void | Promise<void>;
 
-
 /**
  * Routes a validated envelope to whoever owns that message.
- * 
+ *
  * The transport knows nothing about what a match or a conversation is.
  * It knows only that somebody claimed a message type and how to reach them,
  * which is what keeps game and chat logic out of this slice.
@@ -28,7 +27,10 @@ export type WsHandler<T extends ClientEventType> = (
 export class WsDispatcher {
 	private readonly logger = new Logger(WsDispatcher.name);
 
-	private readonly handlers = new Map<ClientEventType, WsHandler<ClientEventType>>();
+	private readonly handlers = new Map<
+		ClientEventType,
+		WsHandler<ClientEventType>
+	>();
 
 	register<T extends ClientEventType>(type: T, handler: WsHandler<T>): void {
 		if (this.handlers.has(type)) {
@@ -38,7 +40,10 @@ export class WsDispatcher {
 		// register is the only way in, and its signature keeps the key and the
 		// handler's event type in step. dispatch only ever looks up by
 		// event.type and passes that same event.
-		this.handlers.set(type, handler as unknown as WsHandler<ClientEventType>);
+		this.handlers.set(
+			type,
+			handler as unknown as WsHandler<ClientEventType>,
+		);
 	}
 
 	dispatch(client: WsSocket, event: ClientEvent): void {

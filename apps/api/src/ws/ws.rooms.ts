@@ -1,6 +1,6 @@
 /**
  * Room names.
- * 
+ *
  * A room name is server-internal: it is derived from an id the payloads
  * already carry and never crosses the wire. Every slice that addresses a room
  * builds the name from here rather than writing the string itself, so there is
@@ -21,4 +21,3 @@ export function matchRoom(matchId: string): string {
 export function conversationRoom(conversationId: string): string {
 	return `conversation:${conversationId}`;
 }
-

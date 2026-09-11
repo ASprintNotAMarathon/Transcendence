@@ -1,13 +1,12 @@
-import { Injectable } from "@nestjs/common";
-import type { ServerEvent } from "@transcendence/shared";
-import { userRoom } from "./ws.rooms";
-import { EVENT } from "./ws.types";
+import { Injectable } from '@nestjs/common';
+import type { ServerEvent } from '@transcendence/shared';
+import { userRoom } from './ws.rooms';
+import { EVENT } from './ws.types';
 import type { WsServer, WsSocket } from './ws.types';
-
 
 /**
  * The only way anything leaves the server.
- * 
+ *
  * Every slice sends through here, so the envelope is never assembled twice and
  * the event name has one definition. When we add logging or rate limiting, there
  * is one place to put it.
@@ -17,7 +16,7 @@ export class WsSender {
 	private server: WsServer | undefined;
 
 	/** Called once, from the gateway's afterInit. Nothing sends before that */
-	bind(server: WsServer):void {
+	bind(server: WsServer): void {
 		this.server = server;
 	}
 

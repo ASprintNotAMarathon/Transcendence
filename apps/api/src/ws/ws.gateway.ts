@@ -18,6 +18,8 @@ import { WsRegistry } from './ws.registry';
 import { userRoom } from './ws.rooms';
 import { WsDispatcher } from './ws.dispatch';
 import { WsSender } from './ws.sender';
+import { readCookie } from './ws.cookie';
+import { AUTH_COOKIE, TokenVerifier } from './ws.verifier';
 
 /**
  * The single socket entry point. Every real-time message in the app arrives
@@ -28,8 +30,8 @@ import { WsSender } from './ws.sender';
  * does not apply to it. The URL is /ws, not /api/ws. The client must be given
  * the same path — Socket.IO's default is /socket.io and it will not find us
  * otherwise.
- * 
-*/
+ *
+ */
 // @Something above a class means: hand this class to the function Something
 // It's a shorthand for a function call, and the argument is the class sitting underneath it
 // @ - a marker, WebSocketGateway - the function, ({ path: '/ws' }) - its argument
@@ -49,6 +51,7 @@ export class WsGateway
 		private readonly registry: WsRegistry,
 		private readonly dispatcher: WsDispatcher,
 		private readonly sender: WsSender,
+		private readonly verifier: TokenVerifier,
 	) {}
 
 	/**
@@ -59,7 +62,7 @@ export class WsGateway
 		// The sender cannot reach the server on its own. Only a gateway class can be handed it.
 		// Nothing may send before this line has run.
 		this.sender.bind(server);
-		
+
 		server.use((socket, next) => {
 			const userId = this.identify(socket);
 			if (userId === null) {
@@ -72,18 +75,41 @@ export class WsGateway
 	}
 
 	/**
-	 * Who is on the other end of this connection.
+	 * Who is on the other end of this connection, or null to refuse it/
 	 *
-	 * DEV ONLY. Reads a userId straight off the connection URL and believes it.
-	 * There is no verification of any kind - any client can claim to be any user.
-	 * This is a stand-in until the auth module exports a verify fucntion, at which
-	 * point this reads and verifies the acces_token cookie instead and WS_DEV_AUTH
-	 * disappears.
-	 *
-	 * Returns null for "refuse this connection", which is also what happens when the flag
-	 * is off. There is no real check to fall back on yet, so off means nothing connects.
+	 * The real check is tried first and is the only one that survives: when #20
+	 * lands, fromDevQuery and WS_DEV_AUTH are deleted together and this becomes a
+	 * single call to fromCookie
 	 */
 	private identify(socket: WsSocket): string | null {
+		const fromToken = this.fromCookie(socket);
+		if (fromToken !== null) {
+			return fromToken;
+		}
+
+		return this.fromDevQuery(socket);
+	}
+
+	/**
+	 * The real check, per the auth contract handshake seam.
+	 *
+	 * Returns null for every token temporarily, because TokenVerifier is still bound
+	 * to DenyAllVerifier. Path is real, implementation is missing.
+	 */
+	private fromCookie(socket: WsSocket): string | null {
+		const token = readCookie(socket.handshake.headers.cookie, AUTH_COOKIE);
+		if (token === null) {
+			return null;
+		}
+
+		return this.verifier.verify(token);
+	}
+
+	/**
+	 * DEV ONLY. Reads userId off the connection URL and believes it.
+	 * Will be deleted in the PR that closes #21, together with WS_DEV_AUTH.
+	 */
+	private fromDevQuery(socket: WsSocket): string | null {
 		if (!this.config.get('WS_DEV_AUTH', { infer: true })) {
 			return null;
 		}
@@ -97,7 +123,10 @@ export class WsGateway
 	 * downstream ever sees an envelope that has not been through parseEnvelope.
 	 */
 	@SubscribeMessage(EVENT)
-	handleMessage(@ConnectedSocket() client: WsSocket, @MessageBody() raw: unknown): void {
+	handleMessage(
+		@ConnectedSocket() client: WsSocket,
+		@MessageBody() raw: unknown,
+	): void {
 		const result = parseEnvelope(raw);
 
 		if (!result.ok) {
@@ -107,7 +136,9 @@ export class WsGateway
 				payload: { code: result.code },
 			};
 			this.sender.sendToSocket(client, error);
-			this.logger.log(`rejected ${result.code} from ${client.data.userId}`);
+			this.logger.log(
+				`rejected ${result.code} from ${client.data.userId}`,
+			);
 			return;
 		}
 
@@ -133,4 +164,3 @@ export class WsGateway
 		);
 	}
 }
-
