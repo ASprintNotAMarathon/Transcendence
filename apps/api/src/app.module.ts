@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { validateEnv } from './config/env.validation';
+import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { WsModule } from './ws/ws.module';
 
@@ -24,6 +25,7 @@ const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
 		}),
 		PrismaModule,
 		WsModule,
+		MatchModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [AppService],
