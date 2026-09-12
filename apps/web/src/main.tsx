@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage.tsx'
 import RegisterPage from './pages/RegisterPage.tsx'
 import HomePage from './pages/HomePage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
+import ChatPage from './pages/ChatPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 
 createRoot(document.getElementById('root')!).render(
@@ -24,6 +25,7 @@ createRoot(document.getElementById('root')!).render(
         <Route element={<AppLayout />}>
           <Route path="/home" element={<HomePage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/chat" element={<ChatPage />} />
         </Route>
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
