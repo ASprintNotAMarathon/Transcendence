@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 import { validateEnv } from './config/env.validation';
+import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 // The repo keeps a single .env at its root. Without this, @nestjs/config looks
@@ -22,6 +23,7 @@ const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
 			validate: validateEnv,
 		}),
 		PrismaModule,
+		MatchModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [AppService],
