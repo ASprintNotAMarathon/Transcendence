@@ -1,8 +1,31 @@
 import { Injectable } from '@nestjs/common';
-import { getEngine, outcomeOf, replay } from '@transcendence/shared';
-import type { MatchStatePayload } from '@transcendence/shared';
+import {
+	getEngine,
+	outcomeOf,
+	replay,
+	seatOf,
+	winnerIdOf,
+} from '@transcendence/shared';
+import type {
+	MatchMovePayload,
+	MatchMovedPayload,
+	MatchStatePayload,
+} from '@transcendence/shared';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchError } from './match.error';
+
+/**
+ * Move has exactly one composite unique constraint, on (matchId, moveNumber),
+ * so a P2002 from inserting a move can only mean that number was already taken.
+ * The code alone is enough; there is no need to read meta.target.
+ */
+function isMoveNumberTaken(error: unknown): boolean {
+	return (
+		error instanceof Prisma.PrismaClientKnownRequestError &&
+		error.code === 'P2002'
+	);
+}
 
 /**
  * The match runtime. The server owns the board; this is where it keeps it.
@@ -21,8 +44,8 @@ export class MatchService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	/**
-	 * Everything a client needs to draw a match, whether they have been watching
-	 * since the first move or just opened the page.
+	 * Everything a client needs to draw a match,
+	 * whether they have been watching since the first move or just opened the page.
 	 *
 	 * `userId` is accepted and deliberately not checked.
 	 * MatchJoinPayload is documented as joining "as a player or as a spectator", so there is no seat gate here;
@@ -68,6 +91,125 @@ export class MatchService {
 					: position.outcome,
 
 			moveNumber: position.moveNumber,
+		};
+	}
+
+	/**
+	 * Accept a move, or refuse it and change nothing.
+	 *
+	 * Every check runs before the first write,
+	 * so a refusal costs the sender an error and costs everyone else nothing:
+	 * there is no half-applied state to broadcast or roll back.
+	 * The checks are ordered so the most specific answer wins,
+	 * which is why "the game is over" is reported ahead of "it is not your turn"
+	 * even though both are true of a finished match.
+	 *
+	 * `userId` comes from the caller, never from the payload.
+	 * The payload is the client speaking,
+	 * and a client that could name its own player id could play as its opponent.
+	 */
+	async move(
+		userId: string,
+		payload: MatchMovePayload,
+	): Promise<MatchMovedPayload> {
+		const { match, engine, position } = await this.rebuild(payload.matchId);
+
+		const seat = seatOf(userId, match);
+		if (seat === null) {
+			throw new MatchError(
+				'match.not_a_player',
+				`user is watching match ${match.id}, not playing in it`,
+			);
+		}
+
+		// Two witnesses, and either one is enough to refuse.
+		// The status column is the record; the replayed board is what actually happened.
+		// They agree unless a crash landed a winning move without closing the match.
+		if (match.status === 'finished' || position.outcome !== null) {
+			throw new MatchError(
+				'match.already_over',
+				`match ${match.id} has already ended`,
+			);
+		}
+
+		if (seat !== position.turn) {
+			throw new MatchError(
+				'match.not_your_turn',
+				`seat ${seat} played out of turn, it is player ${position.turn}'s move`,
+			);
+		}
+
+		// parseMove only decides whether this is a move at all.
+		// It knows nothing about the position,
+		// so "shaped like a move" and "playable here" are two separate answers,
+		// and the protocol has a separate code for each.
+		let move: unknown;
+		try {
+			move = engine.parseMove(payload.move);
+		} catch (error) {
+			throw new MatchError(
+				'match.malformed_move',
+				(error as Error).message,
+			);
+		}
+
+		if (!engine.isLegal(position.state, move)) {
+			throw new MatchError(
+				'match.illegal_move',
+				`move is not legal in the current position of match ${match.id}`,
+			);
+		}
+
+		const moveNumber = position.moveNumber + 1;
+		const state = engine.apply(position.state, move);
+		const outcome = engine.outcome(state);
+
+		try {
+			await this.prisma.$transaction(async (tx) => {
+				await tx.move.create({
+					data: {
+						matchId: match.id,
+						moveNumber,
+						by: seat,
+						payload: move as Prisma.InputJsonValue,
+					},
+				});
+
+				// Same transaction as the move that ended the game,
+				// so a finished match can never exist without its result,
+				// and a result can never exist without the move that caused it.
+				if (outcome !== null) {
+					await tx.match.update({
+						where: { id: match.id },
+						data: {
+							status: 'finished',
+							winnerId: winnerIdOf(outcome, match),
+						},
+					});
+				}
+			});
+		} catch (error) {
+			// The unique constraint on (matchId, moveNumber) is the concurrency control.
+			// Two players submitting at once both pass the checks above against the same position,
+			// and the database decides: one insert lands, the other loses.
+			// Losing means the position moved on while this request was in flight,
+			// which is exactly "not your turn" by the time it mattered.
+			if (isMoveNumberTaken(error)) {
+				throw new MatchError(
+					'match.not_your_turn',
+					`move ${moveNumber} of match ${match.id} was already played`,
+				);
+			}
+			throw error;
+		}
+
+		return {
+			matchId: match.id,
+			moveNumber,
+			by: seat,
+			move,
+			turn: engine.turn(state),
+			outcome,
 		};
 	}
 
