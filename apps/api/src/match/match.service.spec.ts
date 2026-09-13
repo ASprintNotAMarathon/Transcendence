@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { allGameNames, gomoku } from '@transcendence/shared';
 import type { GomokuMove } from '@transcendence/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Prisma } from '../generated/prisma/client';
 import { GameName } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchError } from './match.error';
@@ -226,6 +227,253 @@ describe('MatchService.join', () => {
 		await expect(
 			service.join(PLAYER_0.id, MATCH_ID),
 		).rejects.not.toBeInstanceOf(MatchError);
+	});
+});
+
+/** The winning game one move short, and the move that finishes it. */
+const almostWinning = winningMoves.slice(0, -1);
+const winningMove = winningMoves[winningMoves.length - 1];
+
+/**
+ * A real P2002, the error Prisma throws when an insert breaks a unique constraint.
+ * Built from Prisma's own class so the catch is tested against what actually arrives.
+ */
+function uniqueViolation(): Error {
+	return new Prisma.PrismaClientKnownRequestError(
+		'Unique constraint failed on the fields: (`matchId`,`moveNumber`)',
+		{ code: 'P2002', clientVersion: 'test' },
+	);
+}
+
+describe('MatchService.move', () => {
+	let service: MatchService;
+	let findUnique: ReturnType<typeof vi.fn>;
+	let createMove: ReturnType<typeof vi.fn>;
+	let updateMatch: ReturnType<typeof vi.fn>;
+	let transaction: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findUnique = vi.fn();
+		createMove = vi.fn();
+		updateMatch = vi.fn();
+
+		// The real $transaction hands a scoped client to the callback.
+		// This fake hands back the same mocks,
+		// so a test can see what the writes received and can make one of them fail.
+		transaction = vi.fn((run: (tx: unknown) => Promise<unknown>) =>
+			run({
+				move: { create: createMove },
+				match: { update: updateMatch },
+			}),
+		);
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: {
+						match: { findUnique },
+						$transaction: transaction,
+					},
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('stores the move at the next number and reports it', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const moved = await service.move(PLAYER_0.id, {
+			matchId: MATCH_ID,
+			move: { row: 3, col: 3 },
+		});
+
+		expect(createMove).toHaveBeenCalledWith({
+			data: {
+				matchId: MATCH_ID,
+				moveNumber: 3,
+				by: 0,
+				payload: { row: 3, col: 3 },
+			},
+		});
+		expect(moved).toEqual({
+			matchId: MATCH_ID,
+			moveNumber: 3,
+			by: 0,
+			move: { row: 3, col: 3 },
+			turn: 1,
+			outcome: null,
+		});
+		expect(updateMatch).not.toHaveBeenCalled();
+	});
+
+	it('closes the match in the same write as the winning move', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({ moves: rowsFor(almostWinning) }),
+		);
+
+		const moved = await service.move(PLAYER_0.id, {
+			matchId: MATCH_ID,
+			move: winningMove,
+		});
+
+		expect(moved.outcome).toEqual({ kind: 'win', player: 0 });
+		expect(moved.moveNumber).toBe(winningMoves.length);
+		expect(updateMatch).toHaveBeenCalledWith({
+			where: { id: MATCH_ID },
+			data: { status: 'finished', winnerId: PLAYER_0.id },
+		});
+
+		// Both writes went through a single $transaction call,
+		// which is what stops a finished match existing without its result.
+		expect(transaction).toHaveBeenCalledTimes(1);
+	});
+
+	// The three refusals issue #22 names by hand.
+
+	it('refuses a move out of turn with match.not_your_turn', async () => {
+		// Two moves played, so it is player 0's turn, not player 1's.
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(PLAYER_1.id, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_your_turn' });
+	});
+
+	it('refuses a move in a match the user is not in with match.not_a_player', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(SPECTATOR_ID, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_a_player' });
+	});
+
+	it('refuses a move after the game is over with match.already_over', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({
+				moves: rowsFor(quietMoves),
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+			}),
+		);
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.already_over' });
+	});
+
+	it('refuses a move on a won board even if the status still says active', async () => {
+		// The inconsistency a crash between the two writes could leave behind.
+		// The board is the second witness, and it is enough on its own.
+		findUnique.mockResolvedValue(
+			matchRow({ moves: rowsFor(winningMoves) }),
+		);
+
+		await expect(
+			service.move(PLAYER_1.id, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.already_over' });
+	});
+
+	it('refuses something that is not a move with match.malformed_move', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: 'top left please',
+			}),
+		).rejects.toMatchObject({ code: 'match.malformed_move' });
+	});
+
+	it('refuses an occupied square with match.illegal_move', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: { row: 7, col: 7 },
+			}),
+		).rejects.toMatchObject({ code: 'match.illegal_move' });
+	});
+
+	it('treats a well-formed move off the board as illegal, not malformed', async () => {
+		// parseMove only asks "are these two integers", so this parses fine
+		// and is then refused by the position. Two codes, two different problems.
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: { row: 99, col: 99 },
+			}),
+		).rejects.toMatchObject({ code: 'match.illegal_move' });
+	});
+
+	it('refuses an unknown match with match.not_found', async () => {
+		findUnique.mockResolvedValue(null);
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: 'nope',
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_found' });
+	});
+
+	it('writes nothing at all when a check refuses the move', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.move(PLAYER_1.id, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toBeInstanceOf(MatchError);
+
+		// The point of running every check before the first write.
+		expect(transaction).not.toHaveBeenCalled();
+		expect(createMove).not.toHaveBeenCalled();
+		expect(updateMatch).not.toHaveBeenCalled();
+	});
+
+	it('turns a lost race for the move number into match.not_your_turn', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+		createMove.mockRejectedValue(uniqueViolation());
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_your_turn' });
+	});
+
+	it('lets any other database failure through untranslated', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+		createMove.mockRejectedValue(new Error('connection reset'));
+
+		const attempt = service.move(PLAYER_0.id, {
+			matchId: MATCH_ID,
+			move: { row: 3, col: 3 },
+		});
+
+		await expect(attempt).rejects.toThrow(/connection reset/);
+		await expect(attempt).rejects.not.toBeInstanceOf(MatchError);
 	});
 });
 
