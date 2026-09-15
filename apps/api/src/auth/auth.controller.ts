@@ -1,16 +1,20 @@
 import {
 	Body,
 	Controller,
+	Get,
 	HttpCode,
 	HttpStatus,
 	Post,
 	Res,
+	UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import { AUTH_COOKIE, TOKEN_COOKIE_OPTIONS, TOKEN_TTL_S } from './auth-cookie';
 import { AuthService } from './auth.service';
-import type { PublicUser } from './auth.types';
+import type { AuthUser, PublicUser } from './auth.types';
+import { CurrentUser } from './current-user.decorator';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -49,6 +53,16 @@ export class AuthController {
 		const user = await this.auth.login(dto);
 		await this.issueCookie(res, user.id);
 		return user;
+	}
+
+	/**
+	 * Answers "who is this request from?". A 401 here is a normal answer, not a
+	 * failure: for a visitor with no cookie it is the expected one.
+	 */
+	@UseGuards(JwtAuthGuard)
+	@Get('me')
+	me(@CurrentUser() user: AuthUser): Promise<PublicUser> {
+		return this.auth.profile(user.id);
 	}
 
 	/**
