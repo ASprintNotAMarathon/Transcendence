@@ -14,6 +14,9 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
+        <NavLink to="/chat" className={navButtonClass}>
+            Chat
+          </NavLink>
           <NavLink to="/profile" className={navButtonClass}>
             Profile
           </NavLink>

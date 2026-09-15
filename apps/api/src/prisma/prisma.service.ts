@@ -1,4 +1,9 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+	Injectable,
+	Logger,
+	OnModuleDestroy,
+	OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import type { EnvConfig } from '../config/env.validation';
@@ -18,34 +23,34 @@ import { PrismaClient } from '../generated/prisma/client';
  */
 @Injectable()
 export class PrismaService
-  extends PrismaClient
-  implements OnModuleInit, OnModuleDestroy
+	extends PrismaClient
+	implements OnModuleInit, OnModuleDestroy
 {
-  private readonly logger = new Logger(PrismaService.name);
+	private readonly logger = new Logger(PrismaService.name);
 
-  constructor(config: ConfigService<EnvConfig, true>) {
-    super({
-      adapter: new PrismaPg({
-        connectionString: config.get('DATABASE_URL', { infer: true }),
-      }),
-    });
-  }
+	constructor(config: ConfigService<EnvConfig, true>) {
+		super({
+			adapter: new PrismaPg({
+				connectionString: config.get('DATABASE_URL', { infer: true }),
+			}),
+		});
+	}
 
-  /**
-   * Connect during startup instead of on the first query. A bad DATABASE_URL
-   * then fails the boot with one clear error, rather than surfacing as a
-   * confusing 500 on whichever endpoint happens to be hit first.
-   */
-  async onModuleInit(): Promise<void> {
-    await this.$connect();
-    this.logger.log('Connected to the database');
-  }
+	/**
+	 * Connect during startup instead of on the first query. A bad DATABASE_URL
+	 * then fails the boot with one clear error, rather than surfacing as a
+	 * confusing 500 on whichever endpoint happens to be hit first.
+	 */
+	async onModuleInit(): Promise<void> {
+		await this.$connect();
+		this.logger.log('Connected to the database');
+	}
 
-  /**
-   * Nest calls this on shutdown. Without it the pool keeps its sockets open,
-   * which leaves tests hanging and containers slow to stop.
-   */
-  async onModuleDestroy(): Promise<void> {
-    await this.$disconnect();
-  }
+	/**
+	 * Nest calls this on shutdown. Without it the pool keeps its sockets open,
+	 * which leaves tests hanging and containers slow to stop.
+	 */
+	async onModuleDestroy(): Promise<void> {
+		await this.$disconnect();
+	}
 }

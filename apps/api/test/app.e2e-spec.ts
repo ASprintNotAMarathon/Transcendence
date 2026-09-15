@@ -2,29 +2,30 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { afterEach, beforeEach, describe, it } from 'vitest';
 import { AppModule } from './../src/app.module';
 
 describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+	let app: INestApplication<App>;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
+	beforeEach(async () => {
+		const moduleFixture: TestingModule = await Test.createTestingModule({
+			imports: [AppModule],
+		}).compile();
 
-    app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
-    await app.init();
-  });
+		app = moduleFixture.createNestApplication();
+		app.setGlobalPrefix('api');
+		await app.init();
+	});
 
-  it('/api (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/api')
-      .expect(200)
-      .expect('Hello World!');
-  });
+	it('/api (GET)', () => {
+		return request(app.getHttpServer())
+			.get('/api')
+			.expect(200)
+			.expect('Hello World!');
+	});
 
-  afterEach(async () => {
-    await app.close();
-  });
+	afterEach(async () => {
+		await app.close();
+	});
 });

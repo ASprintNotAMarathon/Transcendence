@@ -9,11 +9,11 @@ const engines = new Map<string, GameEngine<unknown, unknown>>();
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
-  }
+	getHello(): string {
+		return 'Hello World!';
+	}
 
-  availableGames(): string[] {
-    return [...engines.keys()];
-  }
+	availableGames(): string[] {
+		return [...engines.keys()];
+	}
 }

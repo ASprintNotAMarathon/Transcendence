@@ -14,7 +14,7 @@
     "sourceMap": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "types": ["node", "jest"],
+    "types": ["node"],
     "paths": {
       // Resolve the workspace package to its built declarations (shared's
       // `prepare` script builds dist/ on npm install). Do NOT point this at

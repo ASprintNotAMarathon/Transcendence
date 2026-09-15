@@ -16,16 +16,16 @@ import { WsModule } from './ws/ws.module';
 const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ROOT_ENV,
-      validate: validateEnv,
-    }),
-    PrismaModule,
-    WsModule,
-  ],
-  controllers: [AppController, HealthController],
-  providers: [AppService],
+	imports: [
+		ConfigModule.forRoot({
+			isGlobal: true,
+			envFilePath: ROOT_ENV,
+			validate: validateEnv,
+		}),
+		PrismaModule,
+		WsModule,
+	],
+	controllers: [AppController, HealthController],
+	providers: [AppService],
 })
 export class AppModule {}
