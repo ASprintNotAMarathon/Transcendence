@@ -54,4 +54,8 @@ export class WsRegistry {
 	socketsFor(userId: string): ReadonlySet<string> {
 		return this.byUser.get(userId) ?? NO_SOCKETS;
 	}
+
+	onlineUserIds(): readonly string[] {
+		return [...this.byUser.keys()];
+	}
 }

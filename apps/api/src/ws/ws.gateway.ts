@@ -151,7 +151,8 @@ export class WsGateway
 		void client.join(userRoom(userId));
 
 		this.logger.log(
-			`connected ${client.id} as ${userId}${cameOnline ? ' (now online)' : ''}`,
+			`connected ${client.id} as ${userId}${cameOnline ? ' (now online)' : ''}` +
+				` - online: ${this.registry.onlineUserIds().join(', ')}`,
 		);
 	}
 
@@ -160,7 +161,8 @@ export class WsGateway
 		const wentOffline = this.registry.remove(userId, client.id);
 
 		this.logger.log(
-			`disconnected ${client.id} as ${userId}${wentOffline ? ' (now offline)' : ''}`,
+			`disconnected ${client.id} as ${userId}${wentOffline ? ' (now offline)' : ''}` +
+				` - online: ${this.registry.onlineUserIds().join(', ')}`,
 		);
 	}
 }
