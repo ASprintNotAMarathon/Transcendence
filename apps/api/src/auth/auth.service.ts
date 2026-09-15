@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import {
 	ConflictException,
+	HttpStatus,
 	Injectable,
 	UnauthorizedException,
 	type OnModuleInit,
@@ -31,6 +32,19 @@ function constraintIndex(
 		  }
 		| undefined;
 	return meta?.driverAdapterError?.cause?.constraint?.index;
+}
+
+/**
+ * Same envelope the global validation pipe produces, so every per-field error
+ * in the API has one shape: a status, a label, and `errors` keyed by the field
+ * that failed.
+ */
+function duplicateOf(field: string, message: string): ConflictException {
+	return new ConflictException({
+		statusCode: HttpStatus.CONFLICT,
+		error: 'Conflict',
+		errors: { [field]: message },
+	});
 }
 
 @Injectable()
@@ -85,14 +99,16 @@ export class AuthService implements OnModuleInit {
 				// it — only which field it arrived on.
 				const index = constraintIndex(error);
 				if (index === EMAIL_INDEX) {
-					throw new ConflictException({
-						errors: { email: 'That email is already registered' },
-					});
+					throw duplicateOf(
+						'email',
+						'That email is already registered',
+					);
 				}
 				if (index === DISPLAY_NAME_INDEX) {
-					throw new ConflictException({
-						errors: { displayName: 'That display name is taken' },
-					});
+					throw duplicateOf(
+						'displayName',
+						'That display name is taken',
+					);
 				}
 			}
 			// Anything else, including a P2002 on a constraint this code does
