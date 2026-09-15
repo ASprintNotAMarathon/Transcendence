@@ -1,8 +1,18 @@
-import { Controller } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	Post,
+	Res,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Response } from 'express';
 import { AUTH_COOKIE, TOKEN_COOKIE_OPTIONS, TOKEN_TTL_S } from './auth-cookie';
 import { AuthService } from './auth.service';
+import type { PublicUser } from './auth.types';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -10,6 +20,36 @@ export class AuthController {
 		private readonly auth: AuthService,
 		private readonly jwt: JwtService,
 	) {}
+
+	/**
+	 * Creating an account also starts the session, so the client does not have
+	 * to immediately post the credentials it just sent to a second endpoint.
+	 *
+	 * The cookie is issued only after the service returns. A duplicate throws
+	 * before that line, so a failed registration can never leave a session
+	 * behind.
+	 */
+	@Post('register')
+	async register(
+		@Body() dto: RegisterDto,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<PublicUser> {
+		const user = await this.auth.register(dto);
+		await this.issueCookie(res, user.id);
+		return user;
+	}
+
+	/** A login creates nothing, so it answers 200 rather than Nest's default 201. */
+	@HttpCode(HttpStatus.OK)
+	@Post('login')
+	async login(
+		@Body() dto: LoginDto,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<PublicUser> {
+		const user = await this.auth.login(dto);
+		await this.issueCookie(res, user.id);
+		return user;
+	}
 
 	/**
 	 * Signs the token and sets the cookie. Register and login both start a
