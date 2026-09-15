@@ -151,4 +151,28 @@ export class AuthService implements OnModuleInit {
 			createdAt: user.createdAt,
 		};
 	}
+
+	/**
+	 * Answers "who is this request from?". The token carries only an id, so the
+	 * profile is read fresh every time and a rename shows up immediately rather
+	 * than at the caller's next login.
+	 *
+	 * A valid token whose user no longer exists answers 401, not 404. There is
+	 * no revocation, so such a token keeps verifying until it expires and this
+	 * lookup is the only thing that catches it. A 404 would tell the browser it
+	 * is authenticated as somebody who does not exist, which no client can act
+	 * on; 401 says the thing that is actually true.
+	 */
+	async profile(userId: string): Promise<PublicUser> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: PUBLIC_USER_SELECT,
+		});
+
+		if (!user) {
+			throw new UnauthorizedException();
+		}
+
+		return user;
+	}
 }
