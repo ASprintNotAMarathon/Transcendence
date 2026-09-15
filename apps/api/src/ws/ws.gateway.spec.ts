@@ -8,6 +8,7 @@ import { WsRegistry } from './ws.registry';
 import { WsSender } from './ws.sender';
 import type { WsServer, WsSocket } from './ws.types';
 import { TokenVerifier } from './ws.verifier';
+import { describe, expect, it, vi } from 'vitest';
 
 type Middleware = (socket: WsSocket, next: (err?: Error) => void) => void;
 
@@ -74,7 +75,7 @@ describe('handshake', () => {
 
 	it('accepts a valid cookie and attaches its user id', () => {
 		const socket = fakeSocket({ cookie: 'access_token=good.jwt' });
-		const next = jest.fn();
+		const next = vi.fn();
 
 		handshakeOf(false, verifier)(socket, next);
 
@@ -87,7 +88,7 @@ describe('handshake', () => {
 			cookie: 'access_token=good.jwt',
 			userId: 'pretender',
 		});
-		const next = jest.fn();
+		const next = vi.fn();
 
 		handshakeOf(true, verifier)(socket, next);
 
@@ -95,7 +96,7 @@ describe('handshake', () => {
 	});
 
 	it('refuses a cookie the verifier rejects', () => {
-		const next = jest.fn();
+		const next = vi.fn();
 
 		handshakeOf(false, verifier)(
 			fakeSocket({ cookie: 'access_token=forged.jwt' }),
@@ -106,7 +107,7 @@ describe('handshake', () => {
 	});
 
 	it('refuses a connection with no cookie and no dev identity', () => {
-		const next = jest.fn();
+		const next = vi.fn();
 
 		handshakeOf(false, verifier)(fakeSocket({}), next);
 
@@ -118,7 +119,7 @@ describe('handshake', () => {
 			cookie: 'access_token=forged.jwt',
 			userId: 'u1',
 		});
-		const next = jest.fn();
+		const next = vi.fn();
 
 		handshakeOf(true, verifier)(socket, next);
 

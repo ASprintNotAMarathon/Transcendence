@@ -1,5 +1,6 @@
 // claude written test to test the cookie read
 import { readCookie } from './ws.cookie';
+import { describe, expect, it } from 'vitest';
 
 describe('readCookie', () => {
 	it('finds a cookie among others', () => {
