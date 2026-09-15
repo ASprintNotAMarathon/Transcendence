@@ -1,8 +1,15 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { randomBytes } from 'node:crypto';
+import {
+	ConflictException,
+	Injectable,
+	UnauthorizedException,
+	type OnModuleInit,
+} from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PasswordService } from './password.service';
 import { PUBLIC_USER_SELECT, type PublicUser } from './auth.types';
+import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 
 /** Prisma names its unique indexes <Model>_<field>_key. */
@@ -27,11 +34,26 @@ function constraintIndex(
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly passwords: PasswordService,
 	) {}
+
+	private dummyHash!: string;
+
+	/**
+	 * Hashed once at boot from random bytes. Login verifies against this when
+	 * no account matched, so a missing email costs the same as a wrong
+	 * password. Random rather than a literal in this file, so it can never
+	 * coincide with somebody's real password. Nest awaits this, so the value
+	 * is always present before the first request.
+	 */
+	async onModuleInit(): Promise<void> {
+		this.dummyHash = await this.passwords.hash(
+			randomBytes(32).toString('hex'),
+		);
+	}
 
 	/**
 	 * Creates the account. The duplicate check is the database's unique index
@@ -77,5 +99,40 @@ export class AuthService {
 			// not know about, is a real bug. Let it surface as a 500.
 			throw error;
 		}
+	}
+
+	/**
+	 * Exchanges credentials for a user. An unknown email and a wrong password
+	 * are deliberately indistinguishable, in the message and in the timing:
+	 * returning early when no account exists would answer in about a
+	 * millisecond while a wrong password costs an argon2 verify, and that gap
+	 * is measurable from outside.
+	 */
+	async login(dto: LoginDto): Promise<PublicUser> {
+		const user = await this.prisma.user.findUnique({
+			where: { email: dto.email },
+			select: { ...PUBLIC_USER_SELECT, passwordHash: true },
+		});
+
+		// verify() throws on a malformed digest rather than returning false,
+		// so a rejection has to read as a failed login, not a 500.
+		const digest = user?.passwordHash ?? this.dummyHash;
+		const ok = await this.passwords
+			.verify(digest, dto.password)
+			.catch(() => false);
+
+		// One answer for both failure modes. Naming the field would let anyone
+		// holding a list of addresses learn which have accounts here.
+		if (!user || !ok) {
+			throw new UnauthorizedException('Invalid email or password');
+		}
+
+		// Rebuilt field by field, because this query also selected the hash.
+		return {
+			id: user.id,
+			email: user.email,
+			displayName: user.displayName,
+			createdAt: user.createdAt,
+		};
 	}
 }
