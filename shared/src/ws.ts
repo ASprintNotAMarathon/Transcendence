@@ -319,6 +319,19 @@ export interface TransportErrorPayload {
 export type LifecycleClientEvent = never;
 export type LifecycleServerEvent = Envelope<"transport.error", TransportErrorPayload>;
 
+/**
+ * The single Socket.IO event every envelope travels on. Socket.IO's idiom is
+ * one event name per message type; we use one event for all of them so the
+ * unions below stay the source of truth.
+ *
+ * A type rather than a const, because the API resolves this package to its
+ * .d.ts and cannot import runtime values from it. Each side declares its own
+ * constant `const EVENT: WsMessageEvent = 'msg'`, and a typo is a compile
+ * error on that side.
+ */
+export type WsMessageEvent = 'msg';
+
+
 /* ==========================================================================
  * The protocol
  * ========================================================================== */
