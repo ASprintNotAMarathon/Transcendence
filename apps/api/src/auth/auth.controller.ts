@@ -56,6 +56,26 @@ export class AuthController {
 	}
 
 	/**
+	 * Clearing the cookie is the whole of logout: the token itself stays valid
+	 * until it expires, so this ends the session in this browser only.
+	 *
+	 * Deliberately unguarded. The moment clearing matters most is when the
+	 * cookie holds a token the server will not accept, and a guard would answer
+	 * 401 and leave that cookie in place. Calling it while already anonymous
+	 * answers 204 as well.
+	 *
+	 * The options object is passed whole, never rewritten. A browser matches a
+	 * cookie on name, domain and path, so attributes that differ from the ones
+	 * used at login do not delete anything — they add a second cookie that
+	 * expires at once while the original keeps logging the user in.
+	 */
+	@HttpCode(HttpStatus.NO_CONTENT)
+	@Post('logout')
+	logout(@Res({ passthrough: true }) res: Response): void {
+		res.clearCookie(AUTH_COOKIE, TOKEN_COOKIE_OPTIONS);
+	}
+
+	/**
 	 * Answers "who is this request from?". A 401 here is a normal answer, not a
 	 * failure: for a visitor with no cookie it is the expected one.
 	 */
