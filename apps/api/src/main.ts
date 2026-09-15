@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 import type { EnvConfig } from './config/env.validation';
+import { validationErrorFactory } from './config/validation-error.factory';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
@@ -14,6 +15,7 @@ async function bootstrap() {
 			whitelist: true,
 			forbidNonWhitelisted: true,
 			transform: true,
+			exceptionFactory: validationErrorFactory,
 		}),
 	);
 	const config = app.get(ConfigService<EnvConfig, true>);
