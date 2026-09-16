@@ -1,16 +1,18 @@
 import { Module } from '@nestjs/common';
+import { WsModule } from '../ws/ws.module';
+import { MatchHandlers } from './match.handlers';
 import { MatchService } from './match.service';
 
 /**
- * No imports array, because PrismaModule is @Global: MatchService gets
- * PrismaService by constructor alone.
+ * PrismaModule is @Global, so MatchService gets PrismaService by constructor
+ * alone. WsModule is imported for the dispatcher and sender the handlers
+ * register with and send through.
  *
- * The service is exported because the gateway in step 5 will need it. Nothing
- * else should reach for it. The gateway is meant to be the only caller, thin
- * enough that all of the thinking stays in here.
+ * Nothing is exported. MatchHandlers is meant to be the service's only
+ * caller, thin enough that all of the thinking stays in MatchService.
  */
 @Module({
-	providers: [MatchService],
-	exports: [MatchService],
+	imports: [WsModule],
+	providers: [MatchService, MatchHandlers],
 })
 export class MatchModule {}
