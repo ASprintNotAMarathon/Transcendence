@@ -11,24 +11,33 @@ import HomePage from './pages/HomePage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
 import ChatPage from './pages/ChatPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
+import { SocketProvider } from './socket/SocketProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <Routes>
-        <Route element={<PublicLayout />}>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
+      {/*
+        TEMP: every visitor connects as u1 the moment the page loads.
+        TODO Noor: once AuthProvider is on main, this becomes enabled={status === 'authenticated'}
+          devUserId={user?.id} read from useAuth().
+          also, devUserId goes entirely when #21 ships.
+      */}
+      <SocketProvider enabled devUserId="u1">
+        <Routes>
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
 
-        <Route element={<AppLayout />}>
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/chat" element={<ChatPage />} />
-        </Route>
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
+          <Route element={<AppLayout />}>
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/chat" element={<ChatPage />} />
+          </Route>
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </SocketProvider>
     </BrowserRouter>
   </StrictMode>,
 )
