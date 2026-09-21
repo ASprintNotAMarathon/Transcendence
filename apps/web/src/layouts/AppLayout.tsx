@@ -1,9 +1,17 @@
-import { NavLink, Outlet } from 'react-router'
+import { NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../auth/AuthContext'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
-  function handleLogout() {
-    console.log('logout clicked')
+  const { logout } = useAuth()
+  const navigate = useNavigate()
+
+  async function handleLogout() {
+    // No socket cleanup here! Discussed with Renata:
+    // socket will live in a SocketProvider above the routes, and
+    // close itself automatically when auth status becomes anonymous
+    await logout()
+    navigate('/', { replace: true })
   }
 
   return (

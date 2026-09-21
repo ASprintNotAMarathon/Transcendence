@@ -1,25 +1,44 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { isEmail } from 'validator'
 import PrimaryButton from '../components/PrimaryButton'
+import { useAuth } from '../auth/AuthContext'
+import { ApiError } from '../lib/api'
 
 type Errors = {
   email?: string
   password?: string
 }
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+/*
+  Wrong email or wrong password return a generic 401 from server.
+  On purpose: see issue #20, requiring: without revealing which field was wrong.
+*/
+const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password.'
 
+
+/*
+  Login Page 
+*/ 
 function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<Errors>({})
+  const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   function validate(): boolean {
     const next: Errors = {}
 
     if (!email) {
       next.email = 'Email is required.'
-    } else if (!EMAIL_PATTERN.test(email)) {
+    } else if (!isEmail(email)) {
+      // Same isEmail() from `validator` as RegisterPage.tsx uses, see the
+      // comment there for why (matches class-validator's @IsEmail()).
       next.email = 'Enter a valid email address.'
     }
 
@@ -31,13 +50,28 @@ function LoginPage() {
     return Object.keys(next).length === 0
   }
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault()
+    setFormError(null)
     if (!validate()) return
 
-    // Posting to the API happens once issue #? (auth) lands. For now this
-    // only confirms the form validates correctly.
-    console.log('login submit', { email, password })
+    setSubmitting(true)
+    try {
+      await login({ email, password })
+
+      // If ProtectedRoute sent the user here, go back to where they were
+      // headed. Otherwise the lobby is the default first stop.
+      const from = (location.state as { from?: { pathname: string } } | null)?.from
+      navigate(from?.pathname ?? '/home', { replace: true })
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setFormError(INVALID_CREDENTIALS_MESSAGE)
+      } else {
+        setFormError('Something went wrong. Please try again.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -80,7 +114,15 @@ function LoginPage() {
         {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
       </div>
 
-      <PrimaryButton type="submit">Log in</PrimaryButton>
+      {formError && (
+        <p role="alert" className="text-sm text-red-400">
+          {formError}
+        </p>
+      )}
+
+      <PrimaryButton type="submit" disabled={submitting}>
+        {submitting ? 'Logging in…' : 'Log in'}
+      </PrimaryButton>
 
       <p className="text-center text-sm text-muted">
         No account yet?{' '}
