@@ -7,10 +7,9 @@ function AppLayout() {
   const navigate = useNavigate()
 
   async function handleLogout() {
-    // logout() only clears the session cookie and our own context for now.
-    // Once #24 lands there is a socket to close here too, see 1.2's "Done
-    // when": "Logout clears the context, closes the socket, returns to
-    // the public layout."
+    // No socket cleanup here! Discussed with Renata:
+    // socket will live in a SocketProvider above the routes, and
+    // close itself automatically when auth status becomes anonymous
     await logout()
     navigate('/', { replace: true })
   }
