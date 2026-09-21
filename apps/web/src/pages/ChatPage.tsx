@@ -16,7 +16,7 @@ import { useEffect, useState } from 'react'
 import { chatClient } from '../chat/chat'
 import ConversationList from '../chat/ConversationList'
 import MessagePane from '../chat/MessagePane'
-import EmptyState from '../components/EmptyState'
+import EmptyState from '../components/states/EmptyState'
 
 function ChatPage() {
 	// Rows for the left column, loaded once from the mock when the page is created
