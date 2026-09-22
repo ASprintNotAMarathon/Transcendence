@@ -10,7 +10,7 @@
   3. authApi, the functions the rest of the app calls (LAYER 3)
 */
  
-
+import { mockAuthApi } from './mockAuth'
 
 /*
   LAYER 1: Shapes of data that go in / out:
@@ -87,7 +87,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   LAYER 3   authApi: contains 4 simple functions: register, login, logout, me.
             Each calls request() with the right path + data.
 */
-export const authApi = {
+const realAuthApi = {
   register(input: RegisterInput) {
     return request<AuthUser>('/auth/register', {
       method: 'POST',
@@ -110,3 +110,6 @@ export const authApi = {
     return request<AuthUser>('/auth/me')
   },
 }
+
+
+export const authApi = import.meta.env.VITE_MOCK_AUTH === 'true' ? mockAuthApi : realAuthApi
