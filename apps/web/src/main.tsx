@@ -51,3 +51,8 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 )
+
+//main.tsx starts the react app by reactDOM.createRoot and rendering the app into the root div in index.html. 
+//React uses react-router to handle routing between pages
+//React renders pages based on the route. The routes are defined in the Routes component of React Router. 
+//The routes are nested inside the PublicLayout and AppLayout components.

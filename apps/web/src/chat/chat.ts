@@ -12,11 +12,15 @@ import type { ChatMessagePayload, ChatServerEvent } from '@transcendence/shared'
  * functions that any chat client must implement
  */
 export interface ChatClient {
-	sendMessage(conversationId: string, body: string): void
+	/** Resolves once the server accepted the message; rejects if it refused it. */
+	sendMessage(conversationId: string, body: string): Promise<void>
 
 	subscribe(listener: (event: ChatServerEvent) => void): () => void
 
-	loadHistory(conversationId: string,  previousMessageId?: string): ChatMessagePayload[]
+	loadHistory(
+		conversationId: string,
+		previousMessageId?: string,
+	): Promise<ChatMessagePayload[]>
 
 	listConversations(): ConversationSummary[]
 }
@@ -32,6 +36,19 @@ export const CURRENT_USER_ID = 'current-user'
 
 //20 messages per page
 const HISTORY_PAGE_SIZE = 20
+
+// Mock-only: a real server takes time to answer, so the mock waits a little
+// too. Without this the loading state would never be visible.
+const MOCK_DELAY_MS = 300
+
+// Mock-only: a message body starting with this makes sendMessage fail,
+// so the "failed to send → retry" state can be tried without a broken server.
+export const MOCK_FAIL_PREFIX = '!fail'
+
+/** Waits the given number of milliseconds. */
+function wait(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 /*
  * This array is a fake database for the mock client.
@@ -71,13 +88,28 @@ const messages: ChatMessagePayload[] = [
  */
 const listeners = new Set<(event: ChatServerEvent) => void>()
 
+
 /**
  * The browser/client sends a message to the specified conversation.
  * @param conversationId - The ID of the conversation to send the message to.
  * @param body - The content of the message to be sent.
  */
 // TODO: Replace local message creation/storage with backend message sending.
-function sendMessage(conversationId: string, body: string): void {
+async function sendMessage(
+	conversationId: string,
+	body: string,
+): Promise<void> {
+	console.log('[mock chat] 1. sendMessage called:', conversationId, body)
+	await wait(MOCK_DELAY_MS)
+	// The real server refuses empty messages (ChatErrorCode 'chat.empty_message'),
+	// so the mock does too. The composer blocks this earlier; this is the safety net.
+	if (body.trim() === '') {
+		throw new Error('chat.empty_message')
+	}
+	// Mock-only failure switch, see MOCK_FAIL_PREFIX.
+	if (body.startsWith(MOCK_FAIL_PREFIX)) {
+		throw new Error('mock: failed to send')
+	}
 	const message: ChatMessagePayload = {
 		conversationId,
 		messageId: `message-${messages.length + 1}`,
@@ -87,10 +119,18 @@ function sendMessage(conversationId: string, body: string): void {
 		createdAt: new Date().toISOString(),
 	}
 	messages.push(message)
+	// The sender's screen shows the message ONLY through this event (the
+	// "echo"), never from its own local copy — the same rule the server will enforce.
 	const event: ChatServerEvent = {
 		type: 'chat.message',
 		payload: message,
 	}
+	console.log('[mock chat] 2. event created (not the typed text — an envelope):', event)
+	// ── SOCKET PLUG-IN POINT ──────────────────────────────────────────────
+	// Real client: socket.emit('msg', { type: 'chat.send', payload: { conversationId, body } })
+	// and the server answers with this same 'chat.message' event over the socket.
+	// The mock skips the wire and hands the event straight to the listeners.
+	console.log(`[mock chat] 3. delivering event to ${listeners.size} listener(s)`)
 	listeners.forEach((listener) => listener(event))
 }
 /**
@@ -101,9 +141,11 @@ function sendMessage(conversationId: string, body: string): void {
  */
 // TODO: Replace local listener Set with WebSocket subscription.
 function subscribe(listener: (event: ChatServerEvent) => void): () => void {
+	console.log(`[mock chat] listener registered`)
 	listeners.add(listener)
 	function unsubscribe(): void {
 		listeners.delete(listener)
+		console.log(`[mock chat] listener removed`)
 	}
 	return unsubscribe
 }
@@ -120,15 +162,16 @@ function subscribe(listener: (event: ChatServerEvent) => void): () => void {
  */
 // TODO: Replace local array filtering with fetching history from the backend
 //previousMessageId kept optional because the first load has no older message to start from
-function loadHistory(
+async function loadHistory(
 	conversationId: string,
 	previousMessageId?: string,
-): ChatMessagePayload[] {
+): Promise<ChatMessagePayload[]> {
+	await wait(MOCK_DELAY_MS)
 	// match all messages for the given conversationId and store in all
 	const all = messages.filter(
 		(message) => message.conversationId === conversationId,
 	)
-	//previousMessageId provided → find the index of that message in the all array, 
+	//previousMessageId provided → find the index of that message in the all array,
 	//no previousMessageId → set end to the length of the array to get the last page of messages
 	const end = previousMessageId
 		? all.findIndex((message) => message.messageId === previousMessageId)
