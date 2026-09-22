@@ -39,6 +39,15 @@ function sessionCookie(response: request.Response): string {
 	return (header ?? []).map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
+/** The token on its own, without the cookie name in front of it. */
+function tokenFrom(response: request.Response): string {
+	const token = sessionCookie(response).split('=')[1] ?? '';
+
+	expect(token.length, 'expected a token in the cookie').toBeGreaterThan(0);
+
+	return token;
+}
+
 describe('auth (e2e)', () => {
 	let app: INestApplication<App>;
 	let server: App;
@@ -111,5 +120,37 @@ describe('auth (e2e)', () => {
 
 	it('refuses a request carrying no cookie at all', async () => {
 		await request(server).get('/api/auth/me').expect(401);
+	});
+
+	it('never puts the token in a response body', async () => {
+		const account = freshAccount();
+
+		const registered = await request(server)
+			.post('/api/auth/register')
+			.send(account)
+			.expect(201);
+
+		const loggedIn = await request(server)
+			.post('/api/auth/login')
+			.send({ email: account.email, password: account.password })
+			.expect(200);
+
+		for (const response of [registered, loggedIn]) {
+			// The exact token this response issued.
+			expect(response.text).not.toContain(tokenFrom(response));
+
+			// And any other JWT: every one begins with the base64 of `{"`,
+			// so this catches a token returned under some other name too.
+			expect(response.text).not.toContain('eyJ');
+
+			// Nothing beyond the agreed user object, which also rules out the
+			// password hash riding along.
+			expect(Object.keys(response.body as PublicUser).sort()).toEqual([
+				'createdAt',
+				'displayName',
+				'email',
+				'id',
+			]);
+		}
 	});
 });
