@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { GameEngine } from '@transcendence/shared';
-
-/**
- * Game engines register here as they are implemented in @transcendence/shared,
- * keyed by the engine's `name` (e.g. "gomoku", "reversi").
- */
-const engines = new Map<string, GameEngine<unknown, unknown>>();
+import { implementedGames } from '@transcendence/shared';
 
 @Injectable()
 export class AppService {
@@ -13,7 +7,13 @@ export class AppService {
 		return 'Hello World!';
 	}
 
+	/**
+	 * The games that can actually be played, which is narrower than the games the
+	 * schema knows about: GameName lists reversi, but no engine implements it
+	 * yet. Derived from the registry in @transcendence/shared, so adding an
+	 * engine is the only thing needed to make it appear here.
+	 */
 	availableGames(): string[] {
-		return [...engines.keys()];
+		return [...implementedGames];
 	}
 }
