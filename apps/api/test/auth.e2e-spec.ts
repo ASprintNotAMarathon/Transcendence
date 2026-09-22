@@ -39,6 +39,22 @@ function sessionCookie(response: request.Response): string {
 	return (header ?? []).map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
+/**
+ * Everything after the value, minus the two attributes that are meant to
+ * differ between setting a cookie and clearing one. What is left is the set a
+ * browser matches on, so login and logout must agree on it exactly.
+ */
+function cookieAttributes(response: request.Response): string[] {
+	const header = response.headers['set-cookie'] as unknown as string[];
+
+	return (header[0] ?? '')
+		.split(';')
+		.slice(1)
+		.map((part) => part.trim())
+		.filter((part) => !/^(expires|max-age)=/i.test(part))
+		.sort();
+}
+
 /** The token on its own, without the cookie name in front of it. */
 function tokenFrom(response: request.Response): string {
 	const token = sessionCookie(response).split('=')[1] ?? '';
@@ -120,6 +136,42 @@ describe('auth (e2e)', () => {
 
 	it('refuses a request carrying no cookie at all', async () => {
 		await request(server).get('/api/auth/me').expect(401);
+	});
+
+	it('clears the cookie with the attributes it was set with', async () => {
+		const account = freshAccount();
+
+		const registered = await request(server)
+			.post('/api/auth/register')
+			.send(account)
+			.expect(201);
+
+		const loggedOut = await request(server)
+			.post('/api/auth/logout')
+			.set('Cookie', sessionCookie(registered))
+			.expect(204);
+
+		// Named explicitly, so dropping one is caught even if both responses
+		// drop it together.
+		expect(cookieAttributes(loggedOut)).toEqual([
+			'HttpOnly',
+			'Path=/',
+			'SameSite=Lax',
+			'Secure',
+		]);
+
+		// And compared, so adding one to a single side is caught too. A Domain
+		// on the login cookie and not this one makes them different cookies to
+		// a browser, and logout silently stops working.
+		expect(cookieAttributes(loggedOut)).toEqual(
+			cookieAttributes(registered),
+		);
+
+		const raw = (loggedOut.headers['set-cookie'] as unknown as string[])[0];
+
+		// Emptied, and expired in the past. These two are supposed to differ.
+		expect(raw.startsWith('access_token=;')).toBe(true);
+		expect(raw).toContain('Expires=Thu, 01 Jan 1970');
 	});
 
 	it('never puts the token in a response body', async () => {
