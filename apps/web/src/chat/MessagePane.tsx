@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
-import LoadingState from '../components/LoadingState'
+import LoadingState from '../components/states/LoadingState'
 import MessageComposer from './MessageComposer'
 
 type MessagePaneProps = {
