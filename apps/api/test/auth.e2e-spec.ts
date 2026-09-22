@@ -6,7 +6,7 @@ import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from './../src/app.module';
-import type { PublicUser } from './../src/auth';
+import type { JwtPayload, PublicUser } from './../src/auth';
 import { validationErrorFactory } from './../src/config/validation-error.factory';
 
 /**
@@ -136,6 +136,65 @@ describe('auth (e2e)', () => {
 
 	it('refuses a request carrying no cookie at all', async () => {
 		await request(server).get('/api/auth/me').expect(401);
+	});
+
+	it('refuses a token that has been edited', async () => {
+		const account = freshAccount();
+
+		const registered = await request(server)
+			.post('/api/auth/register')
+			.send(account)
+			.expect(201);
+
+		const token = tokenFrom(registered);
+
+		// The untouched token works, so a 401 below is about the editing and
+		// not about something else being wrong.
+		await request(server)
+			.get('/api/auth/me')
+			.set('Cookie', `access_token=${token}`)
+			.expect(200);
+
+		const [header, payload, signature] = token.split('.');
+		const claims = JSON.parse(
+			Buffer.from(payload, 'base64url').toString('utf8'),
+		) as JwtPayload;
+
+		expect(claims.sub).toBe((registered.body as PublicUser).id);
+
+		// Somebody else's id, with the original signature left in place. This
+		// is the attack the signature exists to stop: the payload is readable
+		// by anyone, so the only thing preventing an edit is that the
+		// signature no longer matches what it covers.
+		claims.sub = '00000000-0000-4000-8000-000000000000';
+		const forged = [
+			header,
+			Buffer.from(JSON.stringify(claims)).toString('base64url'),
+			signature,
+		].join('.');
+
+		expect(forged).not.toBe(token);
+
+		// A signature altered by a single character.
+		const corrupted = [
+			header,
+			payload,
+			signature.slice(0, -1) + (signature.endsWith('a') ? 'b' : 'a'),
+		].join('.');
+
+		for (const bad of [forged, corrupted, 'not-a-token-at-all']) {
+			const refused = await request(server)
+				.get('/api/auth/me')
+				.set('Cookie', `access_token=${bad}`)
+				.expect(401);
+
+			// One answer for every kind of bad token, so nothing tells an
+			// attacker which part they got wrong.
+			expect(refused.body).toEqual({
+				statusCode: 401,
+				message: 'Unauthorized',
+			});
+		}
 	});
 
 	it('clears the cookie with the attributes it was set with', async () => {
