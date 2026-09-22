@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma } from '../generated/prisma/client';
@@ -118,5 +118,99 @@ describe('AuthService.register', () => {
 		create.mockRejectedValue(failure);
 
 		await expect(service.register(DTO)).rejects.toBe(failure);
+	});
+});
+
+describe('AuthService.login', () => {
+	const findUnique = vi.fn();
+	const verify = vi.fn();
+	let service: AuthService;
+
+	const CREDENTIALS = { email: DTO.email, password: DTO.password };
+	const STORED_HASH = '$argon2id$stored';
+	const STORED_USER = { ...CREATED, passwordHash: STORED_HASH };
+
+	beforeEach(async () => {
+		findUnique.mockReset();
+		verify.mockReset();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				AuthService,
+				{ provide: PrismaService, useValue: { user: { findUnique } } },
+				{
+					provide: PasswordService,
+					useValue: { hash: () => Promise.resolve(HASH), verify },
+				},
+			],
+		}).compile();
+
+		// init(), not just compile(): the throwaway hash login falls back on is
+		// built in onModuleInit, and compile() alone does not run lifecycle
+		// hooks.
+		await moduleRef.init();
+		service = moduleRef.get(AuthService);
+	});
+
+	it('returns the user without the stored hash', async () => {
+		findUnique.mockResolvedValue(STORED_USER);
+		verify.mockResolvedValue(true);
+
+		const user = await service.login(CREDENTIALS);
+
+		expect(user).toEqual(CREATED);
+		expect(user).not.toHaveProperty('passwordHash');
+	});
+
+	it('answers an unknown email and a wrong password identically', async () => {
+		// Nothing matches and nothing verifies, in both halves.
+		verify.mockResolvedValue(false);
+
+		findUnique.mockResolvedValue(null);
+		const unknownEmail = await service
+			.login(CREDENTIALS)
+			.catch((e: unknown) => e);
+
+		findUnique.mockResolvedValue(STORED_USER);
+		const wrongPassword = await service
+			.login(CREDENTIALS)
+			.catch((e: unknown) => e);
+
+		expect(unknownEmail).toBeInstanceOf(UnauthorizedException);
+		expect(wrongPassword).toBeInstanceOf(UnauthorizedException);
+
+		// The point of the task: not merely similar, the same response. A
+		// difference here is a difference an attacker can read.
+		expect((unknownEmail as UnauthorizedException).getResponse()).toEqual(
+			(wrongPassword as UnauthorizedException).getResponse(),
+		);
+		expect((unknownEmail as UnauthorizedException).getResponse()).toEqual({
+			statusCode: 401,
+			error: 'Unauthorized',
+			message: 'Invalid email or password',
+		});
+	});
+
+	it('verifies against a throwaway hash when no account matched', async () => {
+		findUnique.mockResolvedValue(null);
+		verify.mockResolvedValue(false);
+
+		await expect(service.login(CREDENTIALS)).rejects.toBeInstanceOf(
+			UnauthorizedException,
+		);
+
+		// Returning early instead would answer in about a millisecond while a
+		// wrong password costs a full argon2 verify, and that gap is
+		// measurable from outside.
+		expect(verify).toHaveBeenCalledWith(HASH, CREDENTIALS.password);
+	});
+
+	it('treats a rejected verify as a failed login, not a crash', async () => {
+		findUnique.mockResolvedValue(STORED_USER);
+		verify.mockRejectedValue(new Error('malformed digest'));
+
+		await expect(service.login(CREDENTIALS)).rejects.toBeInstanceOf(
+			UnauthorizedException,
+		);
 	});
 });
