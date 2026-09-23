@@ -22,7 +22,12 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
-        {/* TEMP: points at the fixture board until matchmaking exists. */}
+        {/*
+          TEMP: until matchmaking exists there is nothing to put here but an id.
+          The page now asks the server for this match, so it has to be a real
+          Match row - this one is not, and lands on a spinner until #25 handles
+          match.rejected.
+        */}
         <NavLink to="/match/fixture-match" className={navButtonClass}>
             Match
           </NavLink>

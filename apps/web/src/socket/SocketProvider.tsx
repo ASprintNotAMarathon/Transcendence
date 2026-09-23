@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { clientSocket, type ConnectionStatus } from "../lib/socket";
 import { SocketContext, type SocketContextValue } from "./context";
 
@@ -32,13 +32,30 @@ export function SocketProvider({ enabled, devUserId, children}: Props) {
 		return () => clientSocket.disconnect();
 	}, [enabled, devUserId]);
 
-	const value: SocketContextValue = {
-		status,
-		send: (event) => clientSocket.send(event),
-		join: (key, event) => clientSocket.join(key, event),
-		leave: (key, event) => clientSocket.leave(key, event),
-		subscribe: (listener) => clientSocket.subscribe(listener),
-	};
+	/*
+	 * These four never change.
+	 * A page that joins a room in a useEffect has to list them in its dependencies;
+	 * rebuilt on every render,
+	 * that effect would leave and rejoin the room each time the status changed.
+	 * The leave is the dangerous half - Socket.IO buffers an emit made while the
+	 * socket is down, so a match.leave sent during a reconnect can be delivered
+	 * after the match.join that follows it.
+	 *
+	 * Nothing to close over: the socket is one module-level object.
+	 */
+	const send = useCallback<SocketContextValue['send']>(
+		(event) => clientSocket.send(event), []);
+	const join = useCallback<SocketContextValue['join']>(
+		(key, event) => clientSocket.join(key, event), []);
+	const leave = useCallback<SocketContextValue['leave']>(
+		(key, event) => clientSocket.leave(key, event), []);
+	const subscribe = useCallback<SocketContextValue['subscribe']>(
+		(listener) => clientSocket.subscribe(listener), []);
+
+	const value = useMemo<SocketContextValue>(
+		() => ({ status, send, join, leave, subscribe }),
+		[status, send, join, leave, subscribe],
+	);
 
 	return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }

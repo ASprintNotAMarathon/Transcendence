@@ -1,24 +1,34 @@
 /*
  * MatchPage is the screen behind /match/:matchId.
  *
- * It turns a match.state payload into a board.
- * `payload.state` is typed unknown on purpose (see README, "Match events"),
- * so the page never reads it directly: it goes through gomoku.deserialize,
- * which validates it and hands back a typed GomokuState, or throws.
+ * It asks the server for the match and draws what comes back. The board is
+ * never built here: match.state carries it, gomoku.deserialize validates it,
+ * and this page renders whatever that returns.
  *
- * For now the payload is a local fixture.
- * TODO(#24): take it from the socket's match.state reply to match.join instead.
+ *   join ──────────────► match.state   the whole board, once
+ *
+ * `payload.state` is typed unknown on purpose (see README, "Match events"),
+ * so the page never reads it directly.
+ *
+ * join() is a standing request rather than a one-off send, so a dropped
+ * connection repairs itself: the socket asks again on reconnect and a fresh
+ * match.state replaces whatever this tab was holding.
+ *
+ * TODO(#25): nothing here listens for match.moved yet, so a move played
+ * elsewhere only shows up on a reconnect. Next step.
  */
 
-import { useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useEffect, useMemo, useState } from 'react'
+import { useParams, useSearchParams } from 'react-router'
 import { gomoku } from '@transcendence/shared'
-import type { GomokuState } from '@transcendence/shared'
+import type { GomokuState, MatchStatePayload } from '@transcendence/shared'
 import ErrorState from '../components/states/ErrorState'
+import LoadingState from '../components/states/LoadingState'
+import { joinMatch, leaveMatch } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import type { StoneStyle } from '../match/stones'
 import MatchPlayers from '../match/MatchPlayers'
-import { fixtureMatchState } from '../match/fixture'
+import { useSocket } from '../socket/context'
 
 // A deserialize failure means the server sent a board this client cannot read.
 // That is a bug to report, not something to draw around,
@@ -33,8 +43,40 @@ function readBoard(game: string, state: unknown): GomokuState | null {
 }
 
 function MatchPage() {
-  const payload = fixtureMatchState
-  const board = useMemo(() => readBoard(payload.game, payload.state), [payload])
+  const { matchId } = useParams()
+  const { join, leave, subscribe } = useSocket()
+  const [received, setReceived] = useState<MatchStatePayload | null>(null)
+
+  // A snapshot counts only while we are still on the match it describes.
+  // Navigating from one match to another would otherwise leave the previous
+  // board on screen until the new snapshot arrived. Derived rather than reset
+  // in the effect below, which would cost a second render every time.
+  const payload = received !== null && received.matchId === matchId ? received : null
+
+  useEffect(() => {
+    if (matchId === undefined) return
+
+    const key = `match:${matchId}`
+    join(key, joinMatch(matchId))
+
+    // One socket serves the whole tab, so every event arrives here, including
+    // events about other matches and other features. Filter, don't assume.
+    const unsubscribe = subscribe((event) => {
+      if (event.type !== 'match.state') return
+      if (event.payload.matchId !== matchId) return
+      setReceived(event.payload)
+    })
+
+    return () => {
+      unsubscribe()
+      leave(key, leaveMatch(matchId))
+    }
+  }, [matchId, join, leave, subscribe])
+
+  const board = useMemo(
+    () => (payload === null ? null : readBoard(payload.game, payload.state)),
+    [payload],
+  )
 
   // TEMP: switch between the two stone styles so the team can pick one.
   // Kept in the URL (?stones=red) so either look can be shared as a link.
@@ -44,6 +86,16 @@ function MatchPage() {
 
   function toggleStones() {
     setSearchParams(stones === 'red' ? {} : { stones: 'red' }, { replace: true })
+  }
+
+  if (matchId === undefined) {
+    return <ErrorState message="This match could not be displayed." />
+  }
+
+  // TODO(#25): a match id nobody recognises is refused with match.rejected,
+  // which nothing listens for yet, so this waits forever instead of saying so.
+  if (payload === null) {
+    return <LoadingState message="Loading the match…" />
   }
 
   if (board === null) {
