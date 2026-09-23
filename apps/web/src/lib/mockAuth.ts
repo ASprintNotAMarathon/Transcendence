@@ -14,38 +14,73 @@ import { ApiError, type AuthUser, type LoginInput, type RegisterInput } from './
   - register with email "taken@example.com"  -> 409, field error on email
   - login with any password except "password123"  -> 401, wrong credentials
   - anything else on register/login -> succeeds
-  - me() always fails (401) -> mock mode always starts anonymous, a
-    refresh logs you out again, there's no real cookie to persist you
+  - me() returns whoever last logged in or registered, until you log out.
+    There's no real cookie, so the mock keeps that user in localStorage
+    instead, and a refresh keeps you logged in like the real session will.
 */
+
+const STORAGE_KEY = 'mockAuthUser'
+
+// Storage can be missing or blocked (private windows), so failing just means
+// the mock forgets you, same as a lost cookie.
+function remember(user: AuthUser): AuthUser {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(user))
+  } catch {
+    // ignore
+  }
+  return user
+}
+
+function forget(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    // ignore
+  }
+}
+
+function recall(): AuthUser | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    return stored ? (JSON.parse(stored) as AuthUser) : null
+  } catch {
+    return null
+  }
+}
 
 export const mockAuthApi = {
   async register(input: RegisterInput): Promise<AuthUser> {
     if (input.email === 'taken@example.com') {
       throw new ApiError(409, 'Conflict', { email: 'That email is already registered' })
     }
-    return {
+    return remember({
       id: 'mock-id',
       email: input.email,
       displayName: input.displayName,
       createdAt: new Date().toISOString(),
-    }
+    })
   },
 
   async login(input: LoginInput): Promise<AuthUser> {
     if (input.password !== 'password123') {
       throw new ApiError(401, 'Incorrect email or password.')
     }
-    return {
+    return remember({
       id: 'mock-id',
       email: input.email,
       displayName: 'mock-user',
       createdAt: new Date().toISOString(),
-    }
+    })
   },
 
-  async logout(): Promise<void> {},
+  async logout(): Promise<void> {
+    forget()
+  },
 
   async me(): Promise<AuthUser> {
-    throw new ApiError(401, 'Unauthorized')
+    const user = recall()
+    if (!user) throw new ApiError(401, 'Unauthorized')
+    return user
   },
 }
