@@ -20,6 +20,20 @@ values, so changing a color only requires editing it in one place.
   --color-base-200: #0A0B0D;
   --color-base-content: #ECE7DE;
   --radius-field: 9999px;
+
+  /*
+  Board and stones. Separate from the brand colours on purpose: a stone is a
+  game piece, not text or a button, so a tweak to --color-primary-content
+  must not restyle one. The dark stone is carried by its rim, not its fill
+  (every near-black sits around 1.1:1 on this ground), which is why the rim
+  is well clear of the grid line it sits on.
+  */
+  --color-stone-black: #1A1D24;
+  --color-stone-black-rim: #6B7383;
+  --color-stone-white: #F2EDE4;
+  --color-stone-red: #C84A38;
+  --color-board-surface: #0F1013;
+  --color-board-line: #3A3E48;
 }
 
 body {

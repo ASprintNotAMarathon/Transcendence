@@ -22,6 +22,10 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
+        {/* TEMP: points at the fixture board until matchmaking exists. */}
+        <NavLink to="/match/fixture-match" className={navButtonClass}>
+            Match
+          </NavLink>
         <NavLink to="/chat" className={navButtonClass}>
             Chat
           </NavLink>
