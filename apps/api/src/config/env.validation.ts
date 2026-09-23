@@ -15,6 +15,12 @@ export interface EnvConfig {
 
 const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const;
 
+/** 32 bytes of entropy, the hex form of `openssl rand -hex 32` being 64 chars. */
+const JWT_SECRET_MIN_LENGTH = 32;
+
+/** Prefix of the placeholder in .env.example, long enough to pass the length check. */
+const PLACEHOLDER_PREFIX = 'changeme';
+
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
 	const missing = REQUIRED.filter((key) => !config[key]);
 	if (missing.length > 0) {
@@ -31,10 +37,18 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
 		);
 	}
 
-	const secret = String(config.JWT_SECRET);
-	if (secret.length < 32) {
+	// The value is never echoed back: this message ends up in logs and CI output.
+	const jwtSecret = String(config.JWT_SECRET);
+	if (jwtSecret.startsWith(PLACEHOLDER_PREFIX)) {
 		throw new Error(
-			`JWT_SECRET must be at least 32 characters, got ${secret.length}. Generate one with: openssl rand -hex 32`,
+			'JWT_SECRET is still the placeholder from .env.example. ' +
+				'Generate a real one with: openssl rand -hex 32',
+		);
+	}
+	if (jwtSecret.length < JWT_SECRET_MIN_LENGTH) {
+		throw new Error(
+			`JWT_SECRET must be at least ${JWT_SECRET_MIN_LENGTH} characters, got ${jwtSecret.length}. ` +
+				'Generate one with: openssl rand -hex 32',
 		);
 	}
 
@@ -53,7 +67,7 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
 	return {
 		API_PORT: port,
 		DATABASE_URL: String(config.DATABASE_URL),
-		JWT_SECRET: secret,
+		JWT_SECRET: jwtSecret,
 		WS_DEV_AUTH: devAuth === 'true',
 	};
 }
