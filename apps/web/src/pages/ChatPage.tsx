@@ -84,8 +84,9 @@ function ChatPage() {
 		//overflow-y-auto lets the conversation list scroll vertically when the list is very long.
 		//md:border-r md:border-(--color-primary) adds a right border to the conversation list on medium screens and above.
 		//aside is used for the conversation list, and section is used for the message pane.
+		//overflow-x-hidden prevents horizontal scrolling in the conversation list.
 		<div className="grid h-[calc(100vh-10rem)] grid-cols-1 gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
-			<aside className="overflow-y-auto md:border-r md:border-(--color-primary)">
+			<aside className="overflow-y-auto overflow-x-hidden md:border-r md:border-(--color-primary)">
 				<ConversationList
 					conversations={conversations}
 					selectedId={selectedId}

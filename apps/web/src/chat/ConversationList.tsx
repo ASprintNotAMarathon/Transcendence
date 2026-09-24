@@ -34,7 +34,8 @@ function ConversationList({
 				return (
 					// key gives each conversation row a unique ID
 					// so React can keep track of the rows.
-					<li key={conversation.conversationId}>
+					// min-w-0 allows the row to shrink and truncate its text when the list is too narrow.
+					<li key={conversation.conversationId} className="min-w-0">
 						{/* A button lets the user select the conversation with mouse or keyboard. */}
 						<button
 							type="button"
