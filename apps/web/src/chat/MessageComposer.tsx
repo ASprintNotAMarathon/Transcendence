@@ -1,14 +1,15 @@
 /*
  * MessageComposer is the text box at the bottom of the message pane.
  *
+ * It owns two things: the text being typed and the status of the last send attempt (idle, sending, or failed)
+ * Enter sends the message, Shift+Enter creates a new line
+ * blank text is refused
  * It collects the user's text and passes it to `onSend`.
  * It does NOT add the message to the chat itself.
- * The message appears when the chat client sends the message back
- * as a `chat.message` event.
  *
  * Flow:
  * type message → press Enter/Send → onSend(text)
- *                         ↓
+ *                         ↓wait for Promise
  *                  success → clear box
  *                  failure → keep text + show Retry
  */
@@ -16,9 +17,9 @@
 import { useState } from 'react'
 import type { KeyboardEvent } from 'react'
 
-// Props that MessageComposer receives from its parent.
+// Props that MessageComposer receives from its parent(MessagePane).
 type MessageComposerProps = {
-	// Function that receives the message text.
+	// onSend function receives the message text.
 	// It returns a Promise: success = resolves(returns void, clear text), failure = rejects (keeps the text in the box).
 	// Promise is a built-in type that represents an asynchronous operation that may complete in the future.
 	onSend: (body: string) => Promise<void>
@@ -28,6 +29,13 @@ type MessageComposerProps = {
 /** idle = ready to type, sending = waiting for the client, failed = last send was refused */
 type Status = 'idle' | 'sending' | 'failed'
 
+/**
+ * Input: onSend (MessageComposerProps) a function from MessagePane.
+ * useState: text (what is typed), status (idle | sending | failed).
+ * send(): trims text, refuses blank, calls onSend; ok → clear box, error → 'failed'.
+ * handleKeyDown(): Enter → send(), Shift+Enter → newline.
+ * Returns JSX: textarea + Send button, plus a Retry row when status is 'failed'.
+ */
 function MessageComposer({ onSend }: MessageComposerProps) {
 	// Stores whatever the user has currently typed in the text box.
 	const [text, setText] = useState('')

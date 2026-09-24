@@ -149,6 +149,7 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 				className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2"
 			>
 				{messages.map((message, index) => {
+					// If the message was sent by the current user, tag it as "mine" so it can be styled differently.
 					const mine = message.senderId === CURRENT_USER_ID
 					// Show the sender's name only when it differs from the previous message
 					//so one sender shows their name only once for a group of messages in a row
@@ -158,6 +159,9 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 						<div
 							key={message.messageId}
 							// My messages on the right, everyone else on the left
+							// items-end pushes the message to the right, items-start to the left
+							// mt-3 adds a top margin to the first message of a group, so groups are visually separated
+							// flex-col makes the sender name and message stack vertically
 							className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${firstOfGroup ? 'mt-3' : ''}`}
 						>
 							{firstOfGroup && (

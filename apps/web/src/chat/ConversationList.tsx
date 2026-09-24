@@ -44,7 +44,10 @@ function ConversationList({
 							// Tells screen readers that this is the currently selected conversation.
 							aria-current={selected ? 'true' : undefined}
 							// menu-active highlights the button when this conversation is selected.
-							className={`flex flex-col items-start rounded-none ${selected ? 'menu-active' : ''}`}
+							// flex = horizontal layout, w-full = full width, min-w-0 = allow truncation, 
+							// flex-col = vertical layout for the text, items-start = left-align text, rounded-none = no rounded corner
+							className={`flex w-full min-w-0 flex-col items-start rounded-none ${selected ? 'menu-active' : ''}`}
+
 						>
 							<span className="flex w-full items-center justify-between gap-2">
 								{/* Display the conversation name. */}

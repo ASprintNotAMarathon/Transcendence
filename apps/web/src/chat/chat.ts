@@ -1,6 +1,10 @@
 /*
  * chatClient is the browser-side code that communicates with the chat server.
  * This mock client hardcodes the simulation of the server, without a real server.
+ * TODO(real chat): when the socket-backed client replaces this mock, delete 
+ * - every `[mock chat]` console.log (sendMessage steps 1–3, subscribe) 
+ * - MOCK_FAIL_PREFIX, MOCK_PING and deliverIncomingAfter 
+ * 	Check with: rg "\[mock chat\]|MOCK_|deliverIncomingAfter" apps/web/src
  */
 
 /*
@@ -39,11 +43,19 @@ const HISTORY_PAGE_SIZE = 20
 
 // Mock-only: a real server takes time to answer, so the mock waits a little
 // too. Without this the loading state would never be visible.
+//TODO: remove this when the backend is implemented, because the real server will have its own delay.
 const MOCK_DELAY_MS = 300
 
 // Mock-only: a message body starting with this makes sendMessage fail,
 // so the "failed to send → retry" state can be tried without a broken server.
+// TODO: remove this when the backend is implemented, because the real server will have its own error handling.
 export const MOCK_FAIL_PREFIX = '!fail'
+
+// Mock-only: sending this from ANY conversation makes Alice send a message
+// into conversation-1 one second later — the only way to test the unread badge
+// without a second browser.
+//TODO: remove this when the backend is implemented, because the real server will have its own incoming messages.
+export const MOCK_PING = '!ping'
 
 /** Waits the given number of milliseconds. */
 function wait(ms: number): Promise<void> {
@@ -109,6 +121,20 @@ async function sendMessage(
 	// Mock-only failure switch, see MOCK_FAIL_PREFIX.
 	if (body.startsWith(MOCK_FAIL_PREFIX)) {
 		throw new Error('mock: failed to send')
+	}
+	if (body === MOCK_PING) {
+		deliverIncomingAfter(
+			{
+				conversationId: 'conversation-1',
+				messageId: `message-ping-${Date.now()}`,
+				senderId: 'user-1',
+				senderName: 'Alice',
+				body: 'ping!',
+				createdAt: new Date().toISOString(),
+			},
+			1000,
+		)
+		return
 	}
 	const message: ChatMessagePayload = {
 		conversationId,
