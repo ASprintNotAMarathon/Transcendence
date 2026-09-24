@@ -24,7 +24,10 @@ function ConversationList({
 	return (
 		// <ul> displays all conversations as a vertical list.
 		// "menu" is a daisyUI class that provides menu/list styling.
-		<ul className="menu w-full p-0">
+		// "w-full" makes the list take up the full width of its container.
+		// "flex-nowrap" prevents the list items from wrapping to the next line.
+		// "p-0" removes padding from the list.
+		<ul className="menu w-full flex-nowrap p-0">
 			{conversations.map((conversation) => {
 				// Check whether this conversation is currently selected.
 				const selected = conversation.conversationId === selectedId
@@ -60,7 +63,7 @@ function ConversationList({
 								{unreadCount > 0 && (
 									// aria-label shows the unread message count only when it is greater than 0.
 									<span
-										className="badge badge-sm badge-primary shrink-0"
+										className="badge badge-sm badge-outline badge-primary shrink-0"
 										aria-label={`${unreadCount} unread`}
 									>
 										{unreadCount}
