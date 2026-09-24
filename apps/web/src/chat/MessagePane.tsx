@@ -11,7 +11,10 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
+import LoadingState from '../components/states/LoadingState'
+import MessageComposer from './MessageComposer'
 
 type MessagePaneProps = {
 	conversationId: string
@@ -20,7 +23,7 @@ type MessagePaneProps = {
 /**
  * What to do with the scroll position after the next render.
  *   bottom → jump to the newest message (on open, or when a new message arrives)
- *   keep   → older messages were inserted above; stay on the same message
+ *   keep   → remember the scroll height
  */
 type ScrollPlan = { to: 'bottom' } | { to: 'keep'; previousHeight: number }
 
@@ -46,17 +49,31 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 	 * messages     = current array of messages
 	 * setMessages  = function used to change that array
 	 *
-	 * The function passed to useState runs initially to get
-	 * the first messages for this conversation.
+	 * Starts empty: the first page arrives from the (async) mock in the
+	 * effect below, and `loading` is true until it does.
 	 */
-	const [messages, setMessages] = useState(() =>
-		chatClient.loadHistory(conversationId),
-	)
+	const [messages, setMessages] = useState<ChatMessagePayload[]>([])
+	const [loading, setLoading] = useState(true)
 	// Reference to the scrollable <div(type)>, initially null
 	const scrollRef = useRef<HTMLDivElement>(null)
 	// A ref (not state) because changing it must not trigger a re-render
 	// initially scroll to the bottom (newest message) when the pane opens
 	const scrollPlan = useRef<ScrollPlan>({ to: 'bottom' })
+
+	// Load the newest page once. `cancelled` guards against the answer arriving
+	// after the user already switched conversation (the pane was unmounted).
+	useEffect(() => {
+		let cancelled = false
+		chatClient.loadHistory(conversationId).then((page) => {
+			if (cancelled) return
+			scrollPlan.current = { to: 'bottom' }
+			setMessages(page)
+			setLoading(false)
+		})
+		return () => {
+			cancelled = true
+		}
+	}, [conversationId])
 
 	/*
 	 * Subscribe to messages coming from the chat client.
@@ -100,10 +117,10 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 	}, [messages])
 
 	// Scrolling to the very top asks the mock for the page before the oldest message shown
-	function handleScroll() {
+	async function handleScroll() {
 		const element = scrollRef.current
 		if (!element || element.scrollTop > 0 || messages.length === 0) return
-		const older = chatClient.loadHistory(
+		const older = await chatClient.loadHistory(
 			conversationId,
 			messages[0].messageId,
 		)
@@ -113,48 +130,69 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 			to: 'keep',
 			previousHeight: element.scrollHeight,
 		}
-		/** Put the older messages BEFORE the existing messages. */ 
+		/** Put the older messages BEFORE the existing messages. */
 		setMessages((current) => [...older, ...current])
 	}
 
+	// Show the loading dots until the first page is in (spec: "loading state")
+	if (loading) {
+		return <LoadingState message="Loading messages…" />
+	}
+
 	return (
-		<div
-			ref={scrollRef}
-			onScroll={handleScroll}
-			className="flex h-full flex-col gap-1 overflow-y-auto px-2"
-		>
-			{messages.map((message, index) => {
-				const mine = message.senderId === CURRENT_USER_ID
-				// Show the sender's name only when it differs from the previous message
-				const firstOfGroup =
-					messages[index - 1]?.senderId !== message.senderId
-				return (
-					<div
-						key={message.messageId}
-						// My messages on the right, everyone else on the left
-						className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${firstOfGroup ? 'mt-3' : ''}`}
-					>
-						{firstOfGroup && (
-							<span className="text-sm text-muted">
-								{message.senderName}
-							</span>
-						)}
-						{/* max-w + break-words: a long message wraps instead of widening the layout */}
+		// Column: the scrollable message list on top, the composer pinned below.
+		// min-h-0 on the list lets it shrink and scroll instead of pushing the composer off-screen.
+		<div className="flex h-full flex-col">
+			<div
+				ref={scrollRef}
+				onScroll={() => void handleScroll()}
+				className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2"
+			>
+				{messages.map((message, index) => {
+					// If the message was sent by the current user, tag it as "mine" so it can be styled differently.
+					const mine = message.senderId === CURRENT_USER_ID
+					// Show the sender's name only when it differs from the previous message
+					//so one sender shows their name only once for a group of messages in a row
+					const firstOfGroup =
+						messages[index - 1]?.senderId !== message.senderId
+					return (
 						<div
-							className={`max-w-[75%] rounded-2xl px-4 py-2 break-words ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-100)'}`}
+							key={message.messageId}
+							// My messages on the right, everyone else on the left
+							// items-end pushes the message to the right, items-start to the left
+							// mt-3 adds a top margin to the first message of a group, so groups are visually separated
+							// flex-col makes the sender name and message stack vertically
+							className={`flex flex-col ${mine ? 'items-end' : 'items-start'} ${firstOfGroup ? 'mt-3' : ''}`}
 						>
-							<p>{message.body}</p>
-							{/* dateTime keeps the exact timestamp; the visible text is just hh:mm */}
-							<time
-								dateTime={message.createdAt}
-								className="block text-right text-xs text-muted"
+							{firstOfGroup && (
+								<span className="max-w-full truncate text-sm text-muted">
+									{/* Shows the sender's name */}
+									{message.senderName}
+								</span>
+							)}
+							{/* max-w + break-words: a long message wraps instead of widening the layout.
+							    whitespace-pre-wrap keeps the newlines from Shift+Enter and pasted text. */}
+							<div
+								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words whitespace-pre-wrap ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-100)'}`}
 							>
-								{formatTime(message.createdAt)}
-							</time>
+								<p>{message.body}</p>
+								{/* dateTime keeps the exact timestamp; the visible text is just hh:mm */}
+								<time
+									dateTime={message.createdAt}
+									className="block text-right text-xs text-muted"
+								>
+									{/* formats the timestamp into a small readable time */}
+									{formatTime(message.createdAt)}
+								</time>
+							</div>
 						</div>
-					</div>
-				)
-			})}
+					)
+				})}
+			</div>
+			{/* The pane does NOT add the sent message itself; it arrives via subscribe() like any other */}
+			<MessageComposer
+				onSend={(body) => chatClient.sendMessage(conversationId, body)}
+			/>
 		</div>
 	)
 }
