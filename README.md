@@ -163,6 +163,22 @@ Three services, all `healthy`. Then:
 The third one is the useful check — it proves the web container can reach the
 api container.
 
+### Demo accounts
+
+```sh
+npm run seed
+```
+
+Creates four users, one finished match (alice beat bob) and one in progress
+(charlie vs dana). Safe to run again.
+
+| Email | displayName | Password |
+| --- | --- | --- |
+| alice@example.com | alice | alice-1234 |
+| bob@example.com | bob | bob-12345 |
+| charlie@example.com | charlie | charlie-1234 |
+| dana@example.com | dana | dana-1234 |
+
 ### Everyday commands
 
 `make help` lists them all. The ones you need daily:
