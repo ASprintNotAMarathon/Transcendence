@@ -2,22 +2,18 @@
  * MatchPage is the screen behind /match/:matchId.
  *
  * It asks the server for the match and draws what comes back.
- * The board is never built here:
+ * The board is never invented here:
  * match.state carries it,
  * gomoku.deserialize validates it,
- * and this page renders whatever that returns.
+ * gomoku.apply is what moves it forward,
+ * and this page renders whatever those return.
  *
  *   join ──────────────► match.state   the whole board, once
+ *                        match.moved   one move at a time, from then on
  *
- * `payload.state` is typed unknown on purpose (see README, "Match events"),
- * so the page never reads it directly.
- *
- * join() is a standing request rather than a one-off send,
- * so a dropped connection repairs itself: the socket asks again on reconnect
- * and a fresh match.state replaces whatever this tab was holding.
- *
- * TODO(#25): nothing here listens for match.moved yet,
- * so a move played elsewhere only shows up on a reconnect. Next step.
+ * TODO(#25): a gap in moveNumber means this tab missed a move.
+ * The cure is to rejoin, which answers with a fresh board.
+ * Until then the move is dropped and this tab quietly stops keeping up.
  */
 
 import { useEffect, useState } from 'react'
@@ -26,6 +22,7 @@ import { gomoku } from '@transcendence/shared'
 import type {
   GameOutcome,
   GomokuState,
+  MatchMovedPayload,
   MatchPlayer,
   MatchStatePayload,
   PlayerIndex,
@@ -41,10 +38,11 @@ import { useSocket } from '../socket/context'
 /*
  * What this page is showing right now.
  *
- * Not the payload the server sent: a payload is one message, while this is the
- * running picture that later messages update. match.state replaces the whole
- * view, and the next step, match.moved, will carry one move rather than a
- * board, so it needs something to apply that move onto.
+ * Not the payload the server sent: a payload is one message,
+ * while this is the running picture that later messages update.
+ * match.state replaces the whole view,
+ * while match.moved carries one move rather than a board
+ * and needs this to apply that move onto.
  */
 interface MatchView {
   readonly matchId: string
@@ -69,8 +67,9 @@ function readBoard(game: string, state: unknown): GomokuState | null {
   }
 }
 
-// A snapshot arrives whole, so it is read once, here, rather than on every
-// render. The page never touches payload.state itself.
+// A snapshot arrives whole, so it is read once, here,
+// rather than on every render.
+// The page never touches payload.state itself.
 function viewFromState(payload: MatchStatePayload): MatchView {
   return {
     matchId: payload.matchId,
@@ -82,15 +81,50 @@ function viewFromState(payload: MatchStatePayload): MatchView {
   }
 }
 
+/*
+ * The same match, one move later.
+ */
+function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
+  if (view.board === null) return view
+
+  // Broadcasts are numbered, each one higher than the last.
+  // Joining the room before reading the snapshot can deliver a move the snapshot
+  // already holds (see match.handlers.ts), so a number we have passed is dropped
+  // rather than played twice.
+  if (payload.moveNumber !== view.moveNumber + 1) return view
+
+  let board: GomokuState
+  try {
+    board = gomoku.apply(view.board, gomoku.parseMove(payload.move))
+  } catch {
+    // The server accepted this move against its own board,
+    // so a throw here means the two boards have drifted apart.
+    // Drawing it anyway would only widen the difference.
+    return view
+  }
+
+  // turn and outcome come from the payload, not from what apply worked out.
+  // The server decides both, and a client that computes its own would be
+  // the first thing to disagree.
+  return {
+    ...view,
+    board,
+    turn: payload.turn,
+    outcome: payload.outcome,
+    moveNumber: payload.moveNumber,
+  }
+}
+
 function MatchPage() {
   const { matchId } = useParams()
   const { join, leave, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
 
   // A view counts only while we are still on the match it describes.
-  // Navigating from one match to another would otherwise leave the previous
-  // board on screen until the new snapshot arrived. Derived rather than reset
-  // in the effect below, which would cost a second render every time.
+  // Navigating from one match to another would otherwise leave the previous board
+  // on screen until the new snapshot arrived.
+  // Derived rather than reset in the effect below,
+  // which would cost a second render every time.
   const view = received !== null && received.matchId === matchId ? received : null
 
   useEffect(() => {
@@ -102,9 +136,26 @@ function MatchPage() {
     // One socket serves the whole tab, so every event arrives here,
     // including events about other matches and other features.
     const unsubscribe = subscribe((event) => {
-      if (event.type !== 'match.state') return
-      if (event.payload.matchId !== matchId) return
-      setReceived(viewFromState(event.payload))
+      if (event.type === 'match.state') {
+        if (event.payload.matchId !== matchId) return
+        setReceived(viewFromState(event.payload))
+        return
+      }
+
+      if (event.type === 'match.moved') {
+        if (event.payload.matchId !== matchId) return
+
+        // This listener is built once and never sees a later render,
+        // so the board to play the move on has to come from React
+        // rather than from anything captured here.
+        // A move that arrives before the first snapshot has nothing to land on
+        // and is dropped: the snapshot is on its way and will already contain it.
+        setReceived((current) =>
+          current === null || current.matchId !== matchId
+            ? current
+            : applyMoved(current, event.payload),
+        )
+      }
     })
 
     return () => {
