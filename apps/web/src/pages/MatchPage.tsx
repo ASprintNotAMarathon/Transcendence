@@ -10,6 +10,7 @@
  *
  *   join ──────────────► match.state   the whole board, once
  *                        match.moved   one move at a time, from then on
+ *   click ─────────────► match.move    an offer, drawn only once it comes back
  *
  * TODO(#25): a gap in moveNumber means this tab missed a move.
  * The cure is to rejoin, which answers with a fresh board.
@@ -21,6 +22,7 @@ import { useParams, useSearchParams } from 'react-router'
 import { gomoku } from '@transcendence/shared'
 import type {
   GameOutcome,
+  GomokuMove,
   GomokuState,
   MatchMovedPayload,
   MatchPlayer,
@@ -29,7 +31,8 @@ import type {
 } from '@transcendence/shared'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
-import { joinMatch, leaveMatch } from '../lib/protocol'
+import { devUserId, resolveMatchId } from '../lib/devFixtures'
+import { joinMatch, leaveMatch, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import type { StoneStyle } from '../match/stones'
 import MatchPlayers from '../match/MatchPlayers'
@@ -116,8 +119,13 @@ function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
 }
 
 function MatchPage() {
-  const { matchId } = useParams()
-  const { join, leave, subscribe } = useSocket()
+  // TEMP: resolveMatchId turns /match/demo into the seeded match and leaves a
+  // real id alone. Everything below works on the resolved one, which is what
+  // the api and every payload use.
+  const { matchId: routeMatchId } = useParams()
+  const matchId = resolveMatchId(routeMatchId)
+
+  const { join, leave, send, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
 
   // A view counts only while we are still on the match it describes.
@@ -188,6 +196,26 @@ function MatchPage() {
     return <ErrorState message="This match could not be displayed." />
   }
 
+  // Which seat is yours, or -1 while you are only watching.
+  // TEMP: devUserId, because the socket introduces itself with that and the
+  // api believes it. Becomes the logged-in user when #21 makes the two the
+  // same thing, and devIdentity.ts goes with it.
+  const seat = view.players.findIndex((player) => player.userId === devUserId)
+
+  // Only the player to move is offered a click. A spectator, the player
+  // waiting, and both players once the match is over all get the same board
+  // without a handler, so it goes back to being a picture.
+  const myTurn = seat !== -1 && view.outcome === null && view.turn === seat
+
+  // Nothing is drawn here. The move is an offer: the server decides, and the
+  // stone arrives with everybody else's copy of it, through match.moved.
+  // Written as a const rather than a function: a function can be called from
+  // anywhere in the page, including above the guard that proves matchId is
+  // there, so inside one it counts as possibly undefined again.
+  const play = (move: GomokuMove) => {
+    send(sendMove(matchId, move))
+  }
+
   return (
     <div className="flex flex-col items-center gap-6">
       <label className="flex cursor-pointer items-center gap-3 text-sm text-muted">
@@ -207,7 +235,11 @@ function MatchPage() {
       */}
       <div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">
         <div className="flex w-full max-w-[32rem] justify-center xl:col-start-2">
-          <GomokuBoard state={view.board} stones={stones} />
+          <GomokuBoard
+            state={view.board}
+            stones={stones}
+            onPlay={myTurn ? play : undefined}
+          />
         </div>
         <div className="w-full max-w-[32rem] xl:w-56 xl:justify-self-start">
           <MatchPlayers
