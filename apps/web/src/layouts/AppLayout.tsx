@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { nextDemoPlayer } from '../lib/devFixtures'
+import { ConnectionStatus } from '../socket/ConnectionStatus'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -23,6 +24,7 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
+        <ConnectionStatus />
         {/* TEMP: until matchmaking exists this opens the seeded demo match, as ada and linus in turn. */}
         <button
           type="button"
