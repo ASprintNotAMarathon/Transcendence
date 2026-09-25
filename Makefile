@@ -2,7 +2,7 @@ COMPOSE := docker compose
 NPM := npm
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs ps psql clean fclean re check-env \
+.PHONY: help up down logs ps psql seed clean fclean re check-env \
 	install test test-watch typecheck build
 
 help:	## Show available targets
@@ -47,6 +47,14 @@ ps:	## Service status
 
 psql:	## Open a shell on the database
 	@. ./.env && $(COMPOSE) exec db psql -U $$POSTGRES_USER -d $$POSTGRES_DB
+
+# TEMP, with prisma/seed.sql: goes when matchmaking can create a match.
+seed:	## Put two players and one empty gomoku match in the database
+	@. ./.env && $(COMPOSE) exec -T db psql -q -U $$POSTGRES_USER -d $$POSTGRES_DB \
+		< apps/api/prisma/seed.sql
+	@echo "Open one of these in each browser window:"
+	@echo "  Ada   http://localhost:5173/match/demo?as=ada"
+	@echo "  Linus http://localhost:5173/match/demo?as=linus"
 
 clean: down ## Alias for down
 

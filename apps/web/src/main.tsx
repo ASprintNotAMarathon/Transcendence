@@ -16,19 +16,21 @@ import ChatPage from './pages/ChatPage.tsx'
 import MatchPage from './pages/MatchPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
+import { devUserId } from './lib/devFixtures.ts'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
         {/*
-          TEMP: every visitor connects as u1 the moment the page loads.
+          TEMP: this tab connects as whoever ?as= names, and as u1 without it.
+          See lib/devFixtures.ts, and `make seed` for a URL per player.
           TODO: AuthProvider is on main now, so this can become
             enabled={status === 'authenticated'} devUserId={user?.id}
           read from useAuth() through a small component inside this provider.
           devUserId goes entirely when #21 ships.
         */}
-        <SocketProvider enabled devUserId="u1">
+        <SocketProvider enabled devUserId={devUserId}>
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
