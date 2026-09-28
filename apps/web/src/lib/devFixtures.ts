@@ -26,9 +26,10 @@ export function resolveMatchId(matchId: string | undefined): string | undefined 
   return matchId === 'demo' ? DEMO_MATCH_ID : matchId
 }
 
-// Read once, when the app loads, rather than on every render: the stones switch
-// rewrites the query string, and a tab that changed identity halfway through a
-// match would be worse than one that keeps the id it started with.
+// Read once, when the app loads, rather than on every render: anything that
+// rewrites the query string would otherwise be read back as a new identity, and
+// a tab that changed identity halfway through a match would be worse than one
+// that keeps the id it started with.
 const asked = new URLSearchParams(window.location.search).get('as') ?? ''
 
 /*

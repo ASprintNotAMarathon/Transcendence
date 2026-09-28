@@ -8,15 +8,14 @@
  * Stones sit on line intersections,
  * so BOARD_SIZE lines give BOARD_SIZE × BOARD_SIZE playable points.
  *
- * Stone colours come from stones.ts. The 'red' look also puts a black board under the grid.
- * Both looks sit on the same soft glow as the landing page illustration.
+ * Stone colours come from stones.ts. The grid has no surface of its own:
+ * it sits straight on the same soft glow as the landing page illustration.
  */
 
 import { useId, useMemo } from 'react'
 import { BOARD_SIZE, gomoku } from '@transcendence/shared'
 import type { GomokuMove, GomokuState } from '@transcendence/shared'
-import { stoneFill, stoneStroke } from './stones'
-import type { StoneStyle } from './stones'
+import { stoneFill } from './stones'
 
 const SPACING = 32
 const PADDING = 24
@@ -39,7 +38,6 @@ const starPoint = { fill: 'var(--color-board-line)' }
 
 type GomokuBoardProps = {
   state: GomokuState
-  stones?: StoneStyle
 
   /*
    * Called with the point that was clicked, and never with an illegal one.
@@ -49,7 +47,7 @@ type GomokuBoardProps = {
   onPlay?: (move: GomokuMove) => void
 }
 
-function GomokuBoard({ state, stones = 'classic', onPlay }: GomokuBoardProps) {
+function GomokuBoard({ state, onPlay }: GomokuBoardProps) {
   const { board, moveCount } = state
   const glowId = useId()
 
@@ -77,18 +75,6 @@ function GomokuBoard({ state, stones = 'classic', onPlay }: GomokuBoardProps) {
       {/* The glow spills past the board, so it must not catch clicks meant for what sits around it. */}
       <circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />
 
-      {stones === 'red' && (
-        <rect
-          x={-PADDING}
-          y={-PADDING}
-          width={SIZE + PADDING * 2}
-          height={SIZE + PADDING * 2}
-          rx={12}
-          strokeWidth={1}
-          style={{ fill: 'var(--color-board-surface)', stroke: 'var(--color-board-line)' }}
-        />
-      )}
-
       {lines.map((pos) => (
         <line key={`h-${pos}`} x1={0} y1={pos} x2={SIZE} y2={pos} strokeWidth={1} style={gridLine} />
       ))}
@@ -108,8 +94,7 @@ function GomokuBoard({ state, stones = 'classic', onPlay }: GomokuBoardProps) {
               cx={col * SPACING}
               cy={row * SPACING}
               r={STONE_RADIUS}
-              strokeWidth={1}
-              style={{ fill: stoneFill(cell, stones), stroke: stoneStroke(cell, stones) }}
+              style={{ fill: stoneFill(cell) }}
             />
           ),
         ),
@@ -128,7 +113,7 @@ function GomokuBoard({ state, stones = 'classic', onPlay }: GomokuBoardProps) {
           cy={move.row * SPACING}
           r={STONE_RADIUS}
           className="cursor-pointer opacity-0 transition-opacity hover:opacity-40"
-          style={{ fill: stoneFill(state.turn, stones) }}
+          style={{ fill: stoneFill(state.turn) }}
           onClick={() => onPlay?.(move)}
         />
       ))}

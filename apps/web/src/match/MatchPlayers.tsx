@@ -7,14 +7,12 @@
  */
 
 import type { GameOutcome, MatchStatePayload, PlayerIndex } from '@transcendence/shared'
-import { stoneFill, stoneStroke } from './stones'
-import type { StoneStyle } from './stones'
+import { stoneFill } from './stones'
 
 type MatchPlayersProps = {
   players: MatchStatePayload['players']
   turn: PlayerIndex
   outcome: GameOutcome | null
-  stones: StoneStyle
 }
 
 function status(players: MatchPlayersProps['players'], turn: PlayerIndex, outcome: GameOutcome | null): string {
@@ -23,7 +21,7 @@ function status(players: MatchPlayersProps['players'], turn: PlayerIndex, outcom
   return `${players[outcome.player].displayName} wins`
 }
 
-function MatchPlayers({ players, turn, outcome, stones }: MatchPlayersProps) {
+function MatchPlayers({ players, turn, outcome }: MatchPlayersProps) {
   // Highlighted: the player to move, or the winner. Nobody, on a draw.
   const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null
 
@@ -47,11 +45,7 @@ function MatchPlayers({ players, turn, outcome, stones }: MatchPlayersProps) {
               }`}
             >
               <svg viewBox="-8 -8 16 16" className="size-5 shrink-0" aria-hidden="true">
-                <circle
-                  r={7}
-                  strokeWidth={1}
-                  style={{ fill: stoneFill(seat, stones), stroke: stoneStroke(seat, stones) }}
-                />
+                <circle r={7} style={{ fill: stoneFill(seat) }} />
               </svg>
               <span className="truncate">{player.displayName}</span>
             </li>

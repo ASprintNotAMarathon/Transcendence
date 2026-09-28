@@ -2,8 +2,8 @@
  * MatchPage is the screen behind /match/:matchId.
  *
  * It asks the server for the match and draws what comes back.
- * The board is never invented here:
- * match.state carries it,
+ * 
+ * The board is never invented here: match.state carries it,
  * gomoku.deserialize validates it,
  * gomoku.apply is what moves it forward,
  * and this page renders whatever those return.
@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { useParams } from 'react-router'
 import { gomoku } from '@transcendence/shared'
 import type {
   GameOutcome,
@@ -34,7 +34,6 @@ import LoadingState from '../components/states/LoadingState'
 import { devUserId, resolveMatchId } from '../lib/devFixtures'
 import { joinMatch, leaveMatch, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
-import type { StoneStyle } from '../match/stones'
 import MatchPlayers from '../match/MatchPlayers'
 import { useSocket } from '../socket/context'
 
@@ -172,16 +171,6 @@ function MatchPage() {
     }
   }, [matchId, join, leave, subscribe])
 
-  // TEMP: switch between the two stone styles so the team can pick one.
-  // Kept in the URL (?stones=red) so either look can be shared as a link.
-  // Delete the switch and the StoneStyle option once we have decided.
-  const [searchParams, setSearchParams] = useSearchParams()
-  const stones: StoneStyle = searchParams.get('stones') === 'red' ? 'red' : 'classic'
-
-  function toggleStones() {
-    setSearchParams(stones === 'red' ? {} : { stones: 'red' }, { replace: true })
-  }
-
   if (matchId === undefined) {
     return <ErrorState message="This match could not be displayed." />
   }
@@ -218,16 +207,6 @@ function MatchPage() {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      <label className="flex cursor-pointer items-center gap-3 text-sm text-muted">
-        Black stones
-        <input
-          type="checkbox"
-          className="toggle toggle-primary"
-          checked={stones === 'red'}
-          onChange={toggleStones}
-        />
-        Red stones on a black board
-      </label>
       {/*
         Three columns so the board stays in the exact centre of the page:
         an empty one on the left balances the player panel on the right.
@@ -235,19 +214,10 @@ function MatchPage() {
       */}
       <div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">
         <div className="flex w-full max-w-[32rem] justify-center xl:col-start-2">
-          <GomokuBoard
-            state={view.board}
-            stones={stones}
-            onPlay={myTurn ? play : undefined}
-          />
+          <GomokuBoard state={view.board} onPlay={myTurn ? play : undefined} />
         </div>
         <div className="w-full max-w-[32rem] xl:w-56 xl:justify-self-start">
-          <MatchPlayers
-            players={view.players}
-            turn={view.turn}
-            outcome={view.outcome}
-            stones={stones}
-          />
+          <MatchPlayers players={view.players} turn={view.turn} outcome={view.outcome} />
         </div>
       </div>
     </div>
