@@ -15,7 +15,8 @@ export function ConnectionStatus() {
   }
 
   return (
-    <span className="badge badge-warning gap-1 text-xs">
+    <span className="flex items-center gap-1.5 text-xs text-(--color-primary)">
+      <span className="h-1.5 w-1.5 rounded-full bg-(--color-primary)" />
       {LABEL[status]}
     </span>
   )
