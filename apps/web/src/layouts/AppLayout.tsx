@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
+import { nextDemoPlayer } from '../lib/devFixtures'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -23,14 +24,18 @@ function AppLayout() {
 
         <div className="flex items-center gap-3">
         {/*
-          TEMP: until matchmaking exists there is nothing to put here but an id.
-          The page now asks the server for this match, so it has to be a real
-          Match row - this one is not, and lands on a spinner until #25 handles
-          match.rejected.
+          TEMP: until matchmaking exists this opens the seeded demo match, as
+          ada and linus in turn. A full page load, not a NavLink: the socket
+          introduces itself with ?as= once, when the app loads, so navigating
+          in place would keep the identity this tab started with.
         */}
-        <NavLink to="/match/fixture-match" className={navButtonClass}>
+        <button
+          type="button"
+          onClick={() => window.location.assign(`/match/demo?as=${nextDemoPlayer()}`)}
+          className={navButtonClass}
+        >
             Match
-          </NavLink>
+          </button>
         <NavLink to="/chat" className={navButtonClass}>
             Chat
           </NavLink>

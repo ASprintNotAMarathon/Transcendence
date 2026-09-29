@@ -26,6 +26,30 @@ export function resolveMatchId(matchId: string | undefined): string | undefined 
   return matchId === 'demo' ? DEMO_MATCH_ID : matchId
 }
 
+const LAST_DEMO_PLAYER_KEY = 'lastDemoPlayer'
+
+/*
+ * Which seeded player the Match button opens the demo as: the one it did not
+ * open last time, starting with ada. Remembered per browser, so a second
+ * browser starts at ada too; click it twice there to get linus.
+ * Storage can be blocked (private windows), which only means it stays on ada.
+ */
+export function nextDemoPlayer(): string {
+  let last: string | null = null
+  try {
+    last = localStorage.getItem(LAST_DEMO_PLAYER_KEY)
+  } catch {
+    // ignore
+  }
+  const next = last === 'ada' ? 'linus' : 'ada'
+  try {
+    localStorage.setItem(LAST_DEMO_PLAYER_KEY, next)
+  } catch {
+    // ignore
+  }
+  return next
+}
+
 // Read once, when the app loads, rather than on every render: anything that
 // rewrites the query string would otherwise be read back as a new identity, and
 // a tab that changed identity halfway through a match would be worse than one
