@@ -9,8 +9,7 @@ import { SocketContext, type SocketContextValue } from "./context";
  * Sits above Routes so it never unmounts while navigating. The connection itself lives in
  * lib/socket.ts, this file only decides when it is open.
  * 
- * TODO Noor: the connection indicator. A component that reads useSocket().status and shows it
- * in the header. 'reconnecting' is the one that matters to a player mid-game.
+ * 
  */
 
 type Props = {
