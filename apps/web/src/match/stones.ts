@@ -1,7 +1,7 @@
 /*
  * Stone colours, shared by the board and the player panel beside it.
  *
- * Player 0 moves first and plays red, player 1 plays white.
+ * Player 0 moves first and plays terracotta, player 1 plays sage.
  */
 
 import type { Cell } from '@transcendence/shared'
@@ -13,5 +13,5 @@ import type { Cell } from '@transcendence/shared'
  * loudly, it just paints black.
  */
 export function stoneFill(cell: Exclude<Cell, null>): string {
-  return cell === 1 ? 'var(--color-stone-white)' : 'var(--color-stone-red)'
+  return cell === 1 ? 'var(--color-stone-sage)' : 'var(--color-stone-terracotta)'
 }
