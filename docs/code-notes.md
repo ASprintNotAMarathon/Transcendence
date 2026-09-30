@@ -316,15 +316,7 @@ Accent glow used on the "GO" in the logo/title
 
 ## `apps/web/src/layouts/AppLayout.tsx`
 
-### Line 11 · `await logout()`
-
-Inside `async function handleLogout()`
-
-No socket cleanup here! Discussed with Renata:
-socket will live in a SocketProvider above the routes, and
-close itself automatically when auth status becomes anonymous
-
-### Line 23 · `<button`
+### Line 26 · `<button`
 
 Inside `function AppLayout()`
 

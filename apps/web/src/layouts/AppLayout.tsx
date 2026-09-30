@@ -8,6 +8,9 @@ function AppLayout() {
   const navigate = useNavigate()
 
   async function handleLogout() {
+    // No socket cleanup here! Discussed with Renata:
+    // socket will live in a SocketProvider above the routes, and
+    // close itself automatically when auth status becomes anonymous
     await logout()
     navigate('/', { replace: true })
   }
