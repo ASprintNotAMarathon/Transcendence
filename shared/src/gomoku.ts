@@ -311,3 +311,38 @@ export const gomoku: GameEngine<GomokuState, GomokuMove> = {
 		return { board: newBoard, turn, lastMove: newLastMove, moveCount };
 	},
 };
+
+/**
+ * The stones that won the game, so a board can show them. Empty while nobody has won.
+ *
+ * Reads the same lines outcome() does: only the ones through lastMove,
+ * since any winning line must contain the stone that completed it.
+ * Every stone of an unbroken run counts, six or more included,
+ * and a move that completes two lines at once returns both.
+ */
+export function winningLine(state: GomokuState): GomokuMove[] {
+	const last = state.lastMove;
+	if (last === null) return [];
+
+	const player = state.board[last.row]?.[last.col];
+	if (player === null || player === undefined) return [];
+
+	const stones: GomokuMove[] = [];
+	for (const [dr, dc] of DIRECTIONS) {
+		if (countLine(state.board, last.row, last.col, dr, dc, player) < WIN_LENGTH) continue;
+
+		// Walk to one end of the run, then collect it back to the other end.
+		let r = last.row;
+		let c = last.col;
+		while (inBounds(r - dr, c - dc) && state.board[r - dr][c - dc] === player) {
+			r -= dr;
+			c -= dc;
+		}
+		while (inBounds(r, c) && state.board[r][c] === player) {
+			if (!stones.some((s) => s.row === r && s.col === c)) stones.push({ row: r, col: c });
+			r += dr;
+			c += dc;
+		}
+	}
+	return stones;
+}

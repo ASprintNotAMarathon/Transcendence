@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { BOARD_SIZE, gomoku } from '@transcendence/shared'
+import { BOARD_SIZE, gomoku, winningLine } from '@transcendence/shared'
 import type { GomokuMove, GomokuState } from '@transcendence/shared'
 import { stoneFill } from './stones'
 
@@ -24,8 +24,16 @@ type GomokuBoardProps = {
 }
 
 function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
-  const { board, moveCount } = state
+  const { board, moveCount, lastMove } = state
   const glowId = useId()
+
+  const lastBy = lastMove === null ? null : board[lastMove.row][lastMove.col]
+  const lastPlayed = lastMove === null || lastBy === null ? null : { ...lastMove, by: lastBy }
+
+  const won = useMemo(
+    () => new Set(winningLine(state).map((move) => move.row * BOARD_SIZE + move.col)),
+    [state],
+  )
 
   const legal = useMemo(
     () => new Set(
@@ -71,10 +79,24 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
               cx={col * SPACING}
               cy={row * SPACING}
               r={STONE_RADIUS}
+              className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'stone-won' : 'stone-lost'}
               style={{ fill: stoneFill(cell) }}
             />
           ),
         ),
+      )}
+
+      {lastPlayed !== null && (
+        <circle
+          key={`flash-${moveCount}`}
+          cx={lastPlayed.col * SPACING}
+          cy={lastPlayed.row * SPACING}
+          r={STONE_RADIUS}
+          strokeWidth={3}
+          pointerEvents="none"
+          className="stone-flash"
+          style={{ fill: 'none', stroke: stoneFill(lastPlayed.by) }}
+        />
       )}
 
       {onPlay !== undefined && board.flatMap((cells, row) =>

@@ -99,6 +99,43 @@ body::before {
   animation: win-line-draw 0.4s ease-out 1.3s backwards;
 }
 
+@keyframes stone-flash {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+.stone-flash {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: stone-flash 0.8s ease-out forwards;
+}
+
+@keyframes stone-won-pulse {
+  from {
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-secondary) 70%, transparent));
+  }
+  to {
+    filter: drop-shadow(0 0 12px var(--color-secondary));
+  }
+}
+
+.stone-won {
+  stroke: var(--color-secondary);
+  stroke-width: 2px;
+  animation: stone-won-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.stone-lost {
+  opacity: 0.35;
+  transition: opacity 0.6s ease-out;
+}
+
 @keyframes stone-glow {
   from {
     filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-secondary) 0%, transparent));
@@ -131,6 +168,20 @@ body::before {
   .stone-pop,
   .stone-win-line {
     animation: none;
+  }
+
+  .stone-flash {
+    animation: none;
+    opacity: 0;
+  }
+
+  .stone-won {
+    animation: none;
+    filter: drop-shadow(0 0 10px var(--color-secondary));
+  }
+
+  .stone-lost {
+    transition: none;
   }
 
   .stone-win-glow {
