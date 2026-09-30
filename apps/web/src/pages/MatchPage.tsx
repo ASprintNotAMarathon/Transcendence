@@ -11,10 +11,11 @@
  *   join ──────────────► match.state   the whole board, once
  *                        match.moved   one move at a time, from then on
  *   click ─────────────► match.move    an offer, drawn only once it comes back
+ *                        match.rejected  a join or a move the server refused
  *
- * TODO(#25): a gap in moveNumber means this tab missed a move.
- * The cure is to rejoin, which answers with a fresh board.
- * Until then the move is dropped and this tab quietly stops keeping up.
+ * A gap in moveNumber means this tab missed a move. The cure is to rejoin,
+ * which answers with a fresh board, so the view is marked stale and the page
+ * sends match.join again.
  */
 
 import { useEffect, useState } from 'react'
@@ -25,7 +26,9 @@ import type {
   GomokuMove,
   GomokuState,
   MatchMovedPayload,
+  MatchErrorCode,
   MatchPlayer,
+  MatchRejectedPayload,
   MatchStatePayload,
   PlayerIndex,
 } from '@transcendence/shared'
@@ -55,6 +58,21 @@ interface MatchView {
 
   /** null when the server sent a board this client cannot read. See readBoard. */
   readonly board: GomokuState | null
+
+  /**
+   * This board has fallen behind the server's: a move was missed, or one
+   * would not play on it. Moves are ignored until a fresh match.state
+   * replaces the whole view.
+   */
+  readonly stale: boolean
+}
+
+// A refused match.join means there is nothing to draw, so the page says why.
+// Only not_found can come back from a join today; the rest are move refusals.
+function rejectionMessage(code: MatchErrorCode): string {
+  return code === 'match.not_found'
+    ? 'This match does not exist.'
+    : 'This match could not be displayed.'
 }
 
 // A deserialize failure means the server sent a board this client cannot read.
@@ -80,6 +98,7 @@ function viewFromState(payload: MatchStatePayload): MatchView {
     outcome: payload.outcome,
     moveNumber: payload.moveNumber,
     board: readBoard(payload.game, payload.state),
+    stale: false,
   }
 }
 
@@ -87,13 +106,17 @@ function viewFromState(payload: MatchStatePayload): MatchView {
  * The same match, one move later.
  */
 function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
-  if (view.board === null) return view
+  if (view.board === null || view.stale) return view
 
   // Broadcasts are numbered, each one higher than the last.
   // Joining the room before reading the snapshot can deliver a move the snapshot
   // already holds (see match.handlers.ts), so a number we have passed is dropped
   // rather than played twice.
-  if (payload.moveNumber !== view.moveNumber + 1) return view
+  if (payload.moveNumber <= view.moveNumber) return view
+
+  // A number further ahead means a move in between never arrived.
+  // Playing this one on top would draw a board nobody has.
+  if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }
 
   let board: GomokuState
   try {
@@ -102,7 +125,7 @@ function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
     // The server accepted this move against its own board,
     // so a throw here means the two boards have drifted apart.
     // Drawing it anyway would only widen the difference.
-    return view
+    return { ...view, stale: true }
   }
 
   // turn and outcome come from the payload, not from what apply worked out.
@@ -126,6 +149,7 @@ function MatchPage() {
 
   const { join, leave, send, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
+  const [refused, setRefused] = useState<MatchRejectedPayload | null>(null)
 
   // A view counts only while we are still on the match it describes.
   // Navigating from one match to another would otherwise leave the previous board
@@ -162,6 +186,15 @@ function MatchPage() {
             ? current
             : applyMoved(current, event.payload),
         )
+        return
+      }
+
+      // Kept whatever it refused. Only the render below decides it matters:
+      // before a board arrives it can only be the join, and after one it is a
+      // refused move, which leaves the board as it was.
+      if (event.type === 'match.rejected') {
+        if (event.payload.matchId !== matchId) return
+        setRefused(event.payload)
       }
     })
 
@@ -171,13 +204,23 @@ function MatchPage() {
     }
   }, [matchId, join, leave, subscribe])
 
+  // A stale board is replaced by joining again: the server answers every join
+  // with a fresh match.state, and viewFromState clears the flag. Sent with
+  // send, not join, because the standing join registered above already covers
+  // reconnects; this only asks for one more snapshot.
+  const stale = view?.stale === true
+  useEffect(() => {
+    if (matchId !== undefined && stale) send(joinMatch(matchId))
+  }, [matchId, stale, send])
+
   if (matchId === undefined) {
     return <ErrorState message="This match could not be displayed." />
   }
 
-  // TODO(#25): a match id nobody recognises is refused with match.rejected,
-  // which nothing listens for yet, so this waits forever instead of saying so.
   if (view === null) {
+    if (refused !== null && refused.matchId === matchId) {
+      return <ErrorState message={rejectionMessage(refused.code)} />
+    }
     return <LoadingState message="Loading the match…" />
   }
 
