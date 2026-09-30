@@ -40,21 +40,35 @@ type GomokuBoardProps = {
   state: GomokuState
 
   /*
-   * Called with the point that was clicked, and never with an illegal one.
-   * Left out for a spectator, between turns, and once the match is over:
-   * without it the board is the picture it has always been.
+   * Called with the point that was clicked, legal or not:
+   * the server is the one that says no, and says why.
+   * Left out and the board is the picture it has always been.
    */
   onPlay?: (move: GomokuMove) => void
+
+  /*
+   * Whether hovering shows the stone a click would place.
+   * Off when the click is not yours to make, between turns or while watching:
+   * the point still answers, so the server can say why,
+   * but it never shows a stone that is not going to appear.
+   */
+  preview?: boolean
 }
 
-function GomokuBoard({ state, onPlay }: GomokuBoardProps) {
+function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
   const { board, moveCount } = state
   const glowId = useId()
 
-  // Which points may be clicked is the engine's answer, not this file's:
+  // Which points are legal is the engine's answer, not this file's:
   // every empty one, and none at all once somebody has won.
-  const playable = useMemo(
-    () => (onPlay === undefined ? [] : gomoku.legalMoves(state)),
+  // Only those respond to the pointer. The rest still take a click,
+  // so a stone or a finished game gets the server's reason instead of silence.
+  const legal = useMemo(
+    () => new Set(
+      onPlay === undefined
+        ? []
+        : gomoku.legalMoves(state).map((move) => move.row * BOARD_SIZE + move.col),
+    ),
     [onPlay, state],
   )
 
@@ -101,22 +115,28 @@ function GomokuBoard({ state, onPlay }: GomokuBoardProps) {
       )}
 
       {/*
-        Last, so the targets sit above the grid and catch the click themselves.
-        Each one is the stone that would be played, kept invisible until the
-        pointer is on it: the preview and the hit area are the same circle, so
-        what lights up is exactly what a click would place.
+        Last, so the targets sit above the grid and the stones and catch the click themselves.
+        One on every point. On a legal one it is the stone that would be played,
+        kept invisible until the pointer is on it: the preview and the hit area
+        are the same circle, so what lights up is exactly what a click would place.
       */}
-      {playable.map((move) => (
-        <circle
-          key={`play-${move.row}-${move.col}`}
-          cx={move.col * SPACING}
-          cy={move.row * SPACING}
-          r={STONE_RADIUS}
-          className="cursor-pointer opacity-0 transition-opacity hover:opacity-40"
-          style={{ fill: stoneFill(state.turn) }}
-          onClick={() => onPlay?.(move)}
-        />
-      ))}
+      {onPlay !== undefined && board.flatMap((cells, row) =>
+        cells.map((_, col) => (
+          <circle
+            key={`play-${row}-${col}`}
+            cx={col * SPACING}
+            cy={row * SPACING}
+            r={STONE_RADIUS}
+            className={
+              preview && legal.has(row * BOARD_SIZE + col)
+                ? 'cursor-pointer opacity-0 transition-opacity hover:opacity-40'
+                : 'opacity-0'
+            }
+            style={{ fill: stoneFill(state.turn) }}
+            onClick={() => onPlay({ row, col })}
+          />
+        )),
+      )}
     </svg>
   )
 }
