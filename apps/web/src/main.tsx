@@ -22,14 +22,8 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        {/*
-          TEMP: this tab connects as whoever ?as= names, and as u1 without it.
-          See lib/devFixtures.ts, and `make seed` for a URL per player.
-          TODO: AuthProvider is on main now, so this can become
-            enabled={status === 'authenticated'} devUserId={user?.id}
-          read from useAuth() through a small component inside this provider.
-          devUserId goes entirely when #21 ships.
-        */}
+        {/* TEMP: this tab connects as whoever ?as= names, and as u1 without it. */}
+        {/* TODO: AuthProvider is on main now, so this can become enabled={status === 'authenticated'} devUserId={user?.id} read from useAuth() through a small component inside this provider. */}
         <SocketProvider enabled devUserId={devUserId}>
           <Routes>
             <Route element={<PublicLayout />}>

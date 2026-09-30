@@ -1,11 +1,3 @@
-/*
- * MatchPlayers sits beside the board: both players, their stone,
- * and whose turn it is (or who won, once the match is over).
- *
- * Like GomokuBoard it only draws what it is given.
- * `turn` means nothing once `outcome` is set, so it is only read while the match runs.
- */
-
 import type { GameOutcome, MatchStatePayload, PlayerIndex } from '@transcendence/shared'
 import { stoneFill } from './stones'
 
@@ -22,7 +14,6 @@ function status(players: MatchPlayersProps['players'], turn: PlayerIndex, outcom
 }
 
 function MatchPlayers({ players, turn, outcome }: MatchPlayersProps) {
-  // Highlighted: the player to move, or the winner. Nobody, on a draw.
   const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null
 
   return (

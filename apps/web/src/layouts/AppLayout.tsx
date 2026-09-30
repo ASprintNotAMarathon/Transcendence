@@ -8,9 +8,6 @@ function AppLayout() {
   const navigate = useNavigate()
 
   async function handleLogout() {
-    // No socket cleanup here! Discussed with Renata:
-    // socket will live in a SocketProvider above the routes, and
-    // close itself automatically when auth status becomes anonymous
     await logout()
     navigate('/', { replace: true })
   }
@@ -23,12 +20,7 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
-        {/*
-          TEMP: until matchmaking exists this opens the seeded demo match, as
-          ada and linus in turn. A full page load, not a NavLink: the socket
-          introduces itself with ?as= once, when the app loads, so navigating
-          in place would keep the identity this tab started with.
-        */}
+        {/* TEMP: until matchmaking exists this opens the seeded demo match, as ada and linus in turn. */}
         <button
           type="button"
           onClick={() => window.location.assign(`/match/demo?as=${nextDemoPlayer()}`)}
