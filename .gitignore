@@ -5,6 +5,9 @@ dist-ssr/
 .env
 *.local
 
+# Personal Docker Compose tweaks, like opening the web port to the local network.
+compose.override.yaml
+
 # Logs
 logs
 *.log
