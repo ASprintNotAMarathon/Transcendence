@@ -13,21 +13,18 @@ import RegisterPage from './pages/RegisterPage.tsx'
 import HomePage from './pages/HomePage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
 import ChatPage from './pages/ChatPage.tsx'
+import MatchPage from './pages/MatchPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
+import { devUserId } from './lib/devFixtures.ts'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        {/*
-          TEMP: every visitor connects as u1 the moment the page loads.
-          TODO: AuthProvider is on main now, so this can become
-            enabled={status === 'authenticated'} devUserId={user?.id}
-          read from useAuth() through a small component inside this provider.
-          devUserId goes entirely when #21 ships.
-        */}
-        <SocketProvider enabled devUserId="u1">
+        {/* TEMP: this tab connects as whoever ?as= names, and as u1 without it. */}
+        {/* TODO: AuthProvider is on main now, so this can become enabled={status === 'authenticated'} devUserId={user?.id} read from useAuth() through a small component inside this provider. */}
+        <SocketProvider enabled devUserId={devUserId}>
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
@@ -42,6 +39,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/chat" element={<ChatPage />} />
+                <Route path="/match/:matchId" element={<MatchPage />} />
               </Route>
             </Route>
             <Route path="*" element={<NotFoundPage />} />

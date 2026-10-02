@@ -2,7 +2,7 @@ COMPOSE := docker compose
 NPM := npm
 
 .DEFAULT_GOAL := help
-.PHONY: help up down logs ps psql clean fclean re check-env \
+.PHONY: help up down logs ps psql seed clean fclean re check-env \
 	install test test-watch typecheck build
 
 help:	## Show available targets
@@ -31,8 +31,6 @@ up: check-env build	## Start everything
 	$(COMPOSE) up -d --build --wait --wait-timeout 180
 
 down:	## Stop and remove the containers, keeping the database
-# Anonymous volumes are the node_modules holes, one set per container generation, cca 370MB each.
-# They get orphaned by `down` and are never reused.
 	@vols=$$($(COMPOSE) ps -aq | xargs -r docker inspect \
 		-f '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{end}}{{end}}'); \
 	$(COMPOSE) down; \
@@ -48,6 +46,14 @@ ps:	## Service status
 psql:	## Open a shell on the database
 	@. ./.env && $(COMPOSE) exec db psql -U $$POSTGRES_USER -d $$POSTGRES_DB
 
+# TEMP, with prisma/seed.sql: goes when matchmaking can create a match.
+seed:	## Put two players and one empty gomoku match in the database
+	@. ./.env && $(COMPOSE) exec -T db psql -q -U $$POSTGRES_USER -d $$POSTGRES_DB \
+		< apps/api/prisma/seed.sql
+	@echo "Open one of these in each browser window:"
+	@echo "  Ada   http://localhost:5173/match/demo?as=ada"
+	@echo "  Linus http://localhost:5173/match/demo?as=linus"
+
 clean: down ## Alias for down
 
 fclean:	## Stop AND DELETE THE DATABASE
@@ -56,9 +62,6 @@ fclean:	## Stop AND DELETE THE DATABASE
 
 re: fclean up ## Nuke and restart
 
-# A file target, like .env: make builds node_modules/ from the manifests and reinstalls only when one of them is newer.
-# So `make test` on an up-to-date clone skips the install, but still works on a fresh one.
-# npm doesn't reliably update the directory's timestamp, hence the touch.
 node_modules: package.json package-lock.json
 	$(NPM) ci
 	@touch node_modules

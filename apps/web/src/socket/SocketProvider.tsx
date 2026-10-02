@@ -1,21 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { clientSocket, type ConnectionStatus } from "../lib/socket";
 import { SocketContext, type SocketContextValue } from "./context";
 
-/**
- * Ties the tab's one socket to whether someone is logged in, and makes it available
- * to every component through useSocket().
- * 
- * Sits above Routes so it never unmounts while navigating. The connection itself lives in
- * lib/socket.ts, this file only decides when it is open.
- * 
- * TODO Noor: the connection indicator. A component that reads useSocket().status and shows it
- * in the header. 'reconnecting' is the one that matters to a player mid-game.
- */
+// TODO Noor: the connection indicator.
 
 type Props = {
-	enabled: boolean; //open the socket while true, close it the moment it turns false
-	devUserId?: string; //temp dev identity that will be deleted together with WS_DEV_AUTH
+	enabled: boolean;
+	devUserId?: string;
 	children: ReactNode;
 };
 
@@ -32,13 +23,19 @@ export function SocketProvider({ enabled, devUserId, children}: Props) {
 		return () => clientSocket.disconnect();
 	}, [enabled, devUserId]);
 
-	const value: SocketContextValue = {
-		status,
-		send: (event) => clientSocket.send(event),
-		join: (key, event) => clientSocket.join(key, event),
-		leave: (key, event) => clientSocket.leave(key, event),
-		subscribe: (listener) => clientSocket.subscribe(listener),
-	};
+	const send = useCallback<SocketContextValue['send']>(
+		(event) => clientSocket.send(event), []);
+	const join = useCallback<SocketContextValue['join']>(
+		(key, event) => clientSocket.join(key, event), []);
+	const leave = useCallback<SocketContextValue['leave']>(
+		(key, event) => clientSocket.leave(key, event), []);
+	const subscribe = useCallback<SocketContextValue['subscribe']>(
+		(listener) => clientSocket.subscribe(listener), []);
+
+	const value = useMemo<SocketContextValue>(
+		() => ({ status, send, join, leave, subscribe }),
+		[status, send, join, leave, subscribe],
+	);
 
 	return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;
 }
