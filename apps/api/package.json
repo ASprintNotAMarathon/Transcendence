@@ -12,6 +12,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:check": "prisma migrate diff --from-config-datasource --to-schema ./prisma/schema.prisma --exit-code",
     "prisma:studio": "prisma studio",
+    "seed": "tsx prisma/seed.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "prisma migrate deploy && nest start",
     "start:dev": "prisma migrate deploy && nest start --watch",
@@ -35,6 +36,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@transcendence/shared": "*",
+    "argon2": "^0.45.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3"
@@ -62,6 +64,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.20.0",
     "unplugin-swc": "^1.5.7",
