@@ -2,8 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { clientSocket, type ConnectionStatus } from "../lib/socket";
 import { SocketContext, type SocketContextValue } from "./context";
 
-// TODO Noor: the connection indicator.
-
 type Props = {
 	enabled: boolean;
 	devUserId?: string;

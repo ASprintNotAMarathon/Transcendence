@@ -1,8 +1,8 @@
-import { StrictMode } from 'react'
+import { StrictMode, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import './index.css'
-import { AuthProvider } from './auth/AuthContext.tsx'
+import { AuthProvider, useAuth } from './auth/AuthContext.tsx'
 import GuestOnlyRoute from './auth/GuestOnlyRoute.tsx'
 import ProtectedRoute from './auth/ProtectedRoute.tsx'
 import PublicLayout from './layouts/PublicLayout.tsx'
@@ -18,13 +18,20 @@ import NotFoundPage from './pages/NotFoundPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
 import { devUserId } from './lib/devFixtures.ts'
 
+function AppSocketProvider({ children }: { children: ReactNode }) {
+  const { status } = useAuth()
+  return (
+    <SocketProvider enabled={status === 'authenticated'} devUserId={devUserId}>
+      {children}
+    </SocketProvider>
+  )
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        {/* TEMP: this tab connects as whoever ?as= names, and as u1 without it. */}
-        {/* TODO: AuthProvider is on main now, so this can become enabled={status === 'authenticated'} devUserId={user?.id} read from useAuth() through a small component inside this provider. */}
-        <SocketProvider enabled devUserId={devUserId}>
+        <AppSocketProvider>
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
@@ -44,7 +51,7 @@ createRoot(document.getElementById('root')!).render(
             </Route>
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
-        </SocketProvider>
+        </AppSocketProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
