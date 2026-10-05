@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { gomoku } from '@transcendence/shared'
 import type {
@@ -19,6 +19,18 @@ import { joinMatch, leaveMatch, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import MatchPlayers from '../match/MatchPlayers'
 import { useSocket } from '../socket/context'
+
+// MOCK: the 3D board loads only when picked, so three.js stays out of the 2D page.
+const GomokuBoard3D = lazy(() => import('../match/GomokuBoard3D'))
+const BOARD_VIEW_KEY = 'boardView'
+
+function readBoardView(): '2d' | '3d' {
+  try {
+    return localStorage.getItem(BOARD_VIEW_KEY) === '3d' ? '3d' : '2d'
+  } catch {
+    return '2d'
+  }
+}
 interface MatchView {
   readonly matchId: string
   readonly players: readonly [MatchPlayer, MatchPlayer]
@@ -92,6 +104,17 @@ function MatchPage() {
   const { join, leave, send, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
   const [refused, setRefused] = useState<MatchRejectedPayload | null>(null)
+  const [boardView, setBoardView] = useState<'2d' | '3d'>(readBoardView)
+
+  const toggleBoardView = () => {
+    const next = boardView === '3d' ? '2d' : '3d'
+    setBoardView(next)
+    try {
+      localStorage.setItem(BOARD_VIEW_KEY, next)
+    } catch {
+      // ignore
+    }
+  }
 
   const view = received !== null && received.matchId === matchId ? received : null
 
@@ -174,9 +197,25 @@ function MatchPage() {
 
   return (
     <div className="flex flex-col items-center gap-6">
+      <label className="flex cursor-pointer items-center gap-3 text-sm text-muted">
+        2D
+        <input
+          type="checkbox"
+          className="toggle toggle-primary"
+          checked={boardView === '3d'}
+          onChange={toggleBoardView}
+        />
+        3D
+      </label>
       <div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">
         <div className="flex w-full max-w-[32rem] flex-col items-center gap-3 xl:col-start-2">
-          <GomokuBoard state={view.board} onPlay={play} preview={myTurn} />
+          {boardView === '3d' ? (
+            <Suspense fallback={<LoadingState message="Loading the 3D board…" />}>
+              <GomokuBoard3D state={view.board} onPlay={play} preview={myTurn} />
+            </Suspense>
+          ) : (
+            <GomokuBoard state={view.board} onPlay={play} preview={myTurn} />
+          )}
           <p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">
             {notice}
           </p>
