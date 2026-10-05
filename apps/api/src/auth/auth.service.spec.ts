@@ -1,4 +1,5 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma } from '../generated/prisma/client';
@@ -58,6 +59,7 @@ describe('AuthService.register', () => {
 						verify: () => Promise.resolve(true),
 					},
 				},
+				{ provide: JwtService, useValue: { verify: vi.fn() } },
 			],
 		}).compile();
 
@@ -142,6 +144,7 @@ describe('AuthService.login', () => {
 					provide: PasswordService,
 					useValue: { hash: () => Promise.resolve(HASH), verify },
 				},
+				{ provide: JwtService, useValue: { verify: vi.fn() } },
 			],
 		}).compile();
 
@@ -212,5 +215,44 @@ describe('AuthService.login', () => {
 		await expect(service.login(CREDENTIALS)).rejects.toBeInstanceOf(
 			UnauthorizedException,
 		);
+	});
+});
+
+describe('AuthService.verifyToken', () => {
+	const jwtVerify = vi.fn();
+	let service: AuthService;
+
+	beforeEach(async () => {
+		jwtVerify.mockReset();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				AuthService,
+				{ provide: PrismaService, useValue: { user: {} } },
+				{
+					provide: PasswordService,
+					useValue: { hash: () => Promise.resolve(HASH) },
+				},
+				{ provide: JwtService, useValue: { verify: jwtVerify } },
+			],
+		}).compile();
+
+		service = moduleRef.get(AuthService);
+	});
+
+	it('returns the subject of a valid token', () => {
+		jwtVerify.mockReturnValue({ sub: CREATED.id, iat: 1, exp: 2 });
+
+		expect(service.verifyToken('a.valid.token')).toBe(CREATED.id);
+	});
+
+	it('returns null rather than throwing, whatever went wrong', () => {
+		// The socket handshake has no response to put a status in, so the two
+		// callers need a value back and refuse in their own way.
+		jwtVerify.mockImplementation(() => {
+			throw new Error('jwt expired');
+		});
+
+		expect(service.verifyToken('an.expired.token')).toBeNull();
 	});
 });

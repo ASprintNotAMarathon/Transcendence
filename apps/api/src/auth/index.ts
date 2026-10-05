@@ -10,6 +10,11 @@
  * with an undefined class rather than at compile time.
  */
 export { AuthModule } from './auth.module';
+// Exported for the socket handshake, which cannot use the guard: it has no
+// HTTP context, cookieParser never runs on an upgrade request, and refusing
+// means closing the connection rather than answering 401.
+export { AuthService } from './auth.service';
+export { AUTH_COOKIE } from './auth-cookie';
 export { JwtAuthGuard } from './jwt-auth.guard';
 export { CurrentUser } from './current-user.decorator';
 export { PasswordService } from './password.service';

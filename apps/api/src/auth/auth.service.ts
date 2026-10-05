@@ -6,10 +6,15 @@ import {
 	UnauthorizedException,
 	type OnModuleInit,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PasswordService } from './password.service';
-import { PUBLIC_USER_SELECT, type PublicUser } from './auth.types';
+import {
+	PUBLIC_USER_SELECT,
+	type JwtPayload,
+	type PublicUser,
+} from './auth.types';
 import type { LoginDto } from './dto/login.dto';
 import type { RegisterDto } from './dto/register.dto';
 
@@ -52,7 +57,33 @@ export class AuthService implements OnModuleInit {
 	constructor(
 		private readonly prisma: PrismaService,
 		private readonly passwords: PasswordService,
+		private readonly jwt: JwtService,
 	) {}
+
+	/**
+	 * The one place a token is checked. The HTTP guard calls it, and so does
+	 * the socket handshake, so the signing secret and the verification options
+	 * live here rather than in two verifiers that drift apart.
+	 *
+	 * Returns the user id, or null. No exception, because the two callers
+	 * refuse differently: the guard answers 401, and the handshake has no
+	 * response to put a status in and closes the connection instead. Each
+	 * layer owns its own refusal.
+	 *
+	 * Synchronous on purpose. Checking a signature and an expiry is pure
+	 * computation, and decision 05 leaves no database lookup in the path. If
+	 * revocation is ever added, that stops being true and this signature has
+	 * to change along with both callers.
+	 */
+	verifyToken(token: string): string | null {
+		try {
+			return this.jwt.verify<JwtPayload>(token).sub;
+		} catch {
+			// Expired, tampered, signed with another key, or not a token at
+			// all. The caller does not get to tell them apart.
+			return null;
+		}
+	}
 
 	private dummyHash!: string;
 

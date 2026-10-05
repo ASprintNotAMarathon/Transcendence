@@ -21,6 +21,9 @@ import type { EnvConfig } from '../config/env.validation';
 	controllers: [AuthController],
 	providers: [AuthService, JwtAuthGuard, PasswordService],
 	exports: [
+		// So the socket handshake can call verifyToken. One verifier, one
+		// secret, one set of verification options.
+		AuthService,
 		// So any module can put @UseGuards(JwtAuthGuard) on a route.
 		JwtAuthGuard,
 		// Re-exported with it: the guard needs JwtService, and a module holding
