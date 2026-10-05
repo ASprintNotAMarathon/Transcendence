@@ -9,8 +9,6 @@
   2. request(), the one function every call goes through (LAYER 2)
   3. authApi, the functions the rest of the app calls (LAYER 3)
 */
- 
-import { mockAuthApi } from './mockAuth'
 
 /*
   LAYER 1: Shapes of data that go in / out:
@@ -61,7 +59,8 @@ export class ApiError extends Error {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     // Goes through the Vite proxy, so this is same origin. No CORS needed.
-    // Cookie's Secure flag is off in dev, on in production.
+    // The cookie is Secure in every environment, also on localhost (decision 09).
+    // If login seems to work but /me gives a 401 right after, check the cookie in the browser.
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
@@ -112,4 +111,4 @@ const realAuthApi = {
 }
 
 
-export const authApi = import.meta.env.VITE_MOCK_AUTH === 'true' ? mockAuthApi : realAuthApi
+export const authApi = realAuthApi
