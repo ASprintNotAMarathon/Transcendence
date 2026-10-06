@@ -28,6 +28,10 @@ config({ path: join(__dirname, '..', '..', '..', '.env') });
 const PASSWORD_MIN_LENGTH = 8;
 const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
 
+// `npm run seed -- --edge-cases` also writes the unusual matches,
+// so the default demo data stays clean (review #45).
+const SEED_EDGE_CASES = process.argv.includes('--edge-cases');
+
 /* ------------------------------------------------------------------ */
 /* Seed data                                                          */
 /* ------------------------------------------------------------------ */
@@ -247,6 +251,15 @@ async function seedMatches(
 	console.log('match ready: charlie vs dana (in progress)');
 }
 
+// Unusual and deliberately broken matches for testing the match page.
+// Written only when --edge-cases is passed.
+async function seedEdgeCases(
+	prisma: PrismaClient,
+	ids: Map<string, string>,
+): Promise<void> {
+	console.log('=== EDGE CASES: seeding unusual + broken matches ===');
+}
+
 /* ------------------------------------------------------------------ */
 /* seed function                                                       */
 /* ------------------------------------------------------------------ */
@@ -267,6 +280,9 @@ async function runSeed(): Promise<void> {
 		await clearSeedData(prisma);
 		const ids = await seedUsers(prisma);
 		await seedMatches(prisma, ids);
+		if (SEED_EDGE_CASES) {
+			await seedEdgeCases(prisma, ids);
+		}
 		console.log('seed complete');
 	} finally {
 		// Always close the connection, even if a step threw, or the process hangs.

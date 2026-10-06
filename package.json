@@ -11,7 +11,8 @@
     "build": "npm run build --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "seed": "npm run seed --workspace api"
+    "seed": "npm run seed --workspace api",
+    "seed:edge": "npm run seed --workspace api -- --edge-cases"
   },
   "overrides": {
     "prisma": "7.10.0"
