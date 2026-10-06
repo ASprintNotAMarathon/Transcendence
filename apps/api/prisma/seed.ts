@@ -15,6 +15,7 @@ import { join } from 'node:path';
 import argon2 from 'argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
+import { gomoku, replay } from '@transcendence/shared'; //used for replay()
 
 // The repo keeps one .env at its root: apps/api/prisma → three levels up.
 config({ path: join(__dirname, '..', '..', '..', '.env') });
@@ -207,6 +208,12 @@ async function seedMatches(
 	const dana = ids.get('dana')!;
 
 	// Finished: status + winnerId are set together, as match.service does after a winning move.
+	// Replay re-validates every move; a typo in the list fails here,
+	// at seed time, instead of when someone opens the match.
+	const finishedRows = toMoveRows(FINISHED_MATCH_MOVES);
+	if (replay(gomoku, finishedRows).outcome === null) {
+		throw new Error('seed bug: FINISHED_MATCH_MOVES does not end in a win');
+	}
 	await prisma.match.create({
 		data: {
 			id: MATCH_IDS.finished,
@@ -215,19 +222,26 @@ async function seedMatches(
 			player0Id: alice,
 			player1Id: bob,
 			winnerId: alice,
-			moves: { createMany: { data: toMoveRows(FINISHED_MATCH_MOVES) } },
+			moves: { createMany: { data: finishedRows } },
 		},
 	});
 	console.log('match ready: alice beat bob (finished)');
 
 	// In progress: status stays at its default (active), no winner yet.
+	const activeRows = toMoveRows(ACTIVE_MATCH_MOVES);
+	//replay here catches a typo in the move list and missing moves
+	if (replay(gomoku, activeRows).outcome !== null) {
+		throw new Error(
+			'seed bug: ACTIVE_MATCH_MOVES already contains a finished game',
+		);
+	}
 	await prisma.match.create({
 		data: {
 			id: MATCH_IDS.active,
 			game: 'gomoku',
 			player0Id: charlie,
 			player1Id: dana,
-			moves: { createMany: { data: toMoveRows(ACTIVE_MATCH_MOVES) } },
+			moves: { createMany: { data: activeRows } },
 		},
 	});
 	console.log('match ready: charlie vs dana (in progress)');
