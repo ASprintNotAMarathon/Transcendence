@@ -75,6 +75,14 @@ const SEED_USERS: SeedUser[] = [
 const MATCH_IDS = {
 	finished: '00000000-0000-4000-8000-000000000101',
 	active: '00000000-0000-4000-8000-000000000102',
+	resigned: '00000000-0000-4000-8000-000000000103',
+	activeWithWin: '00000000-0000-4000-8000-000000000104',
+	gapInHistory: '00000000-0000-4000-8000-000000000105',
+	doubleMove: '00000000-0000-4000-8000-000000000106',
+	occupiedPoint: '00000000-0000-4000-8000-000000000107',
+	offBoard: '00000000-0000-4000-8000-000000000108',
+	moveAfterWin: '00000000-0000-4000-8000-000000000109',
+	badWinner: '00000000-0000-4000-8000-000000000110',
 } as const;
 
 // One move as stored in the Move table. `by` is the PlayerIndex (0 or 1).
@@ -103,6 +111,14 @@ const ACTIVE_MATCH_MOVES: SeedMove[] = [
 	{ by: 0, row: 7, col: 7 },
 	{ by: 1, row: 7, col: 8 },
 	{ by: 0, row: 8, col: 8 },
+];
+
+// Resigned: finished with a winner but nobody has five in a row
+const RESIGNED_MATCH_MOVES: SeedMove[] = [
+	{ by: 0, row: 3, col: 3 },
+	{ by: 1, row: 4, col: 4 },
+	{ by: 0, row: 3, col: 4 },
+	{ by: 1, row: 5, col: 5 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -258,6 +274,114 @@ async function seedEdgeCases(
 	ids: Map<string, string>,
 ): Promise<void> {
 	console.log('=== EDGE CASES: seeding unusual + broken matches ===');
+	const alice = ids.get('alice')!;
+	const bob = ids.get('bob')!;
+	const charlie = ids.get('charlie')!;
+	const dana = ids.get('dana')!;
+
+	// Resigned: finished + winner, but the board shows no five in a row.
+	const resignedRows = toMoveRows(RESIGNED_MATCH_MOVES);
+	if (replay(gomoku, resignedRows).outcome !== null) {
+		throw new Error(
+			'seed bug: RESIGNED_MATCH_MOVES must not contain a win',
+		);
+	}
+	await prisma.match.create({
+		data: {
+			id: MATCH_IDS.resigned,
+			game: 'gomoku',
+			status: 'finished',
+			player0Id: dana,
+			player1Id: bob,
+			winnerId: dana,
+			moves: { createMany: { data: resignedRows } },
+		},
+	});
+	console.log('edge match ready: dana beat bob by resignation');
+
+	// Never closed: the moves contain a win, but status stays 'active'.
+	await prisma.match.create({
+		data: {
+			id: MATCH_IDS.activeWithWin,
+			game: 'gomoku',
+			player0Id: alice,
+			player1Id: charlie,
+			moves: { createMany: { data: toMoveRows(FINISHED_MATCH_MOVES) } },
+		},
+	});
+	console.log(
+		'edge match ready: alice vs charlie (won on board, never closed)',
+	);
+	// Broken histories: rows legal play could never produce. Inserted raw,
+	// on purpose without replay() — the point is to see how the match page
+	// copes (today: loads forever). All between alice and bob so cleanup finds them.
+	const brokenMatches = [
+		{
+			id: MATCH_IDS.gapInHistory,
+			label: 'gap in moveNumber (1, 2, 4)',
+			rows: [
+				{ moveNumber: 1, by: 0, payload: { row: 0, col: 0 } },
+				{ moveNumber: 2, by: 1, payload: { row: 1, col: 1 } },
+				{ moveNumber: 4, by: 0, payload: { row: 2, col: 2 } },
+			],
+		},
+		{
+			id: MATCH_IDS.doubleMove,
+			label: 'two moves in a row by player 0',
+			rows: [
+				{ moveNumber: 1, by: 0, payload: { row: 0, col: 0 } },
+				{ moveNumber: 2, by: 0, payload: { row: 1, col: 1 } },
+			],
+		},
+		{
+			id: MATCH_IDS.occupiedPoint,
+			label: 'second move on an occupied point',
+			rows: [
+				{ moveNumber: 1, by: 0, payload: { row: 5, col: 5 } },
+				{ moveNumber: 2, by: 1, payload: { row: 5, col: 5 } },
+			],
+		},
+		{
+			id: MATCH_IDS.offBoard,
+			label: 'move off the board (99, 99)',
+			rows: [{ moveNumber: 1, by: 0, payload: { row: 99, col: 99 } }],
+		},
+		{
+			id: MATCH_IDS.moveAfterWin,
+			label: 'a move after the game was won',
+			rows: [
+				...toMoveRows(FINISHED_MATCH_MOVES),
+				{ moveNumber: 10, by: 1, payload: { row: 0, col: 0 } },
+			],
+		},
+	];
+
+	for (const broken of brokenMatches) {
+		await prisma.match.create({
+			data: {
+				id: broken.id,
+				game: 'gomoku',
+				player0Id: alice,
+				player1Id: bob,
+				moves: { createMany: { data: broken.rows } },
+			},
+		});
+		console.log(`edge match ready (broken): ${broken.label}`);
+	}
+
+	// Finished match whose winnerId is a real user — but not one of its players.
+	await prisma.match.create({
+		data: {
+			id: MATCH_IDS.badWinner,
+			game: 'gomoku',
+			status: 'finished',
+			player0Id: alice,
+			player1Id: bob,
+			winnerId: charlie,
+			moves: { createMany: { data: toMoveRows(RESIGNED_MATCH_MOVES) } },
+		},
+	});
+	console.log('edge match ready (broken): winnerId is not a player');
 }
 
 /* ------------------------------------------------------------------ */
