@@ -31,29 +31,46 @@ const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
 /* Seed data                                                          */
 /* ------------------------------------------------------------------ */
 
-// A user as written here, before hashing.
+// Template for one user to be created. The seed script hashes the password before it reaches the database.
 interface SeedUser {
+	id: string; // fixed so demo URLs survive a reseed
 	email: string;
 	displayName: string;
-	// Plain text only in this file; hashed before it reaches the database.
 	password: string;
 }
-
-// Keep this list in sync with the "Demo accounts" table in the root README.
+//
 const SEED_USERS: SeedUser[] = [
 	{
+		id: '00000000-0000-4000-8000-000000000001',
 		email: 'alice@example.com',
 		displayName: 'alice',
 		password: 'alice-1234',
 	},
-	{ email: 'bob@example.com', displayName: 'bob', password: 'bob-12345' },
 	{
+		id: '00000000-0000-4000-8000-000000000002',
+		email: 'bob@example.com',
+		displayName: 'bob',
+		password: 'bob-12345',
+	},
+	{
+		id: '00000000-0000-4000-8000-000000000003',
 		email: 'charlie@example.com',
 		displayName: 'charlie',
 		password: 'charlie-1234',
 	},
-	{ email: 'dana@example.com', displayName: 'dana', password: 'dana-1234' },
+	{
+		id: '00000000-0000-4000-8000-000000000004',
+		email: 'dana@example.com',
+		displayName: 'dana',
+		password: 'dana-1234',
+	},
 ];
+
+// Fixed match ids so they dont reset every time.
+const MATCH_IDS = {
+	finished: '00000000-0000-4000-8000-000000000101',
+	active: '00000000-0000-4000-8000-000000000102',
+} as const;
 
 // One move as stored in the Move table. `by` is the PlayerIndex (0 or 1).
 interface SeedMove {
@@ -140,6 +157,7 @@ async function seedUsers(prisma: PrismaClient): Promise<Map<string, string>> {
 			where: { email: user.email },
 			update: { displayName: user.displayName, passwordHash },
 			create: {
+				id: user.id,
 				email: user.email,
 				displayName: user.displayName,
 				passwordHash,
@@ -153,18 +171,28 @@ async function seedUsers(prisma: PrismaClient): Promise<Map<string, string>> {
 	return idsByName;
 }
 
-// Removes matches between seed users from a previous run.
-// Moves go with them: the Move → Match relation is onDelete: Cascade.
-async function clearSeedMatches(
-	prisma: PrismaClient,
-	userIds: string[],
-): Promise<void> {
+// Removes seed users and their matches from a previous run, so the fixed
+// ids always apply cleanly. Matches first because a user with matches cannot be
+// deleted. Moves go with the matches because of the foreign key constraint.
+async function clearSeedData(prisma: PrismaClient): Promise<void> {
+	//store the emails of the seed users in a variable
+	const emails = SEED_USERS.map((user) => user.email);
+	// Find the ids of any existing users with those emails
+	const existing = await prisma.user.findMany({
+		where: { email: { in: emails } },
+		select: { id: true },
+	});
+	// store the ids of the existing users in a variable
+	const oldIds = existing.map((user) => user.id);
+	//delete rows from the match table where either player0Id or player1Id is in the list of oldIds
 	const { count } = await prisma.match.deleteMany({
-		where: { player0Id: { in: userIds }, player1Id: { in: userIds } },
+		where: { player0Id: { in: oldIds }, player1Id: { in: oldIds } },
 	});
 	if (count > 0) {
 		console.log(`removed ${count} match(es) from a previous seed run`);
 	}
+	//delete the users with the oldIds
+	await prisma.user.deleteMany({ where: { id: { in: oldIds } } });
 }
 
 // Creates one finished and one active match, each with its moves.
@@ -181,6 +209,7 @@ async function seedMatches(
 	// Finished: status + winnerId are set together, as match.service does after a winning move.
 	await prisma.match.create({
 		data: {
+			id: MATCH_IDS.finished,
 			game: 'gomoku',
 			status: 'finished',
 			player0Id: alice,
@@ -194,6 +223,7 @@ async function seedMatches(
 	// In progress: status stays at its default (active), no winner yet.
 	await prisma.match.create({
 		data: {
+			id: MATCH_IDS.active,
 			game: 'gomoku',
 			player0Id: charlie,
 			player1Id: dana,
@@ -204,26 +234,24 @@ async function seedMatches(
 }
 
 /* ------------------------------------------------------------------ */
-/* Entry point                                                        */
+/* seed function                                                       */
 /* ------------------------------------------------------------------ */
 
-async function main(): Promise<void> {
+async function runSeed(): Promise<void> {
 	const databaseUrl = process.env['DATABASE_URL'];
 	if (!databaseUrl) {
 		throw new Error(
 			'DATABASE_URL is not set — copy .env.example to .env first',
 		);
 	}
-
-	// Same adapter setup as PrismaService, without the Nest wrapper:
 	// this script runs on its own, outside the API.
 	const prisma = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});
 
 	try {
+		await clearSeedData(prisma);
 		const ids = await seedUsers(prisma);
-		await clearSeedMatches(prisma, [...ids.values()]);
 		await seedMatches(prisma, ids);
 		console.log('seed complete');
 	} finally {
@@ -232,7 +260,8 @@ async function main(): Promise<void> {
 	}
 }
 
-main().catch((error: unknown) => {
+//call the seed function, if fails- return error and exit with code 1
+runSeed().catch((error: unknown) => {
 	console.error(error);
 	process.exit(1);
 });
