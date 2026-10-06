@@ -1,12 +1,3 @@
-/*
-CSS decision (issue #18):
-- Tailwind chosen for its wide adoption and utility first workflow.
-- DaisyUI added as component library on top of it.
-Brand colors live in the daisyUI theme below (single source of truth);
-custom classes reference those theme variables instead of repeating hex
-values, so changing a color only requires editing it in one place.
-*/
-
 @import "tailwindcss";
 @plugin "daisyui" {
   themes: gomoku --default;
@@ -20,6 +11,10 @@ values, so changing a color only requires editing it in one place.
   --color-base-200: #0A0B0D;
   --color-base-content: #ECE7DE;
   --radius-field: 9999px;
+  --color-stone-terracotta: #C2663F;
+  --color-stone-sage: #B2C29C;
+  --color-board-surface: #0F1013;
+  --color-board-line: #3A3E48;
 }
 
 body {
@@ -54,7 +49,6 @@ body {
   color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
 }
 
-/* Soft red light at the top, present on every page. */
 body::before {
   content: '';
   position: fixed;
@@ -70,13 +64,6 @@ body::before {
   pointer-events: none;
   z-index: 0;
 }
-
-/*
-Five-in-a-row inspired animations (LandingPage's Gomoku board):
-stones pop in one by one, winning line and winning stones
-glow together once the last stone lands. See the timing note on
-.stone-win-glow below for how these four pieces stay in sync.
-*/
 
 @keyframes stone-pop {
   from {
@@ -112,6 +99,43 @@ glow together once the last stone lands. See the timing note on
   animation: win-line-draw 0.4s ease-out 1.3s backwards;
 }
 
+@keyframes stone-flash {
+  from {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+.stone-flash {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: stone-flash 0.8s ease-out forwards;
+}
+
+@keyframes stone-won-pulse {
+  from {
+    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-secondary) 70%, transparent));
+  }
+  to {
+    filter: drop-shadow(0 0 12px var(--color-secondary));
+  }
+}
+
+.stone-won {
+  stroke: var(--color-secondary);
+  stroke-width: 2px;
+  animation: stone-won-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.stone-lost {
+  opacity: 0.35;
+  transition: opacity 0.6s ease-out;
+}
+
 @keyframes stone-glow {
   from {
     filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-secondary) 0%, transparent));
@@ -121,15 +145,12 @@ glow together once the last stone lands. See the timing note on
   }
 }
 
-/* Win line + winning stones glow together at 1.3s, synced with the
-   last stone's pop-in animation finishing (10 stones x 0.12s delay). */
 .stone-win-glow {
   animation:
     stone-pop 0.25s ease-out backwards,
     stone-glow 0.4s ease-out 1.3s backwards;
 }
 
-/* Accent glow used on the "GO" in the logo/title */
 @keyframes title-glow {
   0%, 100% {
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px color-mix(in srgb, var(--color-primary) 40%, transparent);
@@ -149,6 +170,20 @@ glow together once the last stone lands. See the timing note on
     animation: none;
   }
 
+  .stone-flash {
+    animation: none;
+    opacity: 0;
+  }
+
+  .stone-won {
+    animation: none;
+    filter: drop-shadow(0 0 10px var(--color-secondary));
+  }
+
+  .stone-lost {
+    transition: none;
+  }
+
   .stone-win-glow {
     animation: none;
     filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
@@ -165,7 +200,6 @@ glow together once the last stone lands. See the timing note on
 }
 }
 
-/* "Five-in-a-row" inspired spinner (this is the icon for Loading... ) */
 @keyframes stone-loading-pulse {
   0%, 80%, 100% {
     opacity: 0.25;

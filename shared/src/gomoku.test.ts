@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BOARD_SIZE, gomoku, type Cell, type GomokuMove, type GomokuState } from "./gomoku.js";
+import { BOARD_SIZE, gomoku, winningLine, type Cell, type GomokuMove, type GomokuState } from "./gomoku.js";
 
 /** Play a list of moves in order, alternating players automatically. */
 function play(moves: GomokuMove[], from = gomoku.initialState()): GomokuState {
@@ -228,6 +228,76 @@ describe("win detection", () => {
 		);
 		expect(gomoku.isLegal(s, { row: 0, col: 0 })).toBe(false);
 		expect(gomoku.legalMoves(s)).toHaveLength(0);
+	});
+});
+
+describe("winningLine", () => {
+	const sorted = (moves: GomokuMove[]) =>
+		[...moves].sort((a, b) => a.row - b.row || a.col - b.col);
+
+	// Like runFor, but player 1's filler moves skip every other column,
+	// so they never make five in a row themselves on runs longer than five.
+	function spacedRunFor(player0: GomokuMove[]): GomokuMove[] {
+		const moves: GomokuMove[] = [];
+		player0.forEach((m, i) => {
+			moves.push(m);
+			if (i < player0.length - 1) moves.push({ row: BOARD_SIZE - 1, col: i * 2 });
+		});
+		return moves;
+	}
+
+	it("is empty on a fresh board and while nobody has won", () => {
+		expect(winningLine(gomoku.initialState())).toEqual([]);
+		const s = play(runFor([
+			{ row: 7, col: 3 },
+			{ row: 7, col: 4 },
+			{ row: 7, col: 5 },
+			{ row: 7, col: 6 },
+		]));
+		expect(winningLine(s)).toEqual([]);
+	});
+
+	it("returns the five stones of a win, wherever the last stone landed in them", () => {
+		const s = play(runFor([
+			{ row: 7, col: 3 },
+			{ row: 7, col: 4 },
+			{ row: 7, col: 6 },
+			{ row: 7, col: 7 },
+			{ row: 7, col: 5 },
+		]));
+		expect(sorted(winningLine(s))).toEqual([3, 4, 5, 6, 7].map((col) => ({ row: 7, col })));
+	});
+
+	it("finds a diagonal", () => {
+		const s = play(runFor([0, 1, 2, 3, 4].map((i) => ({ row: 2 + i, col: 6 - i }))));
+		expect(sorted(winningLine(s))).toEqual(sorted([0, 1, 2, 3, 4].map((i) => ({ row: 2 + i, col: 6 - i }))));
+	});
+
+	it("includes every stone of a run longer than five", () => {
+		const s = play(spacedRunFor([
+			{ row: 5, col: 0 },
+			{ row: 5, col: 1 },
+			{ row: 5, col: 2 },
+			{ row: 5, col: 4 },
+			{ row: 5, col: 5 },
+			{ row: 5, col: 3 },
+		]));
+		expect(winningLine(s)).toHaveLength(6);
+	});
+
+	it("returns both lines when one stone completes two", () => {
+		const s = play(spacedRunFor([
+			{ row: 7, col: 3 },
+			{ row: 7, col: 4 },
+			{ row: 7, col: 5 },
+			{ row: 7, col: 6 },
+			{ row: 3, col: 7 },
+			{ row: 4, col: 7 },
+			{ row: 5, col: 7 },
+			{ row: 6, col: 7 },
+			{ row: 7, col: 7 },
+		]));
+		expect(winningLine(s)).toHaveLength(9);
 	});
 });
 

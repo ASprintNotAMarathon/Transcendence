@@ -5,6 +5,9 @@ dist-ssr/
 .env
 *.local
 
+# Personal Docker Compose tweaks, like opening the web port to the local network.
+compose.override.yaml
+
 # Logs
 logs
 *.log
@@ -33,3 +36,4 @@ apps/api/src/generated/
 apps/api/prisma/*.js
 apps/api/prisma/*.js.map
 apps/api/prisma/*.d.ts
+docs/auth_foundation.txt
