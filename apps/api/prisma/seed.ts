@@ -1,49 +1,48 @@
 /*
- * Seed script for the database. Creates four users and two matches, one finished and one in progress.
+ * Seed scripts for the database
  *
- * One command fills an empty database with something to look at:
- *
- *     npm run seed        (from the repo root)
+ *One command fills an empty database with something to look at:
+ *npm run seed        (from the repo root)
  *
  * Creates four users, one finished match (Alice beat Bob) and one match
  * still in progress (Charlie vs Dana). Safe to run twice.
- * Passwords are listed in the root README under "Demo accounts".
+ * Passwords are listed in the root README under "Demo accounts"
+ *
+ * npm run seed -- --edge-cases creates the unusual matches.
  */
 
-import { config } from 'dotenv';
-import { join } from 'node:path';
-import argon2 from 'argon2';
-import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../src/generated/prisma/client';
+import 'reflect-metadata';
+import { config } from 'dotenv'; //for loading environment variables from a .env file
+import { join } from 'node:path'; //for joining paths
+import { PrismaPg } from '@prisma/adapter-pg'; //for the PrismaPg adapter
+import { PrismaClient } from '../src/generated/prisma/client'; //for the PrismaClient type
 import { gomoku, replay } from '@transcendence/shared'; //used for replay()
+import { PasswordService } from '../src/auth';
 
 // The repo keeps one .env at its root: apps/api/prisma → three levels up.
 config({ path: join(__dirname, '..', '..', '..', '.env') });
 
-/* ------------------------------------------------------------------ */
-/* Team rules the seed must follow (auth proposal 1.1, decision 02)    */
-/* ------------------------------------------------------------------ */
-
-// Same numbers the register form and the register endpoint enforce.
+// auth proposal 1.1, decision 02--
+//The entire string must contain only letters, numbers, _, or -, and must be 3–20 characters long
 const PASSWORD_MIN_LENGTH = 8;
 const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/;
 
-// `npm run seed -- --edge-cases` also writes the unusual matches,
-// so the default demo data stays clean (review #45).
+// `npm run seed -- --edge-cases` also writes the unusual matches
+//process is a global object by Node.js
 const SEED_EDGE_CASES = process.argv.includes('--edge-cases');
 
 /* ------------------------------------------------------------------ */
 /* Seed data                                                          */
 /* ------------------------------------------------------------------ */
 
-// Template for one user to be created. The seed script hashes the password before it reaches the database.
+// Template for one user to be created
 interface SeedUser {
 	id: string; // fixed so demo URLs survive a reseed
 	email: string;
 	displayName: string;
 	password: string;
 }
-//
+
 const SEED_USERS: SeedUser[] = [
 	{
 		id: '00000000-0000-4000-8000-000000000001',
@@ -374,8 +373,8 @@ function assertValid(user: SeedUser): void {
 		throw new Error(`${user.email}: email must be lowercase`);
 	}
 }
-
-// Turns the compact move list into rows for Move.createMany.
+// Takes an array of SeedMove objects and converts each one
+// into rows for later insertion in the database.
 // moveNumber starts at 1; payload is what the Gomoku engine's parseMove returns.
 function toMoveRows(moves: SeedMove[]) {
 	return moves.map((move, index) => ({
@@ -392,17 +391,14 @@ function toMoveRows(moves: SeedMove[]) {
 // Creates (or refreshes) the four users. Returns their ids by displayName.
 async function seedUsers(prisma: PrismaClient): Promise<Map<string, string>> {
 	const idsByName = new Map<string, string>();
+	const passwords = new PasswordService();
 
 	for (const user of SEED_USERS) {
 		assertValid(user);
 
-		// argon2id is the library default. The output carries its own salt,
-		// which is why the schema has no salt column.
-		// TODO(#20): import the hash helper from the auth module once it is merged,
-		// so the seed and the register endpoint can never use different settings.
-		const passwordHash = await argon2.hash(user.password, {
-			type: argon2.argon2id,
-		});
+		// Hashing goes through the auth module's PasswordService, so the seed
+		// and the register endpoint can never use different settings.
+		const passwordHash = await passwords.hash(user.password);
 
 		// upsert = insert, or update if the email already exists.
 		// Re-running refreshes the name and hash instead of failing on the unique index.
@@ -437,7 +433,7 @@ async function clearSeedData(prisma: PrismaClient): Promise<void> {
 	});
 	// store the ids of the existing users in a variable
 	const oldIds = existing.map((user) => user.id);
-	//delete rows from the match table where either player0Id or player1Id is in the list of oldIds
+	//delete rows from the match table where both players are in the oldIds list/seed users
 	const { count } = await prisma.match.deleteMany({
 		where: { player0Id: { in: oldIds }, player1Id: { in: oldIds } },
 	});
@@ -637,13 +633,16 @@ async function seedEdgeCases(
 /* ------------------------------------------------------------------ */
 
 async function runSeed(): Promise<void> {
+	//store database url given by Node.js
 	const databaseUrl = process.env['DATABASE_URL'];
 	if (!databaseUrl) {
 		throw new Error(
 			'DATABASE_URL is not set — copy .env.example to .env first',
 		);
 	}
-	// this script runs on its own, outside the API.
+	// Create a new PrismaClient instance and configure it to connect to the database.
+	// PrismaClient is the main class for interacting with the database.
+	// PrismaPg is the PostgreSQL adapter used by PrismaClient.
 	const prisma = new PrismaClient({
 		adapter: new PrismaPg({ connectionString: databaseUrl }),
 	});
