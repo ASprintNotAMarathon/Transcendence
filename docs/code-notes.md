@@ -380,33 +380,6 @@ person and drawing as another.
 Without ?as= it stays 'u1', which is nobody in the database: such a tab can
 watch a match, and no move from it would be accepted.
 
-## `apps/web/src/lib/mockAuth.ts`
-
-### Line 4 · `const STORAGE_KEY`
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: delete this file once #20 (the real backend) is merged and stable
-on main. Not meant to stick around like the mock chat client.
-
-Mock authApi, same shape as the real one in api.ts. So we can test
-the auth screens before #20 is merged.
-
-Toggle with VITE_MOCK_AUTH=true in .env, see .env.example.
-
-Triggers, to test specific responses:
-- register with email "taken@example.com"  -> 409, field error on email
-- login with any password except "password123"  -> 401, wrong credentials
-- anything else on register/login -> succeeds
-- me() returns whoever last logged in or registered, until you log out.
-There's no real cookie, so the mock keeps that user in localStorage
-instead, and a refresh keeps you logged in like the real session will.
-
-### Line 8 · `function remember(user: AuthUser): AuthUser`
-
-Storage can be missing or blocked (private windows), so failing just means
-the mock forgets you, same as a lost cookie.
-
 ## `apps/web/src/main.tsx`
 
 ### Line 25 · `<SocketProvider enabled devUserId={devUserId}>`

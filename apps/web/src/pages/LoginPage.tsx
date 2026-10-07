@@ -66,6 +66,8 @@ function LoginPage() {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setFormError(INVALID_CREDENTIALS_MESSAGE)
+      } else if (error instanceof ApiError && error.fieldErrors) {
+        setErrors(error.fieldErrors)
       } else {
         setFormError('Something went wrong. Please try again.')
       }
