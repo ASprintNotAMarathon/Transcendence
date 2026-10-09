@@ -191,6 +191,7 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 			</div>
 			{/* The pane does NOT add the sent message itself; it arrives via subscribe() like any other */}
 			<MessageComposer
+				conversationId={conversationId}
 				onSend={(body) => chatClient.sendMessage(conversationId, body)}
 			/>
 		</div>

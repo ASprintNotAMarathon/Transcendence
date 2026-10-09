@@ -21,7 +21,7 @@ import EmptyState from '../components/states/EmptyState'
 
 //ChatPage() gets rendered by React when the user navigates to /chat.
 
-function ChatPage() {
+function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string }) {
 	// Use the return of listConversations() to create the initial state when the chatPage initializes.
 	// Later, setConversations updates the conversation list when a new chat event arrives.
 	const [conversations, setConversations] = useState(() =>
@@ -85,7 +85,7 @@ function ChatPage() {
 		//md:border-r md:border-(--color-primary) adds a right border to the conversation list on medium screens and above.
 		//aside is used for the conversation list, and section is used for the message pane.
 		//overflow-x-hidden prevents horizontal scrolling in the conversation list.
-		<div className="grid h-[calc(100vh-10rem)] grid-cols-1 gap-4 md:grid-cols-[16rem_minmax(0,1fr)]">
+		<div className={`grid ${className} grid-cols-1 gap-4 md:grid-cols-[16rem_minmax(0,1fr)]`}>
 			<aside className="overflow-y-auto overflow-x-hidden md:border-r md:border-(--color-primary)">
 				<ConversationList
 					conversations={conversations}
