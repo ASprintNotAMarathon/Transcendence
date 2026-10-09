@@ -4,11 +4,10 @@ import { SocketContext, type SocketContextValue } from "./context";
 
 type Props = {
 	enabled: boolean;
-	devUserId?: string;
 	children: ReactNode;
 };
 
-export function SocketProvider({ enabled, devUserId, children}: Props) {
+export function SocketProvider({ enabled, children}: Props) {
 	const [status, setStatus] = useState<ConnectionStatus>('disconnected');
 
 	useEffect(() => clientSocket.onStatus(setStatus), []);
@@ -17,9 +16,9 @@ export function SocketProvider({ enabled, devUserId, children}: Props) {
 		if (!enabled) {
 			return;
 		}
-		clientSocket.connect(devUserId);
+		clientSocket.connect();
 		return () => clientSocket.disconnect();
-	}, [enabled, devUserId]);
+	}, [enabled]);
 
 	const send = useCallback<SocketContextValue['send']>(
 		(event) => clientSocket.send(event), []);

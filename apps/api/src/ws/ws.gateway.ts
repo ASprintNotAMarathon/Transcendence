@@ -1,5 +1,4 @@
 import { Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
 	ConnectedSocket,
 	MessageBody,
@@ -11,7 +10,6 @@ import {
 } from '@nestjs/websockets';
 import type { LifecycleServerEvent } from '@transcendence/shared';
 import { parseEnvelope } from './ws.envelope';
-import type { EnvConfig } from '../config/env.validation';
 import { EVENT } from './ws.types';
 import type { WsServer, WsSocket } from './ws.types';
 import { WsRegistry } from './ws.registry';
@@ -19,7 +17,8 @@ import { userRoom } from './ws.rooms';
 import { WsDispatcher } from './ws.dispatch';
 import { WsSender } from './ws.sender';
 import { readCookie } from './ws.cookie';
-import { AUTH_COOKIE, TokenVerifier } from './ws.verifier';
+import { AUTH_COOKIE } from '../auth';
+import { TokenVerifier } from './ws.verifier';
 
 /**
  * The single socket entry point. Every real-time message in the app arrives
@@ -47,7 +46,6 @@ export class WsGateway
 	private readonly logger = new Logger(WsGateway.name);
 
 	constructor(
-		private readonly config: ConfigService<EnvConfig, true>,
 		private readonly registry: WsRegistry,
 		private readonly dispatcher: WsDispatcher,
 		private readonly sender: WsSender,
@@ -75,47 +73,18 @@ export class WsGateway
 	}
 
 	/**
-	 * Who is on the other end of this connection, or null to refuse it/
+	 * Who is on the other end of this connection, or null to refuse it.
 	 *
-	 * The real check is tried first and is the only one that survives: when #20
-	 * lands, fromDevQuery and WS_DEV_AUTH are deleted together and this becomes a
-	 * single call to fromCookie
+	 * cokieParser() never runs for an upgrade request, so the raw header is
+	 * all there is. There is no revocation. so a valid signature and an
+	 * unexpired token are the entire check, there's no database read.
 	 */
 	private identify(socket: WsSocket): string | null {
-		const fromToken = this.fromCookie(socket);
-		if (fromToken !== null) {
-			return fromToken;
-		}
-
-		return this.fromDevQuery(socket);
-	}
-
-	/**
-	 * The real check, per the auth contract handshake seam.
-	 *
-	 * Returns null for every token temporarily, because TokenVerifier is still bound
-	 * to DenyAllVerifier. Path is real, implementation is missing.
-	 */
-	private fromCookie(socket: WsSocket): string | null {
 		const token = readCookie(socket.handshake.headers.cookie, AUTH_COOKIE);
 		if (token === null) {
 			return null;
 		}
-
 		return this.verifier.verify(token);
-	}
-
-	/**
-	 * DEV ONLY. Reads userId off the connection URL and believes it.
-	 * Will be deleted in the PR that closes #21, together with WS_DEV_AUTH.
-	 */
-	private fromDevQuery(socket: WsSocket): string | null {
-		if (!this.config.get('WS_DEV_AUTH', { infer: true })) {
-			return null;
-		}
-
-		const { userId } = socket.handshake.query;
-		return typeof userId === 'string' && userId.length > 0 ? userId : null;
 	}
 
 	/**

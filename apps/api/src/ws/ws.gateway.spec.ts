@@ -1,7 +1,5 @@
 // claude written test for testing the real path refusal included
 import 'reflect-metadata';
-import type { ConfigService } from '@nestjs/config';
-import type { EnvConfig } from '../config/env.validation';
 import { WsDispatcher } from './ws.dispatch';
 import { WsGateway } from './ws.gateway';
 import { WsRegistry } from './ws.registry';
@@ -12,7 +10,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 type Middleware = (socket: WsSocket, next: (err?: Error) => void) => void;
 
-/** Accepts one token and nothing else. Stands in for the auth module. */
+/**
+ * Accepts one token and nothing else. Stands in for the auth module, so a unit
+ * test needs no signing secret and no real token to check that the middleware
+ * refuses whatever the verifier refuses.
+ */
 class StubVerifier extends TokenVerifier {
 	constructor(
 		private readonly accepts: string,
@@ -30,13 +32,8 @@ class StubVerifier extends TokenVerifier {
  * Builds a gateway and hands back the handshake middleware it installed, so a
  * test can run a connection attempt without a socket server existing.
  */
-function handshakeOf(devAuth: boolean, verifier: TokenVerifier): Middleware {
-	const config = {
-		get: () => devAuth,
-	} as unknown as ConfigService<EnvConfig, true>;
-
+function handshakeOf(verifier: TokenVerifier): Middleware {
 	const gateway = new WsGateway(
-		config,
 		new WsRegistry(),
 		new WsDispatcher(),
 		new WsSender(),
@@ -58,13 +55,11 @@ function handshakeOf(devAuth: boolean, verifier: TokenVerifier): Middleware {
 	return captured;
 }
 
-function fakeSocket(options: { cookie?: string; userId?: string }): WsSocket {
+/** A connection attempt carrying the given raw Cookie header, or none at all. */
+function fakeSocket(cookie?: string): WsSocket {
 	return {
 		handshake: {
-			headers:
-				options.cookie === undefined ? {} : { cookie: options.cookie },
-			query:
-				options.userId === undefined ? {} : { userId: options.userId },
+			headers: cookie === undefined ? {} : { cookie },
 		},
 		data: {},
 	} as unknown as WsSocket;
@@ -74,23 +69,21 @@ describe('handshake', () => {
 	const verifier = new StubVerifier('good.jwt', 'u42');
 
 	it('accepts a valid cookie and attaches its user id', () => {
-		const socket = fakeSocket({ cookie: 'access_token=good.jwt' });
+		const socket = fakeSocket('access_token=good.jwt');
 		const next = vi.fn();
 
-		handshakeOf(false, verifier)(socket, next);
+		handshakeOf(verifier)(socket, next);
 
+		// next() with no argument is how the middleware says yes.
 		expect(next).toHaveBeenCalledWith();
 		expect(socket.data.userId).toBe('u42');
 	});
 
-	it('prefers the cookie over a dev query parameter', () => {
-		const socket = fakeSocket({
-			cookie: 'access_token=good.jwt',
-			userId: 'pretender',
-		});
+	it('finds the token among other cookies', () => {
+		const socket = fakeSocket('theme=dark; access_token=good.jwt; lang=en');
 		const next = vi.fn();
 
-		handshakeOf(true, verifier)(socket, next);
+		handshakeOf(verifier)(socket, next);
 
 		expect(socket.data.userId).toBe('u42');
 	});
@@ -98,31 +91,25 @@ describe('handshake', () => {
 	it('refuses a cookie the verifier rejects', () => {
 		const next = vi.fn();
 
-		handshakeOf(false, verifier)(
-			fakeSocket({ cookie: 'access_token=forged.jwt' }),
-			next,
-		);
+		handshakeOf(verifier)(fakeSocket('access_token=forged.jwt'), next);
+
+		// An argument to next() is how it says no, and no socket is created.
+		expect(next).toHaveBeenCalledWith(expect.any(Error));
+	});
+
+	it('refuses a connection with no cookie header at all', () => {
+		const next = vi.fn();
+
+		handshakeOf(verifier)(fakeSocket(), next);
 
 		expect(next).toHaveBeenCalledWith(expect.any(Error));
 	});
 
-	it('refuses a connection with no cookie and no dev identity', () => {
+	it('refuses a cookie header that carries no token', () => {
 		const next = vi.fn();
 
-		handshakeOf(false, verifier)(fakeSocket({}), next);
+		handshakeOf(verifier)(fakeSocket('theme=dark; lang=en'), next);
 
 		expect(next).toHaveBeenCalledWith(expect.any(Error));
-	});
-
-	it('falls back to the dev identity when the cookie fails and the flag is on', () => {
-		const socket = fakeSocket({
-			cookie: 'access_token=forged.jwt',
-			userId: 'u1',
-		});
-		const next = vi.fn();
-
-		handshakeOf(true, verifier)(socket, next);
-
-		expect(socket.data.userId).toBe('u1');
 	});
 });

@@ -63,13 +63,7 @@ class ClientSocket {
 	 */
 	private readonly standing = new Map<string, ClientEvent>();
 
-	/** Open the connection.
-	 * 
-	 * @param devUserId TEMP - the dev identity from #21, recognised by api only while
-	 * WS_DEV_AUTH is on. With real cookie auth the browser attaches the cookie itself and this
-	 * parameter will be deleted.
-	 */
-	connect(devUserId?: string): void {
+	connect(): void {
 		if (this.socket !== null) {
 			return;
 		}
@@ -77,7 +71,6 @@ class ClientSocket {
 		// which proxies /ws to the api.
 		const socket = io({
 			path: '/ws',
-			query: devUserId === undefined ? undefined : { userId : devUserId },
 		});
 		this.socket = socket;
 

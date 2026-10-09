@@ -1,18 +1,19 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth';
 import { WsGateway } from './ws.gateway';
 import { WsRegistry } from './ws.registry';
 import { WsDispatcher } from './ws.dispatch';
 import { WsSender } from './ws.sender';
-import { DenyAllVerifier, TokenVerifier } from './ws.verifier';
+import { JwtTokenVerifier, TokenVerifier } from './ws.verifier';
 
 @Module({
+	imports: [AuthModule],
 	providers: [
 		WsGateway,
 		WsRegistry,
 		WsDispatcher,
 		WsSender,
-		// TO DO - swap for the real implementation when #20 lands
-		{ provide: TokenVerifier, useClass: DenyAllVerifier },
+		{ provide: TokenVerifier, useClass: JwtTokenVerifier },
 	],
 	exports: [WsRegistry, WsDispatcher, WsSender], // exports is what lets other modules inject it
 })

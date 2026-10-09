@@ -16,12 +16,11 @@ import ChatPage from './pages/ChatPage.tsx'
 import MatchPage from './pages/MatchPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
-import { devUserId } from './lib/devFixtures.ts'
 
 function AppSocketProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth()
   return (
-    <SocketProvider enabled={status === 'authenticated'} devUserId={devUserId}>
+    <SocketProvider enabled={status === 'authenticated'}>
       {children}
     </SocketProvider>
   )
