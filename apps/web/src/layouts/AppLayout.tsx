@@ -2,6 +2,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { nextDemoPlayer } from '../lib/devFixtures'
 import { ConnectionStatus } from '../socket/ConnectionStatus'
+import ChatPopup from '../chat/ChatPopup'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -48,6 +49,7 @@ function AppLayout() {
       <main className="px-6 py-8">
         <Outlet />
       </main>
+	  <ChatPopup />
     </div>
   )
 }
