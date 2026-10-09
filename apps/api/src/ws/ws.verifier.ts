@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-/** The cookie the token arrives in.
- *
- * Duplicated here on purpose and temporarily, will be replaced with import
- * the moment #20 lands.
- */
-export const AUTH_COOKIE = 'access_token';
+import { AuthService } from '../auth';
 
 /** Everything the transport needs from the identity slice (turn a token into a user id, or say no).
  *
@@ -17,10 +11,17 @@ export abstract class TokenVerifier {
 	abstract verify(token: string): string | null;
 }
 
-/** Placeholder until #20 auth provides a real one. Refuses everything */
+/**
+ * The real verifier. Hands the token to the auth module's verifier. so the signing
+ * secret and the verification options live in one place.
+ */
 @Injectable()
-export class DenyAllVerifier extends TokenVerifier {
-	verify(): null {
-		return null;
+export class JwtTokenVerifier extends TokenVerifier {
+	constructor(private readonly auth: AuthService) {
+		super();
+	}
+
+	verify(token: string): string | null {
+		return this.auth.verifyToken(token);
 	}
 }

@@ -46,13 +46,13 @@ ps:	## Service status
 psql:	## Open a shell on the database
 	@. ./.env && $(COMPOSE) exec db psql -U $$POSTGRES_USER -d $$POSTGRES_DB
 
-# TEMP, with prisma/seed.sql: goes when matchmaking can create a match.
-seed:	## Put two players and one empty gomoku match in the database
-	@. ./.env && $(COMPOSE) exec -T db psql -q -U $$POSTGRES_USER -d $$POSTGRES_DB \
-		< apps/api/prisma/seed.sql
-	@echo "Open one of these in each browser window:"
-	@echo "  Ada   http://localhost:5173/match/demo?as=ada"
-	@echo "  Linus http://localhost:5173/match/demo?as=linus"
+seed:	node_modules	## Fill the database with demo users and matches
+		$(NPM) run seed
+		@echo
+		@echo "Log in at http://localhost:5173/login as either player"
+		@echo "	charlie@seed.local / charlie-1234"
+		@echo "	dana@seed.local / dana-1234"
+		@echo "They have a match in progress. Full account list is in the README."
 
 clean: down ## Alias for down
 
