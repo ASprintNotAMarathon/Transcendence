@@ -116,19 +116,10 @@ body::before {
   animation: stone-flash 0.8s ease-out forwards;
 }
 
-@keyframes stone-won-pulse {
-  from {
-    filter: drop-shadow(0 0 4px color-mix(in srgb, var(--color-secondary) 70%, transparent));
-  }
-  to {
-    filter: drop-shadow(0 0 12px var(--color-secondary));
-  }
-}
-
 .stone-won {
   stroke: var(--color-secondary);
   stroke-width: 2px;
-  animation: stone-won-pulse 1.2s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 10px var(--color-secondary));
 }
 
 .stone-lost {
@@ -173,11 +164,6 @@ body::before {
   .stone-flash {
     animation: none;
     opacity: 0;
-  }
-
-  .stone-won {
-    animation: none;
-    filter: drop-shadow(0 0 10px var(--color-secondary));
   }
 
   .stone-lost {
