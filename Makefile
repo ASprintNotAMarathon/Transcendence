@@ -1,6 +1,8 @@
 COMPOSE := docker compose
 NPM := npm
 
+DEPS := node_modules/.package-lock.json
+
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps psql seed clean fclean re check-env \
 	install test test-watch typecheck build
@@ -46,7 +48,7 @@ ps:	## Service status
 psql:	## Open a shell on the database
 	@. ./.env && $(COMPOSE) exec db psql -U $$POSTGRES_USER -d $$POSTGRES_DB
 
-seed:	node_modules	## Fill the database with demo users and matches
+seed:	$(DEPS)	## Fill the database with demo users and matches
 		$(NPM) run seed
 		@echo
 		@echo "Log in at http://localhost:5173/login as either player"
@@ -62,22 +64,22 @@ fclean:	## Stop AND DELETE THE DATABASE
 
 re: fclean up ## Nuke and restart
 
-node_modules: package.json package-lock.json
+$(DEPS): package.json package-lock.json
 	$(NPM) ci
-	@touch node_modules
+	@touch $(DEPS)
 
 install:	## Install npm dependencies (always runs)
 	$(NPM) install
-	@touch node_modules
+	@touch $(DEPS)
 
-test: node_modules	## Run the game engine tests once
+test: $(DEPS)	## Run the game engine tests once
 	$(NPM) test
 
-test-watch: node_modules	## Run the game engine tests, rerunning on save
+test-watch: $(DEPS)	## Run the game engine tests, rerunning on save
 	$(NPM) run test:watch --workspace shared
 
-typecheck: node_modules	## Type-check every workspace
+typecheck: $(DEPS)	## Type-check every workspace
 	$(NPM) run typecheck
 
-build: node_modules	## Compile shared/ to dist/
+build: $(DEPS)	## Compile shared/ to dist/
 	$(NPM) run build --workspace shared
