@@ -12,9 +12,9 @@ import type {
   MatchStatePayload,
   PlayerIndex,
 } from '@transcendence/shared'
+import { useAuth } from '../auth/AuthContext'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
-import { devUserId, resolveMatchId } from '../lib/devFixtures'
 import { joinMatch, leaveMatch, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import MatchPlayers from '../match/MatchPlayers'
@@ -85,9 +85,8 @@ function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
 }
 
 function MatchPage() {
-  // TEMP: resolveMatchId turns /match/demo into the seeded match and leaves a real id alone.
-  const { matchId: routeMatchId } = useParams()
-  const matchId = resolveMatchId(routeMatchId)
+  const { matchId } = useParams()
+  const { user } = useAuth()
 
   const { join, leave, send, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
@@ -160,8 +159,7 @@ function MatchPage() {
     return <ErrorState message="This match could not be displayed." />
   }
 
-  // TEMP: devUserId.
-  const seat = view.players.findIndex((player) => player.userId === devUserId)
+  const seat = view.players.findIndex((player) => player.userId === user?.id)
 
   const myTurn = seat !== -1 && view.outcome === null && view.turn === seat
 

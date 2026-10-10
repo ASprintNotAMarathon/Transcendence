@@ -13,46 +13,11 @@ TEMP and TODO markers stay in the code, so temporary work is still visible where
 Anonymous volumes are the node_modules holes, one set per container generation, cca 370MB each.
 They get orphaned by `down` and are never reused.
 
-### Line 49 · `seed:	## Put two players and one empty gomoku match in the database`
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP, with prisma/seed.sql: goes when matchmaking can create a match.
-
 ### Line 65 · `node_modules: package.json package-lock.json`
 
 A file target, like .env: make builds node_modules/ from the manifests and reinstalls only when one of them is newer.
 So `make test` on an up-to-date clone skips the install, but still works on a fresh one.
 npm doesn't reliably update the directory's timestamp, hence the touch.
-
-## `apps/api/prisma/seed.sql`
-
-### Line 1 · file header
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: two players and one empty gomoku match,
-so there is something to open.
-Delete this file, and the seed target in the Makefile, once matchmaking exists.
-
-Run it with `make seed`, which prints the two URLs to open.
-
-The ids are fixed rather than generated,
-so the URLs stay the same across a reseed and can be pasted into notes.
-ON CONFLICT makes the whole file safe to run twice: it tops the database up instead of failing on the second run.
-
-passwordHash is deliberately not a real hash.
-These two cannot log in, and they do not need to: the socket takes its identity from ?as= in the URL while WS_DEV_AUTH is on.
-
-### Line 9 · `INSERT INTO "Match" ("id", "game", "status", "player0Id", "player1Id", "createdAt", "updatedAt")`
-
-Ada is player 0, so Ada moves first.
-
-### Line 22 · `DELETE FROM "Move" WHERE "matchId" = '33333333-3333-4333-8333-333333333333';`
-
-A reseed of an already played match would otherwise keep its moves, and the
-board would come back mid-game. Emptying them is what makes `make seed` mean
-"give me a fresh board".
 
 ## `apps/api/src/app.service.ts`
 
@@ -314,85 +279,6 @@ Accent glow used on the "GO" in the logo/title
 
 "Five-in-a-row" inspired spinner (this is the icon for Loading... )
 
-## `apps/web/src/layouts/AppLayout.tsx`
-
-### Line 26 · `<button`
-
-Inside `function AppLayout()`
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: until matchmaking exists this opens the seeded demo match, as
-ada and linus in turn. A full page load, not a NavLink: the socket
-introduces itself with ?as= once, when the app loads, so navigating
-in place would keep the identity this tab started with.
-
-## `apps/web/src/lib/devFixtures.ts`
-
-### Line 1 · file header
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: short names for the rows `make seed` writes, so the demo URLs can be
-typed instead of pasted.
-
-  /match/demo?as=ada
-  /match/demo?as=linus
-
-Both halves are only aliases. A real id in either place still works and is
-not translated, so nothing here is load-bearing: deleting this file leaves
-the long URLs working exactly as before.
-
-Goes with WS_DEV_AUTH and `make seed` once #21 lands and something in the app
-can create a match.
-
-### Line 3 · `const SEEDED_PLAYERS: Record<string, string | undefined> = {`
-
-The ids in apps/api/prisma/seed.sql. Changing one means changing both.
-
-### Line 10 · `export function resolveMatchId(matchId: string | undefined): string | undefined`
-
-'demo' is the seeded match. Every other id is passed through untouched.
-
-### Line 16 · `export function nextDemoPlayer(): string`
-
-Which seeded player the Match button opens the demo as: the one it did not
-open last time, starting with ada. Remembered per browser, so a second
-browser starts at ada too; click it twice there to get linus.
-Storage can be blocked (private windows), which only means it stays on ada.
-
-### Line 32 · `const asked`
-
-Read once, when the app loads, rather than on every render: anything that
-rewrites the query string would otherwise be read back as a new identity, and
-a tab that changed identity halfway through a match would be worse than one
-that keeps the id it started with.
-
-### Line 34 · `export const devUserId`
-
-Who this tab plays as.
-
-The socket sends this to the api, which believes it while WS_DEV_AUTH is on,
-and MatchPage compares it against the two players to decide whether the board
-may be clicked. Both read this one value, or a tab would be playing as one
-person and drawing as another.
-
-Without ?as= it stays 'u1', which is nobody in the database: such a tab can
-watch a match, and no move from it would be accepted.
-
-## `apps/web/src/main.tsx`
-
-### Line 25 · `<SocketProvider enabled devUserId={devUserId}>`
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: this tab connects as whoever ?as= names, and as u1 without it.
-See lib/devFixtures.ts, and `make seed` for a URL per player.
-TODO: AuthProvider is on main now, so this can become
-enabled={status === 'authenticated'} devUserId={user?.id}
-read from useAuth() through a small component inside this provider.
-devUserId goes entirely when #21 ships.
-
 ## `apps/web/src/match/GomokuBoard.tsx`
 
 ### Line 1 · file header
@@ -592,16 +478,6 @@ turn and outcome come from the payload, not from what apply worked out.
 The server decides both, and a client that computes its own
 would be the first thing to disagree.
 
-### Line 88 · `const { matchId: routeMatchId } = useParams()`
-
-Inside `function MatchPage()`
-
-*The TEMP/TODO marker is still in the code.*
-
-TEMP: resolveMatchId turns /match/demo into the seeded match and leaves a
-real id alone. Everything below works on the resolved one,
-which is what the api and every payload use.
-
 ### Line 96 · `const view`
 
 Inside `function MatchPage()`
@@ -665,10 +541,9 @@ Keyed on the refusal itself, so a new one starts the three seconds again.
 
 Inside `function MatchPage()`
 
-*The TEMP/TODO marker is still in the code.*
-
 Which seat is yours, or -1 while you are only watching.
-TEMP: devUserId. Becomes the logged-in user when #21 makes the two the same thing, and devIdentity.ts goes with it.
+The logged-in user is the same identity the socket authenticated with,
+so this agrees with the seat the server checks every move against.
 
 ### Line 166 · `const myTurn`
 
@@ -727,13 +602,9 @@ in the header. 'reconnecting' is the one that matters to a player mid-game.
 
 open the socket while true, close it the moment it turns false
 
-### Line 9 · `devUserId?: string;`
-
-temp dev identity that will be deleted together with WS_DEV_AUTH
-
 ### Line 26 · `const send = useCallback(…)`
 
-Inside `export function SocketProvider({ enabled, devUserId, children}: Props)`
+Inside `export function SocketProvider({ enabled, children}: Props)`
 
 These four never change.
 A page that joins a room in a useEffect has to list them in its dependencies;
