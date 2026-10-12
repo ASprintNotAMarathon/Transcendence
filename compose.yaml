@@ -16,6 +16,9 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
+      # Vite caches into apps/web/node_modules/.vite.
+      # Without this it lands in the bind mount as root, and the next `npm ci` on the host dies with EACCES halfway through.
+      - /app/apps/web/node_modules
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:5173/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s

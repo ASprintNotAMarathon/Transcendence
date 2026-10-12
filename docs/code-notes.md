@@ -19,11 +19,12 @@ They get orphaned by `down` and are never reused.
 
 TEMP, with prisma/seed.sql: goes when matchmaking can create a match.
 
-### Line 65 · `node_modules: package.json package-lock.json`
+### Line 67 · `$(DEPS): package.json package-lock.json`
 
-A file target, like .env: make builds node_modules/ from the manifests and reinstalls only when one of them is newer.
+A file target, like .env: make reinstalls only when one of the manifests is newer than node_modules/.package-lock.json.
 So `make test` on an up-to-date clone skips the install, but still works on a fresh one.
-npm doesn't reliably update the directory's timestamp, hence the touch.
+npm writes that file only when an install finishes, so a failed `npm ci` leaves it missing and the next make tries again.
+node_modules/ itself can't be the target: npm ci updates its timestamp even when it fails halfway, and make would then skip every retry.
 
 ## `apps/api/prisma/seed.sql`
 
