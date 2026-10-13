@@ -18,6 +18,7 @@ export class MatchHandlers implements OnModuleInit {
 	onModuleInit(): void {
 		this.dispatcher.register('match.join', this.join);
 		this.dispatcher.register('match.move', this.move);
+		this.dispatcher.register('match.resign', this.resign);
 		this.dispatcher.register('match.leave', this.leave);
 	}
 
@@ -48,6 +49,26 @@ export class MatchHandlers implements OnModuleInit {
 			this.sender.broadcast(matchRoom(moved.matchId), {
 				type: 'match.moved',
 				payload: moved,
+			});
+		} catch (error) {
+			this.rejectOrRethrow(
+				client,
+				event.cid,
+				event.payload.matchId,
+				error,
+			);
+		}
+	};
+
+	readonly resign: WsHandler<'match.resign'> = async (client, event) => {
+		try {
+			const ended = await this.service.resign(
+				client.data.userId,
+				event.payload.matchId,
+			);
+			this.sender.broadcast(matchRoom(ended.matchId), {
+				type: 'match.ended',
+				payload: ended,
 			});
 		} catch (error) {
 			this.rejectOrRethrow(

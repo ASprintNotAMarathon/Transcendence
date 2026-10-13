@@ -7,6 +7,8 @@ import {
 	winnerIdOf,
 } from '@transcendence/shared';
 import type {
+	GameOutcome,
+	MatchEndedPayload,
 	MatchMovePayload,
 	MatchMovedPayload,
 	MatchStatePayload,
@@ -49,6 +51,10 @@ export class MatchService {
 				match.status === 'finished'
 					? outcomeOf(match.winnerId, match)
 					: position.outcome,
+			endReason:
+				match.status === 'finished'
+					? (match.endReason ?? 'board')
+					: null,
 			moveNumber: position.moveNumber,
 		};
 	}
@@ -114,13 +120,20 @@ export class MatchService {
 				});
 
 				if (outcome !== null) {
-					await tx.match.update({
-						where: { id: match.id },
+					const { count } = await tx.match.updateMany({
+						where: { id: match.id, status: 'active' },
 						data: {
 							status: 'finished',
 							winnerId: winnerIdOf(outcome, match),
+							endReason: 'board',
 						},
 					});
+					if (count === 0) {
+						throw new MatchError(
+							'match.already_over',
+							`match ${match.id} ended before move ${moveNumber} landed`,
+						);
+					}
 				}
 			});
 		} catch (error) {
@@ -143,6 +156,47 @@ export class MatchService {
 		};
 	}
 
+	async resign(userId: string, matchId: string): Promise<MatchEndedPayload> {
+		const { match, position } = await this.rebuild(matchId);
+
+		const seat = seatOf(userId, match);
+		if (seat === null) {
+			throw new MatchError(
+				'match.not_a_player',
+				`user is watching match ${match.id}, not playing in it`,
+			);
+		}
+
+		if (match.status === 'finished' || position.outcome !== null) {
+			throw new MatchError(
+				'match.already_over',
+				`match ${match.id} has already ended`,
+			);
+		}
+
+		const outcome: GameOutcome = {
+			kind: 'win',
+			player: seat === 0 ? 1 : 0,
+		};
+
+		const { count } = await this.prisma.match.updateMany({
+			where: { id: match.id, status: 'active' },
+			data: {
+				status: 'finished',
+				winnerId: winnerIdOf(outcome, match),
+				endReason: 'resigned',
+			},
+		});
+		if (count === 0) {
+			throw new MatchError(
+				'match.already_over',
+				`match ${match.id} ended before the resignation landed`,
+			);
+		}
+
+		return { matchId: match.id, outcome, reason: 'resigned' };
+	}
+
 	private async rebuild(matchId: string) {
 		if (!isUUID(matchId)) {
 			throw new MatchError(
@@ -160,6 +214,7 @@ export class MatchService {
 				player0Id: true,
 				player1Id: true,
 				winnerId: true,
+				endReason: true,
 				player0: { select: { id: true, displayName: true } },
 				player1: { select: { id: true, displayName: true } },
 				moves: {

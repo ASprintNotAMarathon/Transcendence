@@ -20,6 +20,21 @@ So `make test` on an up-to-date clone skips the install, but still works on a fr
 npm writes that file only when an install finishes, so a failed `npm ci` leaves it missing and the next make tries again.
 node_modules/ itself can't be the target: npm ci updates its timestamp even when it fails halfway, and make would then skip every retry.
 
+## `apps/api/prisma/schema.prisma`
+
+### Line 55 · `enum EndReason {`
+
+Why a finished match ended: `board` when the engine decided it (five in a row, a full board),
+`resigned` when a player gave up. `abandoned` is for #4, where a player who stays disconnected loses;
+it exists already so that issue needs no migration.
+
+### Line 80 · `endReason EndReason?`
+
+Inside `model Match`
+
+Set together with status = finished and winnerId, and null while the match is running.
+A resignation isn't a move, so unlike the board it can't be rebuilt from the Move rows and has to be stored.
+
 ## `apps/api/src/app.service.ts`
 
 ### Line 10 · `availableGames(): string[]`
@@ -162,6 +177,13 @@ An active match whose replay does show a win is an inconsistency step 4 prevents
 by closing the match in the same write that stores the winning move.
 Report it, never repair it: a read path that writes is a surprise nobody wants to debug.
 
+### Line 54 · `endReason: match.status === 'finished' ? (match.endReason ?? 'board') : null`
+
+Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+
+Matches that finished before the endReason column existed have it null.
+Back then a game could only end on the board, so that is what null on a finished match means.
+
 ### Line 55 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
 Inside `@Injectable() export class MatchService`
@@ -204,6 +226,14 @@ Same transaction as the move that ended the game,
 so a finished match can never exist without its result,
 and a result can never exist without the move that caused it.
 
+### Line 123 · `const { count } = await tx.match.updateMany({`
+
+Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
+
+Only closes a match that is still active. If a resignation landed between the checks above and this write,
+count is 0, and throwing inside the transaction undoes the move as well,
+so the stored result stays the resignation instead of being overwritten.
+
 ### Line 126 · `if (isMoveNumberTaken(error)) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
@@ -213,6 +243,22 @@ Two players submitting at once both pass the checks above against the same posit
 and the database decides: one insert lands, the other loses.
 Losing means the position moved on while this request was in flight,
 which is exactly "not your turn" by the time it mattered.
+
+### Line 159 · `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
+
+Inside `@Injectable() export class MatchService`
+
+The same checks as a move, in the same order: is this a player, and is the game still running.
+The opponent wins, and the result goes out as match.ended rather than match.moved, since no move was played.
+
+### Line 182 · `const { count } = await this.prisma.match.updateMany({`
+
+Inside `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
+
+The checks above read the match a moment before this write.
+In between, the other player can resign or play a winning move.
+Writing only where the status is still active lets the database decide which one counts;
+count 0 means this resignation lost and the game had already ended.
 
 ### Line 145 · `private async rebuild(matchId: string)`
 
