@@ -32,6 +32,8 @@ export type {
 	LifecycleClientEvent,
 	LifecycleServerEvent,
 	MatchClientEvent,
+	MatchEndedPayload,
+	MatchEndReason,
 	MatchErrorCode,
 	MatchJoinPayload,
 	MatchLeavePayload,

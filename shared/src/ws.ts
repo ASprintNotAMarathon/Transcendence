@@ -159,9 +159,13 @@ export interface MatchStatePayload {
 	/** null while the match is still running. */
 	readonly outcome: GameOutcome | null;
 
+	readonly endReason: MatchEndReason | null;
+
 	/** The number of the last move played. 0 on a fresh board. */
 	readonly moveNumber: number;
 }
+
+export type MatchEndReason = "board" | "resigned" | "abandoned";
 
 /** A move that was accepted and applied. Sent to everyone watching the match. */
 export interface MatchMovedPayload {
@@ -183,6 +187,12 @@ export interface MatchMovedPayload {
 	readonly outcome: GameOutcome | null;
 }
 
+export interface MatchEndedPayload {
+	readonly matchId: string;
+	readonly outcome: GameOutcome;
+	readonly reason: Exclude<MatchEndReason, "board">;
+}
+
 /** A move the server refused. Sent only to the player who sent it. */
 export interface MatchRejectedPayload {
 	readonly matchId: string;
@@ -200,6 +210,7 @@ export type MatchClientEvent =
 export type MatchServerEvent =
 	| Envelope<"match.state", MatchStatePayload>
 	| Envelope<"match.moved", MatchMovedPayload>
+	| Envelope<"match.ended", MatchEndedPayload>
 	| Envelope<"match.rejected", MatchRejectedPayload>;
 
 /* ==========================================================================
