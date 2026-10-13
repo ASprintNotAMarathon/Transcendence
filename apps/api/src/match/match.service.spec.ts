@@ -11,7 +11,8 @@ import { MatchService } from './match.service';
 const PLAYER_0 = { id: 'player-0-uuid', displayName: 'lisandro' };
 const PLAYER_1 = { id: 'player-1-uuid', displayName: 'kimia' };
 const SPECTATOR_ID = 'spectator-uuid';
-const MATCH_ID = 'match-uuid';
+const MATCH_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const UNKNOWN_MATCH_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 type MoveRow = { moveNumber: number; by: number; payload: unknown };
 
@@ -152,12 +153,19 @@ describe('MatchService.join', () => {
 	it('rejects an unknown match with match.not_found', async () => {
 		findUnique.mockResolvedValue(null);
 
-		await expect(service.join(PLAYER_0.id, 'nope')).rejects.toBeInstanceOf(
+		await expect(service.join(PLAYER_0.id, UNKNOWN_MATCH_ID)).rejects.toBeInstanceOf(
 			MatchError,
 		);
-		await expect(service.join(PLAYER_0.id, 'nope')).rejects.toMatchObject({
+		await expect(service.join(PLAYER_0.id, UNKNOWN_MATCH_ID)).rejects.toMatchObject({
 			code: 'match.not_found',
 		});
+	});
+
+	it('rejects an id that is not a uuid with match.not_found', async () => {
+		await expect(service.join(PLAYER_0.id, 'abc')).rejects.toMatchObject({
+			code: 'match.not_found',
+		});
+		expect(findUnique).not.toHaveBeenCalled();
 	});
 
 	it('asks the database for the moves in move-number order', async () => {
@@ -429,10 +437,20 @@ describe('MatchService.move', () => {
 
 		await expect(
 			service.move(PLAYER_0.id, {
-				matchId: 'nope',
+				matchId: UNKNOWN_MATCH_ID,
 				move: { row: 3, col: 3 },
 			}),
 		).rejects.toMatchObject({ code: 'match.not_found' });
+	});
+
+	it('refuses an id that is not a uuid with match.not_found', async () => {
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: 'abc',
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_found' });
+		expect(findUnique).not.toHaveBeenCalled();
 	});
 
 	it('writes nothing at all when a check refuses the move', async () => {

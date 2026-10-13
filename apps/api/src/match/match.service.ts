@@ -11,6 +11,7 @@ import type {
 	MatchMovedPayload,
 	MatchStatePayload,
 } from '@transcendence/shared';
+import { isUUID } from 'class-validator';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MatchError } from './match.error';
@@ -143,6 +144,13 @@ export class MatchService {
 	}
 
 	private async rebuild(matchId: string) {
+		if (!isUUID(matchId)) {
+			throw new MatchError(
+				'match.not_found',
+				`${matchId} is not a match id`,
+			);
+		}
+
 		const match = await this.prisma.match.findUnique({
 			where: { id: matchId },
 			select: {

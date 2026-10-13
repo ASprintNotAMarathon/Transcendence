@@ -223,6 +223,15 @@ Load a match and replay it into a position, or throw match.not_found.
 Shared by join and move, so there is one query and one orderBy to get right
 instead of two that could drift apart.
 
+### Line 147 · `if (!isUUID(matchId)) {`
+
+Inside `private async rebuild(matchId: string)`
+
+An id that isn't a uuid, like /match/abc, never reaches the database.
+Postgres refuses it for a uuid column, and Prisma batches findUnique calls made in the same tick into one query,
+so that one bad id would fail every lookup in the batch, including other people's valid matches.
+Catching the error afterwards can't tell those apart, so the check comes first.
+
 ### Line 158 · `orderBy: { moveNumber: 'asc' },`
 
 Inside `private async rebuild(matchId: string)`
