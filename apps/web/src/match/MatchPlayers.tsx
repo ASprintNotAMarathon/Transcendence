@@ -1,26 +1,43 @@
-import type { GameOutcome, MatchStatePayload, PlayerIndex } from '@transcendence/shared'
+import type { GameOutcome, MatchEndReason, MatchStatePayload, PlayerIndex } from '@transcendence/shared'
 import { stoneFill } from './stones'
 
 type MatchPlayersProps = {
   players: MatchStatePayload['players']
+  seat: PlayerIndex | null
   turn: PlayerIndex
   outcome: GameOutcome | null
+  endReason: MatchEndReason | null
 }
 
-function status(players: MatchPlayersProps['players'], turn: PlayerIndex, outcome: GameOutcome | null): string {
+function status({ players, seat, turn, outcome }: MatchPlayersProps): string {
   if (outcome === null) return `${players[turn].displayName}'s turn`
   if (outcome.kind === 'draw') return 'Draw'
-  return `${players[outcome.player].displayName} wins`
+  if (seat === null) return `${players[outcome.player].displayName} wins`
+  return outcome.player === seat ? 'You won' : 'You lost'
 }
 
-function MatchPlayers({ players, turn, outcome }: MatchPlayersProps) {
+function reason({ players, seat, outcome, endReason }: MatchPlayersProps): string | null {
+  if (outcome === null || outcome.kind === 'draw') return null
+
+  const loser = outcome.player === 0 ? 1 : 0
+  const who = loser === seat ? 'You' : players[loser].displayName
+
+  if (endReason === 'resigned') return `${who} resigned`
+  if (endReason === 'abandoned') return `${who} left the match`
+  return null
+}
+
+function MatchPlayers(props: MatchPlayersProps) {
+  const { players, turn, outcome } = props
   const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null
+  const detail = reason(props)
 
   return (
     <section aria-label="Players" className="flex w-full flex-col gap-3">
-      <p aria-live="polite" className="font-barrio text-2xl text-(--color-primary-content)">
-        {status(players, turn, outcome)}
-      </p>
+      <div aria-live="polite">
+        <p className="font-barrio text-2xl text-(--color-primary-content)">{status(props)}</p>
+        {detail !== null && <p className="text-sm text-muted">{detail}</p>}
+      </div>
 
       <ul className="flex flex-col gap-2">
         {players.map((player, index) => {

@@ -5,6 +5,8 @@ import type {
   GameOutcome,
   GomokuMove,
   GomokuState,
+  MatchEndedPayload,
+  MatchEndReason,
   MatchMovedPayload,
   MatchErrorCode,
   MatchPlayer,
@@ -24,6 +26,7 @@ interface MatchView {
   readonly players: readonly [MatchPlayer, MatchPlayer]
   readonly turn: PlayerIndex
   readonly outcome: GameOutcome | null
+  readonly endReason: MatchEndReason | null
   readonly moveNumber: number
   readonly board: GomokuState | null
   readonly stale: boolean
@@ -55,6 +58,7 @@ function viewFromState(payload: MatchStatePayload): MatchView {
     players: payload.players,
     turn: payload.turn,
     outcome: payload.outcome,
+    endReason: payload.endReason,
     moveNumber: payload.moveNumber,
     board: readBoard(payload.game, payload.state),
     stale: false,
@@ -80,8 +84,15 @@ function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
     board,
     turn: payload.turn,
     outcome: payload.outcome,
+    endReason: payload.outcome === null ? null : 'board',
     moveNumber: payload.moveNumber,
   }
+}
+
+function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView {
+  if (view.outcome !== null) return view
+
+  return { ...view, outcome: payload.outcome, endReason: payload.reason }
 }
 
 function MatchPage() {
@@ -114,6 +125,19 @@ function MatchPage() {
           current === null || current.matchId !== matchId
             ? current
             : applyMoved(current, event.payload),
+        )
+
+        setRefused(null)
+        return
+      }
+
+      if (event.type === 'match.ended') {
+        if (event.payload.matchId !== matchId) return
+
+        setReceived((current) =>
+          current === null || current.matchId !== matchId
+            ? current
+            : applyEnded(current, event.payload),
         )
 
         setRefused(null)
@@ -159,9 +183,10 @@ function MatchPage() {
     return <ErrorState message="This match could not be displayed." />
   }
 
-  const seat = view.players.findIndex((player) => player.userId === user?.id)
+  const index = view.players.findIndex((player) => player.userId === user?.id)
+  const seat = index === -1 ? null : (index as PlayerIndex)
 
-  const myTurn = seat !== -1 && view.outcome === null && view.turn === seat
+  const myTurn = seat !== null && view.outcome === null && view.turn === seat
 
   const play = (move: GomokuMove) => {
     setRefused(null)
@@ -180,7 +205,13 @@ function MatchPage() {
           </p>
         </div>
         <div className="w-full max-w-[32rem] xl:w-56 xl:justify-self-start">
-          <MatchPlayers players={view.players} turn={view.turn} outcome={view.outcome} />
+          <MatchPlayers
+            players={view.players}
+            seat={seat}
+            turn={view.turn}
+            outcome={view.outcome}
+            endReason={view.endReason}
+          />
         </div>
       </div>
     </div>

@@ -404,14 +404,31 @@ are the same circle, so what lights up is exactly what a click would place.
 ### Line 1 · file header
 
 MatchPlayers sits beside the board: both players, their stone,
-and whose turn it is (or who won, once the match is over).
+and whose turn it is (or how the match ended, once it is over).
 
 Like GomokuBoard it only draws what it is given.
 `turn` means nothing once `outcome` is set, so it is only read while the match runs.
 
-### Line 17 · `const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null`
+### Line 12 · `function status({ players, seat, turn, outcome }: MatchPlayersProps): string`
 
-Inside `function MatchPlayers({ players, turn, outcome }: MatchPlayersProps)`
+The headline. Written from where you sit:
+a player reads "You won" or "You lost", a spectator reads who won.
+
+### Line 19 · `function reason({ players, seat, outcome, endReason }: MatchPlayersProps): string | null`
+
+The line under the headline, for a match that ended off the board.
+A win on the board needs no explanation: the five stones are right there.
+
+### Line 22 · `const loser = outcome.player === 0 ? 1 : 0`
+
+Inside `function reason({ players, seat, outcome, endReason }: MatchPlayersProps): string | null`
+
+A resignation or an abandon is a win for the other player,
+so whoever did it is the one who did not win.
+
+### Line 32 · `const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null`
+
+Inside `function MatchPlayers(props: MatchPlayersProps)`
 
 Highlighted: the player to move, or the winner. Nobody, on a draw.
 
@@ -446,6 +463,7 @@ and this page renders whatever those return.
 
   join ──────────────► match.state   the whole board, once
                        match.moved   one move at a time, from then on
+                       match.ended   a match that ended off the board
   click ─────────────► match.move    an offer, drawn only once it comes back
                        match.rejected  a join or a move the server refused
 
@@ -454,7 +472,7 @@ which answers with a fresh board, so the view is marked stale
 and the page sends match.join again.
 ```
 
-### Line 22 · `interface MatchView`
+### Line 24 · `interface MatchView`
 
 What this page is showing right now.
 
@@ -464,13 +482,20 @@ match.state replaces the whole view,
 while match.moved carries one move rather than a board
 and needs this to apply that move onto.
 
-### Line 28 · `readonly board: GomokuState | null`
+### Line 29 · `readonly endReason: MatchEndReason | null`
+
+Inside `interface MatchView`
+
+How the match ended, so the player panel can say "dana resigned"
+and not just who won. null while the match is still running.
+
+### Line 31 · `readonly board: GomokuState | null`
 
 Inside `interface MatchView`
 
 null when the server sent a board this client cannot read. See readBoard.
 
-### Line 29 · `readonly stale: boolean`
+### Line 32 · `readonly stale: boolean`
 
 Inside `interface MatchView`
 
@@ -478,7 +503,7 @@ This board has fallen behind the server's:
 a move was missed, or one would not play on it.
 Moves are ignored until a fresh match.state replaces the whole view.
 
-### Line 32 · `const NOTICE_MS`
+### Line 35 · `const NOTICE_MS`
 
 The server sends a code and never prose, so the wording lives here.
 A Record rather than a switch so a code added to the protocol
@@ -486,23 +511,23 @@ fails the build until it has a sentence.
 A refused join shows one as the whole page; a refused move, under the board.
 How long a refused move stays under the board.
 
-### Line 43 · `function readBoard(game: string, state: unknown): GomokuState | null`
+### Line 46 · `function readBoard(game: string, state: unknown): GomokuState | null`
 
 A deserialize failure means the server sent a board this client cannot read.
 That is a bug to report, not something to draw around,
 so it gets an error screen rather than an empty board.
 
-### Line 52 · `function viewFromState(payload: MatchStatePayload): MatchView`
+### Line 55 · `function viewFromState(payload: MatchStatePayload): MatchView`
 
 A snapshot arrives whole, so it is read once, here,
 rather than on every render.
 The page never touches payload.state itself.
 
-### Line 64 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
+### Line 68 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 The same match, one move later.
 
-### Line 67 · `if (payload.moveNumber <= view.moveNumber) return view`
+### Line 71 · `if (payload.moveNumber <= view.moveNumber) return view`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -511,14 +536,14 @@ Joining the room before reading the snapshot can deliver a move the snapshot
 already holds (see match.handlers.ts), so a number we have passed is dropped
 rather than played twice.
 
-### Line 69 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
+### Line 73 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 A number further ahead means a move in between never arrived.
 Playing this one on top would draw a board nobody has.
 
-### Line 75 · `return { ...view, stale: true }`
+### Line 79 · `return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -526,7 +551,7 @@ The server accepted this move against its own board,
 so a throw here means the two boards have drifted apart.
 Drawing it anyway would only widen the difference.
 
-### Line 78 · `return {`
+### Line 82 · `return {`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -534,7 +559,27 @@ turn and outcome come from the payload, not from what apply worked out.
 The server decides both, and a client that computes its own
 would be the first thing to disagree.
 
-### Line 96 · `const view`
+### Line 87 · `endReason: payload.outcome === null ? null : 'board',`
+
+Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
+
+A move only ever ends a match on the board.
+Resigning and abandoning arrive as match.ended instead.
+
+### Line 92 · `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
+
+The same match, over. The board stays as it was:
+nothing was played, somebody stopped playing.
+
+### Line 93 · `if (view.outcome !== null) return view`
+
+Inside `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
+
+The server writes an ending only while the match is still active,
+so a second one cannot be real. Kept out anyway,
+so whatever ended the match first is what the page keeps saying.
+
+### Line 106 · `const view`
 
 Inside `function MatchPage()`
 
@@ -544,14 +589,14 @@ on screen until the new snapshot arrived.
 Derived rather than reset in the effect below,
 which would cost a second render every time.
 
-### Line 104 · `const unsubscribe = subscribe(…)`
+### Line 114 · `const unsubscribe = subscribe(…)`
 
 Inside `function MatchPage()`
 
 One socket serves the whole tab, so every event arrives here,
 including events about other matches and other features.
 
-### Line 114 · `setReceived((current) =>`
+### Line 124 · `setReceived((current) =>`
 
 Inside `function MatchPage()`
 
@@ -561,14 +606,21 @@ rather than from anything captured here.
 A move that arrives before the first snapshot has nothing to land on
 and is dropped: the snapshot is on its way and will already contain it.
 
-### Line 120 · `setRefused(null)`
+### Line 130 · `setRefused(null)`
 
 Inside `function MatchPage()`
 
 The board has moved on, so "it's not your turn" from before
 no longer describes it.
 
-### Line 124 · `if (event.type === 'match.rejected') {`
+### Line 134 · `if (event.type === 'match.ended') {`
+
+Inside `function MatchPage()`
+
+Handled like match.moved: applied onto the view React holds,
+and any refusal still showing is cleared, since the match it refused a move in is over.
+
+### Line 147 · `if (event.type === 'match.rejected') {`
 
 Inside `function MatchPage()`
 
@@ -576,7 +628,7 @@ Kept whatever it refused. Only the render below decides it matters:
 before a board arrives it can only be the join,
 and after one it is a refused move, which leaves the board as it was.
 
-### Line 136 · `const stale`
+### Line 159 · `const stale`
 
 Inside `function MatchPage()`
 
@@ -585,7 +637,7 @@ with a fresh match.state, and viewFromState clears the flag. Sent with
 send, not join, because the standing join registered above already covers
 reconnects; this only asks for one more snapshot.
 
-### Line 141 · `const refusedMove`
+### Line 164 · `const refusedMove`
 
 Inside `function MatchPage()`
 
@@ -593,15 +645,17 @@ A refused move is a passing remark, so it goes after three seconds.
 A refused join is not: with no board it is the whole page, and it stays.
 Keyed on the refusal itself, so a new one starts the three seconds again.
 
-### Line 163 · `const seat = view.players.findIndex(…)`
+### Line 187 · `const seat = index === -1 ? null : (index as PlayerIndex)`
 
 Inside `function MatchPage()`
 
-Which seat is yours, or -1 while you are only watching.
+Which seat is yours, or null while you are only watching.
+findIndex answers -1 for "not found"; turned into null here
+so the player panel can take it as a PlayerIndex.
 The logged-in user is the same identity the socket authenticated with,
 so this agrees with the seat the server checks every move against.
 
-### Line 166 · `const myTurn`
+### Line 189 · `const myTurn`
 
 Inside `function MatchPage()`
 
@@ -610,7 +664,7 @@ Everyone else can still click, and the server says why it will not count:
 it's not your turn, that point is taken, the match is over,
 or you are only watching.
 
-### Line 168 · `const play = (move: GomokuMove) =>`
+### Line 191 · `const play = (move: GomokuMove) =>`
 
 Inside `function MatchPage()`
 
@@ -623,7 +677,7 @@ so inside one it counts as possibly undefined again.
 The last refusal is cleared on every click, so the same refusal twice
 in a row still reads as a new answer rather than a leftover.
 
-### Line 177 · `<div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">`
+### Line 200 · `<div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">`
 
 Inside `function MatchPage()`
 
@@ -631,7 +685,7 @@ Three columns so the board stays in the exact centre of the page:
 an empty one on the left balances the player panel on the right.
 Below xl there isn't room beside the board, so the panel goes under it.
 
-### Line 180 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
+### Line 203 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
 
 Inside `function MatchPage()`
 
