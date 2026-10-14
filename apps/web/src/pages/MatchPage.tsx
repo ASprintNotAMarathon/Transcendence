@@ -17,9 +17,10 @@ import type {
 import { useAuth } from '../auth/AuthContext'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
-import { joinMatch, leaveMatch, sendMove } from '../lib/protocol'
+import { joinMatch, leaveMatch, resign, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import MatchPlayers from '../match/MatchPlayers'
+import ResignButton from '../match/ResignButton'
 import { useSocket } from '../socket/context'
 interface MatchView {
   readonly matchId: string
@@ -186,7 +187,8 @@ function MatchPage() {
   const index = view.players.findIndex((player) => player.userId === user?.id)
   const seat = index === -1 ? null : (index as PlayerIndex)
 
-  const myTurn = seat !== null && view.outcome === null && view.turn === seat
+  const playing = seat !== null && view.outcome === null
+  const myTurn = playing && view.turn === seat
 
   const play = (move: GomokuMove) => {
     setRefused(null)
@@ -204,7 +206,7 @@ function MatchPage() {
             {notice}
           </p>
         </div>
-        <div className="w-full max-w-[32rem] xl:w-56 xl:justify-self-start">
+        <div className="flex w-full max-w-[32rem] flex-col gap-6 xl:w-56 xl:justify-self-start">
           <MatchPlayers
             players={view.players}
             seat={seat}
@@ -212,6 +214,7 @@ function MatchPage() {
             outcome={view.outcome}
             endReason={view.endReason}
           />
+          {playing && <ResignButton key={matchId} onResign={() => send(resign(matchId))} />}
         </div>
       </div>
     </div>
