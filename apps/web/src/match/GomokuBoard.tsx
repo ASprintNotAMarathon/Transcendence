@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { BOARD_SIZE, gomoku, winningLine } from '@transcendence/shared'
+import { BOARD_SIZE, gomoku, winningLines } from '@transcendence/shared'
 import type { GomokuMove, GomokuState } from '@transcendence/shared'
 import { stoneFill } from './stones'
 
@@ -30,9 +30,10 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
   const lastBy = lastMove === null ? null : board[lastMove.row][lastMove.col]
   const lastPlayed = lastMove === null || lastBy === null ? null : { ...lastMove, by: lastBy }
 
+  const wins = useMemo(() => winningLines(state), [state])
   const won = useMemo(
-    () => new Set(winningLine(state).map((move) => move.row * BOARD_SIZE + move.col)),
-    [state],
+    () => new Set(wins.flat().map((move) => move.row * BOARD_SIZE + move.col)),
+    [wins],
   )
 
   const legal = useMemo(
