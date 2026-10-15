@@ -16,6 +16,7 @@ const lines = Array.from({ length: BOARD_SIZE }, (_, i) => i * SPACING)
 
 const gridLine = { stroke: 'var(--color-board-line)' }
 const starPoint = { fill: 'var(--color-board-line)' }
+const winLine = { stroke: 'var(--color-primary)' }
 
 type GomokuBoardProps = {
   state: GomokuState
@@ -72,6 +73,24 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
         <circle key={`star-${row}-${col}`} cx={col * SPACING} cy={row * SPACING} r={3} style={starPoint} />
       ))}
 
+      {wins.map((line) => {
+        const start = line[0]
+        const end = line[line.length - 1]
+        return (
+          <line
+            key={`win-${start.row}-${start.col}-${end.row}-${end.col}`}
+            x1={start.col * SPACING}
+            y1={start.row * SPACING}
+            x2={end.col * SPACING}
+            y2={end.row * SPACING}
+            strokeWidth={3}
+            strokeLinecap="round"
+            className="board-win-line"
+            style={winLine}
+          />
+        )
+      })}
+
       {board.flatMap((cells, row) =>
         cells.map((cell, col) =>
           cell === null ? null : (
@@ -80,7 +99,7 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
               cx={col * SPACING}
               cy={row * SPACING}
               r={STONE_RADIUS}
-              className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'stone-won' : 'stone-lost'}
+              className={won.size === 0 || won.has(row * BOARD_SIZE + col) ? undefined : 'stone-lost'}
               style={{ fill: stoneFill(cell) }}
             />
           ),
