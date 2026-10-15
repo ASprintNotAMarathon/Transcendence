@@ -322,16 +322,28 @@ stones pop in one by one, winning line and winning stones
 glow together once the last stone lands. See the timing note on
 .stone-win-glow below for how these four pieces stay in sync.
 
-### Line 111 · `.stone-win-glow {`
+### Line 119 · `.board-win-line {`
+
+The match board's winning line: the landing page's fade, without its 1.3s wait.
+That delay lines up with the illustration's stones popping in one by one;
+on a real board the last stone is already down, so the line shows straight away.
+
+### Line 123 · `.board-win-glow {`
+
+The landing page's glow on the winning stones, played once with the line.
+Backwards rather than forwards, so when it finishes the glow is gone,
+and the line is what stays.
+
+### Line 141 · `.stone-win-glow {`
 
 Win line + winning stones glow together at 1.3s, synced with the
 last stone's pop-in animation finishing (10 stones x 0.12s delay).
 
-### Line 117 · `@keyframes title-glow {`
+### Line 147 · `@keyframes title-glow {`
 
 Accent glow used on the "GO" in the logo/title
 
-### Line 152 · `@keyframes stone-loading-pulse {`
+### Line 193 · `@keyframes stone-loading-pulse {`
 
 "Five-in-a-row" inspired spinner (this is the icon for Loading... )
 
@@ -360,39 +372,72 @@ The traditional marker points on a 15×15 board: the centre and four around it.
 Defined once here, not inside the component, so the 30 grid lines share one
 object instead of building a new one on every render.
 Styles rather than attributes: var() only resolves in a declaration,
-see the note in stones.ts.
+see the note in stones.ts. winLine below is the same, for the red winning line.
 
-### Line 22 · `onPlay?: (move: GomokuMove) => void`
+### Line 23 · `onPlay?: (move: GomokuMove) => void`
 
 Called with the point that was clicked, legal or not:
 the server is the one that says no, and says why.
 Left out and the board is the picture it has always been.
 
-### Line 23 · `preview?: boolean`
+### Line 24 · `preview?: boolean`
 
 Whether hovering shows the stone a click would place.
 Off when the click is not yours to make, between turns or while watching:
 the point still answers, so the server can say why,
 but it never shows a stone that is not going to appear.
 
-### Line 30 · `const legal = useMemo(…)`
+### Line 25 · `flash?: boolean`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Whether the last stone played gets its ring.
+It marks the move that just happened, so it is only worth showing while the game goes on.
+Once the match is over, the result says what happened,
+and a ring on every reload of a finished match would point at nothing new.
+The board cannot tell on its own: a resigned match looks like any other position.
+
+### Line 35 · `const wins = useMemo(() => winningLines(state), [state])`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+The winning lines, one array each, from winningLines in the shared engine.
+Kept apart so each one gets its own line drawn through it;
+won flattens them into one set, for the stones.
+
+### Line 41 · `const legal = useMemo(…)`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 Which points are legal is the engine's answer, not this file's:
 every empty one, and none at all once somebody has won.
 Only those respond to the pointer. The rest still take a click,
 so a stone or a finished game gets the server's reason instead of silence.
 
-### Line 53 · `<circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />`
+### Line 64 · `<circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 The glow spills past the board, so it must not catch clicks meant for what sits around it.
 
-### Line 80 · `{onPlay !== undefined && board.flatMap((cells, row) =>`
+### Line 77 · `{wins.map((line) => {`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+One red line per winning run, centre of its first stone to centre of its last,
+as on the landing page. Drawn before the stones, so it shows in the gaps
+between them and the stones sit on top of it.
+
+### Line 103 · `className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'board-win-glow' : 'stone-lost'}`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+Once someone has won, the stones on the winning lines glow once
+and every other stone fades back, so the line and its stones are what you see.
+The class arrives with the win, so the glow plays on the winning move
+and again only when the board is opened fresh.
+
+### Line 123 · `{onPlay !== undefined && board.flatMap((cells, row) =>`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 Last, so the targets sit above the grid and the stones and catch the click themselves.
 One on every point. On a legal one it is the stone that would be played,
