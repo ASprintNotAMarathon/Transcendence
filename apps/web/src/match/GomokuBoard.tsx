@@ -22,9 +22,10 @@ type GomokuBoardProps = {
   state: GomokuState
   onPlay?: (move: GomokuMove) => void
   preview?: boolean
+  flash?: boolean
 }
 
-function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
+function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps) {
   const { board, moveCount, lastMove } = state
   const glowId = useId()
 
@@ -106,7 +107,7 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
         ),
       )}
 
-      {lastPlayed !== null && (
+      {flash && lastPlayed !== null && (
         <circle
           key={`flash-${moveCount}`}
           cx={lastPlayed.col * SPACING}
