@@ -201,7 +201,12 @@ function MatchPage() {
     <div className="flex flex-col items-center gap-6">
       <div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">
         <div className="flex w-full max-w-[32rem] flex-col items-center gap-3 xl:col-start-2">
-          <GomokuBoard state={view.board} onPlay={play} preview={myTurn} flash={view.outcome === null} />
+          <GomokuBoard
+            state={view.board}
+            onPlay={view.outcome === null ? play : undefined}
+            preview={myTurn}
+            flash={view.outcome === null}
+          />
           <p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">
             {notice}
           </p>

@@ -732,9 +732,8 @@ the only time there is anything to play, or to resign.
 Inside `function MatchPage()`
 
 Only the player to move sees the stone a click would place.
-Everyone else can still click, and the server says why it will not count:
-it's not your turn, that point is taken, the match is over,
-or you are only watching.
+Everyone else can still click while the match runs, and the server says why it will not count:
+it's not your turn, that point is taken, or you are only watching.
 
 ### Line 193 · `const play = (move: GomokuMove) =>`
 
@@ -757,7 +756,16 @@ Three columns so the board stays in the exact centre of the page:
 an empty one on the left balances the player panel on the right.
 Below xl there isn't room beside the board, so the panel goes under it.
 
-### Line 205 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
+### Line 206 · `onPlay={view.outcome === null ? play : undefined}`
+
+Inside `function MatchPage()`
+
+A finished match is a picture: without onPlay the board draws no click targets,
+so nothing is sent and nothing comes back refused.
+"This match is already over" still exists for a click that crosses the ending on the wire:
+sent before this page heard the match was over, refused once it was.
+
+### Line 210 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
 
 Inside `function MatchPage()`
 
@@ -765,7 +773,7 @@ Always in the page, empty when there is nothing to say:
 a screen reader only announces a live region it was already watching,
 and a reserved line keeps the board from jumping when one appears.
 
-### Line 217 · `{playing && <ResignButton key={matchId} onResign={() => send(resign(matchId))} />}`
+### Line 222 · `{playing && <ResignButton key={matchId} onResign={() => send(resign(matchId))} />}`
 
 Inside `function MatchPage()`
 
