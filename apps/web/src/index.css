@@ -120,6 +120,10 @@ body::before {
   animation: win-line-draw 0.4s ease-out backwards;
 }
 
+.board-win-glow {
+  animation: stone-glow 0.4s ease-out backwards;
+}
+
 .stone-lost {
   opacity: 0.35;
   transition: opacity 0.6s ease-out;
@@ -156,7 +160,8 @@ body::before {
 @media (prefers-reduced-motion: reduce) {
   .stone-pop,
   .stone-win-line,
-  .board-win-line {
+  .board-win-line,
+  .board-win-glow {
     animation: none;
   }
 

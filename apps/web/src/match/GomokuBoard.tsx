@@ -99,7 +99,7 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
               cx={col * SPACING}
               cy={row * SPACING}
               r={STONE_RADIUS}
-              className={won.size === 0 || won.has(row * BOARD_SIZE + col) ? undefined : 'stone-lost'}
+              className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'board-win-glow' : 'stone-lost'}
               style={{ fill: stoneFill(cell) }}
             />
           ),
