@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import type { AuthUser } from '../lib/api'
 import { loadProfile, type Profile } from '../lib/fakeProfiles'
 import ProfileCard from '../components/ProfileCard'
+import EditNameForm from '../components/EditNameForm'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 
@@ -17,14 +18,22 @@ import LoadingState from '../components/states/LoadingState'
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
 function OwnProfile({ user }: { user: AuthUser }) {
+  const [editing, setEditing] = useState(false)
+
   return (
     <ProfileCard displayName={user.displayName} createdAt={user.createdAt} email={user.email}>
-      <button type="button" className={buttonClass}>
-        Change avatar
-      </button>
-      <button type="button" className={buttonClass}>
-        Edit name
-      </button>
+      {editing ? (
+        <EditNameForm user={user} onDone={() => setEditing(false)} />
+      ) : (
+        <>
+          <button type="button" className={buttonClass}>
+            Change avatar
+          </button>
+          <button type="button" className={buttonClass} onClick={() => setEditing(true)}>
+            Edit name
+          </button>
+        </>
+      )}
     </ProfileCard>
   )
 }
