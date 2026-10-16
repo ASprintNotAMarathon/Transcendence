@@ -1,3 +1,5 @@
+import { ApiError, type AuthUser } from './api'
+
 /*
   TEMP: fake profiles, until the api from Kimia is ready.
   When it is: I (Noor :) delete this file and make loadProfile call
@@ -22,3 +24,15 @@ export type Profile = {
     if (id === 'broken') throw new Error('fake failure') // to try the error state
     return FAKE_PROFILES.find((profile) => profile.id === id) ?? null
   }
+
+  // TEMP: pretends to save. Names that are in FAKE_PROFILES count as taken (409).
+export async function saveDisplayName(user: AuthUser, displayName: string): Promise<AuthUser> {
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  const taken = FAKE_PROFILES.some(
+    (profile) => profile.displayName.toLowerCase() === displayName.toLowerCase(),
+  )
+  if (taken) {
+    throw new ApiError(409, 'Display name taken', { displayName: 'This name is already taken.' })
+  }
+  return { ...user, displayName }
+}
