@@ -23,6 +23,7 @@ export type AuthUser = {
   email: string
   displayName: string 
   createdAt: string
+  avatarUrl?: string | null
 }
 
 export type RegisterInput = {

@@ -5,6 +5,7 @@ import FormField from '../components/FormField'
 import PrimaryButton from '../components/PrimaryButton'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../lib/api'
+import { DISPLAY_NAME_MESSAGE, DISPLAY_NAME_PATTERN } from '../lib/displayName'
 
 type Errors = {
   displayName?: string
@@ -15,7 +16,6 @@ type Errors = {
 // Per Kimia's Auth contract (decision 02, proposal): password minimum 8
 // characters, displayName 3-20 characters, letters/digits/underscore/hyphen only.
 const MIN_PASSWORD_LENGTH = 8
-const DISPLAY_NAME_PATTERN = /^[A-Za-z0-9_-]{3,20}$/
 
 // Where someone creates a new account for the first time.
 function RegisterPage() {
@@ -34,7 +34,7 @@ function RegisterPage() {
     if (!displayName) {
       next.displayName = 'Display name is required.'
     } else if (!DISPLAY_NAME_PATTERN.test(displayName)) {
-      next.displayName = 'Use 3 to 20 letters, numbers, underscores or hyphens.'
+      next.displayName = DISPLAY_NAME_MESSAGE
     }
 
     if (!email) {
