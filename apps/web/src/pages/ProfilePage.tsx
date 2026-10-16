@@ -5,6 +5,7 @@ import type { AuthUser } from '../lib/api'
 import { loadProfile, type Profile } from '../lib/fakeProfiles'
 import ProfileCard from '../components/ProfileCard'
 import EditNameForm from '../components/EditNameForm'
+import ChangeAvatarForm from '../components/ChangeAvatarForm'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 
@@ -17,19 +18,26 @@ import LoadingState from '../components/states/LoadingState'
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
+type OpenForm = 'none' | 'name' | 'avatar'
+
 function OwnProfile({ user }: { user: AuthUser }) {
-  const [editing, setEditing] = useState(false)
+  const [openForm, setOpenForm] = useState<OpenForm>('none')
 
   return (
-    <ProfileCard displayName={user.displayName} createdAt={user.createdAt} email={user.email}>
-      {editing ? (
-        <EditNameForm user={user} onDone={() => setEditing(false)} />
-      ) : (
+    <ProfileCard
+      displayName={user.displayName}
+      avatarUrl={user.avatarUrl ?? undefined}
+      createdAt={user.createdAt}
+      email={user.email}
+    >
+      {openForm === 'name' && <EditNameForm user={user} onDone={() => setOpenForm('none')} />}
+      {openForm === 'avatar' && <ChangeAvatarForm user={user} onDone={() => setOpenForm('none')} />}
+      {openForm === 'none' && (
         <>
-          <button type="button" className={buttonClass}>
+          <button type="button" className={buttonClass} onClick={() => setOpenForm('avatar')}>
             Change avatar
           </button>
-          <button type="button" className={buttonClass} onClick={() => setEditing(true)}>
+          <button type="button" className={buttonClass} onClick={() => setOpenForm('name')}>
             Edit name
           </button>
         </>
