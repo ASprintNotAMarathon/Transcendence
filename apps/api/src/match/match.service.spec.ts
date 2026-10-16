@@ -250,7 +250,7 @@ describe('MatchService.join', () => {
 
 		const state = await service.join(PLAYER_0.id, MATCH_ID);
 
-		expect(state.endReason).toBe('board');
+		expect(state.endReason).toBe('played');
 	});
 
 	it('reports a win the board shows while the match is still active', async () => {
@@ -376,7 +376,7 @@ describe('MatchService.move', () => {
 			data: {
 				status: 'finished',
 				winnerId: PLAYER_0.id,
-				endReason: 'board',
+				endReason: 'played',
 			},
 		});
 

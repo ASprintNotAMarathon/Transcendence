@@ -53,7 +53,7 @@ enum MatchStatus {
 }
 
 enum EndReason {
-  board
+  played
   resigned
   abandoned
 }

@@ -177,7 +177,7 @@ An active match whose replay does show a win is an inconsistency step 4 prevents
 by closing the match in the same write that stores the winning move.
 Report it, never repair it: a read path that writes is a surprise nobody wants to debug.
 
-### Line 54 · `endReason: match.status === 'finished' ? (match.endReason ?? 'board') : null`
+### Line 54 · `endReason: match.status === 'finished' ? (match.endReason ?? 'played') : null`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
@@ -624,7 +624,7 @@ turn and outcome come from the payload, not from what apply worked out.
 The server decides both, and a client that computes its own
 would be the first thing to disagree.
 
-### Line 88 · `endReason: payload.outcome === null ? null : 'board',`
+### Line 88 · `endReason: payload.outcome === null ? null : 'played',`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 

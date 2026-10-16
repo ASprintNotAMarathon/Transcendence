@@ -165,7 +165,7 @@ export interface MatchStatePayload {
 	readonly moveNumber: number;
 }
 
-export type MatchEndReason = "board" | "resigned" | "abandoned";
+export type MatchEndReason = "played" | "resigned" | "abandoned";
 
 /** A move that was accepted and applied. Sent to everyone watching the match. */
 export interface MatchMovedPayload {
@@ -190,7 +190,7 @@ export interface MatchMovedPayload {
 export interface MatchEndedPayload {
 	readonly matchId: string;
 	readonly outcome: GameOutcome;
-	readonly reason: Exclude<MatchEndReason, "board">;
+	readonly reason: Exclude<MatchEndReason, "played">;
 }
 
 /** A move the server refused. Sent only to the player who sent it. */

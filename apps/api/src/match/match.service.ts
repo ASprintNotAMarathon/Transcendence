@@ -53,7 +53,7 @@ export class MatchService {
 					: position.outcome,
 			endReason:
 				match.status === 'finished'
-					? (match.endReason ?? 'board')
+					? (match.endReason ?? 'played')
 					: null,
 			moveNumber: position.moveNumber,
 		};
@@ -125,7 +125,7 @@ export class MatchService {
 						data: {
 							status: 'finished',
 							winnerId: winnerIdOf(outcome, match),
-							endReason: 'board',
+							endReason: 'played',
 						},
 					});
 					if (count === 0) {

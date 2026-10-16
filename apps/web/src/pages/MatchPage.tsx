@@ -85,7 +85,7 @@ function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView {
     board,
     turn: payload.turn,
     outcome: payload.outcome,
-    endReason: payload.outcome === null ? null : 'board',
+    endReason: payload.outcome === null ? null : 'played',
     moveNumber: payload.moveNumber,
   }
 }
