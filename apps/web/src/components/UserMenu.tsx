@@ -66,7 +66,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
         onClick={() => setOpen(!open)}
         className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary-content)"
       >
-        <Avatar displayName={user.displayName} size="md" />
+        <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl ?? undefined} size="md" />
       </button>
 
       {open && (

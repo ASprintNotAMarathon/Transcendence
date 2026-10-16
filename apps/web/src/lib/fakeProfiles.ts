@@ -36,3 +36,8 @@ export async function saveDisplayName(user: AuthUser, displayName: string): Prom
   }
   return { ...user, displayName }
 }
+
+export async function saveAvatar(user: AuthUser, file: File): Promise<AuthUser> {
+  await new Promise((resolve) => setTimeout(resolve, 400))
+  return { ...user, avatarUrl: URL.createObjectURL(file) }
+}
