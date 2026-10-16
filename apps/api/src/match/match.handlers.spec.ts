@@ -1,4 +1,5 @@
 import type {
+	MatchEndedPayload,
 	MatchMovePayload,
 	MatchMovedPayload,
 	MatchStatePayload,
@@ -29,10 +30,17 @@ const moved = {
 	outcome: null,
 } as MatchMovedPayload;
 
+const ended: MatchEndedPayload = {
+	matchId: MATCH_ID,
+	outcome: { kind: 'win', player: 1 },
+	reason: 'resigned',
+};
+
 describe('MatchHandlers', () => {
 	let service: {
 		join: ReturnType<typeof vi.fn>;
 		move: ReturnType<typeof vi.fn>;
+		resign: ReturnType<typeof vi.fn>;
 	};
 	let sender: {
 		broadcast: ReturnType<typeof vi.fn>;
@@ -44,7 +52,7 @@ describe('MatchHandlers', () => {
 	let handlers: MatchHandlers;
 
 	beforeEach(() => {
-		service = { join: vi.fn(), move: vi.fn() };
+		service = { join: vi.fn(), move: vi.fn(), resign: vi.fn() };
 		sender = { broadcast: vi.fn(), sendToSocket: vi.fn() };
 		joinRoom = vi.fn();
 		leaveRoom = vi.fn();
@@ -61,7 +69,7 @@ describe('MatchHandlers', () => {
 		);
 	});
 
-	it('claims join, move and leave, and nothing else', () => {
+	it('claims join, move, resign and leave, and nothing else', () => {
 		const register = vi.fn();
 		const withSpy = new MatchHandlers(
 			service as unknown as MatchService,
@@ -74,6 +82,7 @@ describe('MatchHandlers', () => {
 		expect(register.mock.calls).toEqual([
 			['match.join', withSpy.join],
 			['match.move', withSpy.move],
+			['match.resign', withSpy.resign],
 			['match.leave', withSpy.leave],
 		]);
 	});
@@ -141,6 +150,64 @@ describe('MatchHandlers', () => {
 					moveEvent({ matchId: MATCH_ID, move: moved.move }),
 				),
 			).rejects.toBe(fault);
+
+			expect(sender.sendToSocket).not.toHaveBeenCalled();
+			expect(sender.broadcast).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('match.resign', () => {
+		function resignEvent() {
+			return {
+				type: 'match.resign' as const,
+				cid: CID,
+				payload: { matchId: MATCH_ID },
+			};
+		}
+
+		it('broadcasts the end of the match to the whole room', async () => {
+			service.resign.mockResolvedValue(ended);
+
+			await handlers.resign(client, resignEvent());
+
+			expect(sender.broadcast).toHaveBeenCalledOnce();
+			expect(sender.broadcast).toHaveBeenCalledWith(ROOM, {
+				type: 'match.ended',
+				payload: ended,
+			});
+			expect(sender.sendToSocket).not.toHaveBeenCalled();
+		});
+
+		it('resigns as the socket user', async () => {
+			service.resign.mockResolvedValue(ended);
+
+			await handlers.resign(client, resignEvent());
+
+			expect(service.resign).toHaveBeenCalledWith(USER_ID, MATCH_ID);
+		});
+
+		it('sends a refusal to the sender only, with its cid, and broadcasts nothing', async () => {
+			service.resign.mockRejectedValue(
+				new MatchError('match.already_over'),
+			);
+
+			await handlers.resign(client, resignEvent());
+
+			expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
+				type: 'match.rejected',
+				cid: CID,
+				payload: { matchId: MATCH_ID, code: 'match.already_over' },
+			});
+			expect(sender.broadcast).not.toHaveBeenCalled();
+		});
+
+		it('rethrows a server fault and tells nobody', async () => {
+			const fault = new Error('database unreachable');
+			service.resign.mockRejectedValue(fault);
+
+			await expect(handlers.resign(client, resignEvent())).rejects.toBe(
+				fault,
+			);
 
 			expect(sender.sendToSocket).not.toHaveBeenCalled();
 			expect(sender.broadcast).not.toHaveBeenCalled();

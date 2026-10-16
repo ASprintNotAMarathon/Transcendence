@@ -116,10 +116,12 @@ body::before {
   animation: stone-flash 0.8s ease-out forwards;
 }
 
-.stone-won {
-  stroke: var(--color-secondary);
-  stroke-width: 2px;
-  filter: drop-shadow(0 0 10px var(--color-secondary));
+.board-win-line {
+  animation: win-line-draw 0.4s ease-out backwards;
+}
+
+.board-win-glow {
+  animation: stone-glow 0.4s ease-out backwards;
 }
 
 .stone-lost {
@@ -157,7 +159,9 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   .stone-pop,
-  .stone-win-line {
+  .stone-win-line,
+  .board-win-line,
+  .board-win-glow {
     animation: none;
   }
 

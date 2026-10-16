@@ -8,7 +8,7 @@
 
 export type { GameEngine, GameOutcome, PlayerIndex } from "./types.js";
 
-export { BOARD_SIZE, WIN_LENGTH, gomoku, winningLine } from "./gomoku.js";
+export { BOARD_SIZE, WIN_LENGTH, gomoku, winningLines } from "./gomoku.js";
 export type { Cell, GomokuMove, GomokuState } from "./gomoku.js";
 
 export { allGameNames, getEngine, implementedGames, isGameName } from "./registry.js";
@@ -32,6 +32,8 @@ export type {
 	LifecycleClientEvent,
 	LifecycleServerEvent,
 	MatchClientEvent,
+	MatchEndedPayload,
+	MatchEndReason,
 	MatchErrorCode,
 	MatchJoinPayload,
 	MatchLeavePayload,

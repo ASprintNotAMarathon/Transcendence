@@ -52,6 +52,12 @@ enum MatchStatus {
   finished
 }
 
+enum EndReason {
+  played
+  resigned
+  abandoned
+}
+
 /// One game between two players.
 /// The board is not a column: it is rebuilt by using the engine's apply() over this match's Move rows.
 model Match {
@@ -70,6 +76,8 @@ model Match {
   /// Set together with status = finished. Still null then means a draw.
   winnerId String? @db.Uuid
   winner   User?   @relation("MatchWinner", fields: [winnerId], references: [id])
+
+  endReason EndReason?
 
   moves Move[]
 
