@@ -2,6 +2,7 @@ COMPOSE := docker compose
 NPM := npm
 
 DEPS := node_modules/.package-lock.json
+PRISMA := apps/api/src/generated/prisma/client.ts
 
 .DEFAULT_GOAL := help
 .PHONY: help up down logs ps psql seed clean fclean re check-env \
@@ -48,12 +49,12 @@ ps:	## Service status
 psql:	## Open a shell on the database
 	@. ./.env && $(COMPOSE) exec db psql -U $$POSTGRES_USER -d $$POSTGRES_DB
 
-seed:	$(DEPS)	## Fill the database with demo users and matches
+seed:	$(DEPS) $(PRISMA)	## Fill the database with demo users and matches
 		$(NPM) run seed
 		@echo
 		@echo "Log in at http://localhost:5173/login as either player"
-		@echo "	charlie@seed.local / charlie-1234"
-		@echo "	dana@seed.local / dana-1234"
+		@echo "	charlie@example.com / charlie-1234"
+		@echo "	dana@example.com / dana-1234"
 		@echo "They have a match in progress. Full account list is in the README."
 
 clean: down ## Alias for down
@@ -68,17 +69,20 @@ $(DEPS): package.json package-lock.json
 	$(NPM) ci
 	@touch $(DEPS)
 
+$(PRISMA): apps/api/prisma/schema.prisma apps/api/prisma.config.ts | $(DEPS)
+	$(NPM) run prisma:generate --workspace api
+
 install:	## Install npm dependencies (always runs)
 	$(NPM) install
 	@touch $(DEPS)
 
-test: $(DEPS)	## Run the game engine tests once
+test: $(DEPS) $(PRISMA)	## Run the game engine tests once
 	$(NPM) test
 
 test-watch: $(DEPS)	## Run the game engine tests, rerunning on save
 	$(NPM) run test:watch --workspace shared
 
-typecheck: $(DEPS)	## Type-check every workspace
+typecheck: $(DEPS) $(PRISMA)	## Type-check every workspace
 	$(NPM) run typecheck
 
 build: $(DEPS)	## Compile shared/ to dist/
