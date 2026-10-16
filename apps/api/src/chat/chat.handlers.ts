@@ -41,8 +41,9 @@ export class ChatHandlers implements OnModuleInit {
 				client.data.userId,
 				event.payload,
 			);
-			// Every open tab of both people, the sender's own tabs included:
-			// the sender's screen renders from this echo, exactly like the mock.
+            // for is used to iterate over the memberIds array in the sent object. 
+            // For each memberId, it sends the saved message to every connected tab of 
+            // both conversation members using the WsSender.sendToUser() method. 
 			for (const memberId of sent.memberIds) {
 				// Send the saved message to every connected tab of both conversation members.
 				// This also sends it back to the sender, so their own screen shows the message.
@@ -71,6 +72,8 @@ export class ChatHandlers implements OnModuleInit {
 		if (!(error instanceof ChatError)) {
 			throw error;
 		}
+        // A refusal goes to one place only: the exact connection that sent
+		// the message. Other tabs and the other member never hear about it.
 		this.sender.sendToSocket(client, {
 			type: 'chat.rejected',
 			cid,
