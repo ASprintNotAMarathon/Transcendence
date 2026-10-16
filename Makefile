@@ -52,8 +52,8 @@ seed:	$(DEPS)	## Fill the database with demo users and matches
 		$(NPM) run seed
 		@echo
 		@echo "Log in at http://localhost:5173/login as either player"
-		@echo "	charlie@seed.local / charlie-1234"
-		@echo "	dana@seed.local / dana-1234"
+		@echo "	charlie@example.com / charlie-1234"
+		@echo "	dana@example.com / dana-1234"
 		@echo "They have a match in progress. Full account list is in the README."
 
 clean: down ## Alias for down
