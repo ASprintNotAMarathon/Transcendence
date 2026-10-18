@@ -814,3 +814,37 @@ socket is down, so a match.leave sent during a reconnect can be delivered
 after the match.join that follows it.
 
 Nothing to close over: the socket is one module-level object.
+
+## `shared/src/lobby.ts`
+
+### Line 1 · file header
+
+What the lobby is told about each game being played.
+It travels over HTTP rather than the socket, but lives in shared for the same reason ws.ts does:
+the api builds it and the web app reads it, and one definition keeps the two from drifting.
+
+### Line 4 · `export interface LiveMatch`
+
+A match counts as live while it is active, its moves replay cleanly,
+and nobody has won on the board yet. MatchService decides that; this is only the shape.
+
+### Line 7 · `readonly players: readonly [MatchPlayer, MatchPlayer];`
+
+Inside `export interface LiveMatch`
+
+The same pair match.state sends, so the lobby and the match page name players the same way.
+Index 0 moves first.
+
+### Line 8 · `readonly turn: PlayerIndex;`
+
+Inside `export interface LiveMatch`
+
+Lets the lobby say "Your turn" next to Resume without opening the match.
+
+### Line 10 · `readonly startedAt: string;`
+
+Inside `export interface LiveMatch`
+
+When the match was created, as an ISO string: JSON has no dates,
+so a Date on the server arrives as a string anyway. Saying so in the type
+keeps anyone from calling Date methods on it without parsing it first.

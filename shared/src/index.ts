@@ -17,6 +17,8 @@ export type { AnyGameEngine, GameName } from "./registry.js";
 export { outcomeOf, replay, seatOf, winnerIdOf } from "./match.js";
 export type { MatchSeats, MoveRow, ReplayResult } from "./match.js";
 
+export type { LiveMatch } from "./lobby.js";
+
 export type {
 	ChatClientEvent,
 	ChatErrorCode,
