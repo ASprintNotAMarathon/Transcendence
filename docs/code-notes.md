@@ -123,13 +123,22 @@ rethrown for the dispatcher to log.
 
 ## `apps/api/src/match/match.service.ts`
 
-### Line 18 · `function isMoveNumberTaken(error: unknown): boolean`
+### Line 23 · `function isMoveNumberTaken(error: unknown): boolean`
 
 Move has exactly one composite unique constraint, on (matchId, moveNumber),
 so a P2002 from inserting a move can only mean that number was already taken.
 The code alone is enough.
 
-### Line 25 · `@Injectable() export class MatchService`
+### Line 30 · `function replayOrNull(game: string, moves: readonly MoveRow[])`
+
+The lobby's version of opening a match: replay it, and if that fails, say so with null
+instead of throwing. rebuild() lets the error through because one broken match should be loud;
+a list should not go down with it, so here the broken match just drops out.
+
+getEngine sits inside the try on purpose. A match for a game this server cannot run
+can't be watched either, so it drops out the same way rather than turning the whole lobby into a 500.
+
+### Line 38 · `@Injectable() export class MatchService`
 
 The match runtime. The server owns the board; this is where it keeps it.
 
@@ -142,7 +151,7 @@ can never leave a stored board and a stored history disagreeing.
 The user id arrives as a plain argument rather than off a socket, so all of
 this can be written and tested before the gateway in #21 exists.
 
-### Line 29 · `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+### Line 42 · `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
 Inside `@Injectable() export class MatchService`
 
@@ -154,7 +163,7 @@ MatchJoinPayload is documented as joining "as a player or as a spectator", so th
 that arrives in step 4, where seatOf() returning null becomes a match.not_a_player rejection.
 The parameter stays because the gateway will pass it and any future visibility rule belongs right here.
 
-### Line 46 · `state: engine.serialize(position.state)`
+### Line 59 · `state: engine.serialize(position.state)`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
@@ -164,7 +173,7 @@ For gomoku the two happen to look alike,
 which is exactly why skipping it would go unnoticed
 until an engine whose state is not already JSON.
 
-### Line 47 · `outcome: match.status === 'finished' ? outcomeOf(match.winnerId, match) : position.outcome`
+### Line 60 · `outcome: match.status === 'finished' ? outcomeOf(match.winnerId, match) : position.outcome`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
@@ -177,14 +186,14 @@ An active match whose replay does show a win is an inconsistency step 4 prevents
 by closing the match in the same write that stores the winning move.
 Report it, never repair it: a read path that writes is a surprise nobody wants to debug.
 
-### Line 54 · `endReason: match.status === 'finished' ? (match.endReason ?? 'played') : null`
+### Line 64 · `endReason: match.status === 'finished' ? (match.endReason ?? 'played') : null`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
 Matches that finished before the endReason column existed have it null.
 Back then a game could only end on the board, so that is what null on a finished match means.
 
-### Line 55 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
+### Line 72 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
 Inside `@Injectable() export class MatchService`
 
@@ -201,7 +210,7 @@ even though both are true of a finished match.
 The payload is the client speaking,
 and a client that could name its own player id could play as its opponent.
 
-### Line 69 · `if (match.status === 'finished' || position.outcome !== null) {`
+### Line 86 · `if (match.status === 'finished' || position.outcome !== null) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -209,7 +218,7 @@ Two witnesses, and either one is enough to refuse.
 The status column is the record; the replayed board is what actually happened.
 They agree unless a crash landed a winning move without closing the match.
 
-### Line 83 · `let move: unknown`
+### Line 100 · `let move: unknown`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -218,7 +227,7 @@ It knows nothing about the position,
 so "shaped like a move" and "playable here" are two separate answers,
 and the protocol has a separate code for each.
 
-### Line 115 · `if (outcome !== null) {`
+### Line 132 · `if (outcome !== null) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -226,7 +235,7 @@ Same transaction as the move that ended the game,
 so a finished match can never exist without its result,
 and a result can never exist without the move that caused it.
 
-### Line 123 · `const { count } = await tx.match.updateMany({`
+### Line 133 · `const { count } = await tx.match.updateMany({`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -234,7 +243,7 @@ Only closes a match that is still active. If a resignation landed between the ch
 count is 0, and throwing inside the transaction undoes the move as well,
 so the stored result stays the resignation instead of being overwritten.
 
-### Line 126 · `if (isMoveNumberTaken(error)) {`
+### Line 150 · `if (isMoveNumberTaken(error)) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -244,14 +253,14 @@ and the database decides: one insert lands, the other loses.
 Losing means the position moved on while this request was in flight,
 which is exactly "not your turn" by the time it mattered.
 
-### Line 159 · `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
+### Line 169 · `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
 
 Inside `@Injectable() export class MatchService`
 
 The same checks as a move, in the same order: is this a player, and is the game still running.
 The opponent wins, and the result goes out as match.ended rather than match.moved, since no move was played.
 
-### Line 182 · `const { count } = await this.prisma.match.updateMany({`
+### Line 192 · `const { count } = await this.prisma.match.updateMany({`
 
 Inside `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
 
@@ -260,7 +269,65 @@ In between, the other player can resign or play a winning move.
 Writing only where the status is still active lets the database decide which one counts;
 count 0 means this resignation lost and the game had already ended.
 
-### Line 145 · `private async rebuild(matchId: string)`
+### Line 210 · `live(): Promise<LiveMatch[]>`
+
+Inside `@Injectable() export class MatchService`
+
+Every game being played right now, for the lobby. Newest first.
+Not async: it only hands back liveMatches' promise, so there is nothing to await here.
+
+### Line 214 · `async current(userId: string): Promise<LiveMatch | null>`
+
+Inside `@Injectable() export class MatchService`
+
+The newest live match this user plays in, or null. What the Match button opens.
+A player should only ever have one, but nothing in the schema stops two
+(the seed gives charlie two active matches), so this picks rather than assumes.
+
+### Line 216 · `OR: [{ player0Id: userId }, { player1Id: userId }],`
+
+Inside `async current(userId: string): Promise<LiveMatch | null>`
+
+"Is player 0 or player 1". The two seats are separate columns, each with its own index,
+so this is two index lookups rather than a scan.
+
+### Line 221 · `private async liveMatches(`
+
+Inside `@Injectable() export class MatchService`
+
+The one query live() and current() share, so the rule for what counts as live
+is written once. A live match is active, replays cleanly, and has no winner on the board yet.
+status alone is not enough: a broken history or an unclosed win still says active.
+
+### Line 225 · `where: { ...where, status: 'active' },`
+
+Inside `private async liveMatches(…)`
+
+The caller's filter, with status always added on top.
+Spread first, so no caller can ask for finished matches by accident.
+
+### Line 226 · `orderBy: { createdAt: 'desc' },`
+
+Inside `private async liveMatches(…)`
+
+createdAt, not updatedAt: a move adds a Move row and never touches the Match row,
+so updatedAt stays put for the whole game and says nothing about activity.
+
+### Line 243 · `if (position === null || position.outcome !== null) {`
+
+Inside `private async liveMatches(…)`
+
+null: the history doesn't replay. An outcome: someone already has five in a row
+and the match was never closed. Neither is a game anyone can still play or watch.
+
+### Line 262 · `startedAt: match.createdAt.toISOString(),`
+
+Inside `private async liveMatches(…)`
+
+Prisma gives a Date; LiveMatch says string, which is what JSON would turn it into anyway.
+Converting here keeps the type honest about what reaches the browser.
+
+### Line 268 · `private async rebuild(matchId: string)`
 
 Inside `@Injectable() export class MatchService`
 
@@ -269,7 +336,7 @@ Load a match and replay it into a position, or throw match.not_found.
 Shared by join and move, so there is one query and one orderBy to get right
 instead of two that could drift apart.
 
-### Line 147 · `if (!isUUID(matchId)) {`
+### Line 269 · `if (!isUUID(matchId)) {`
 
 Inside `private async rebuild(matchId: string)`
 
@@ -278,7 +345,7 @@ Postgres refuses it for a uuid column, and Prisma batches findUnique calls made 
 so that one bad id would fail every lookup in the batch, including other people's valid matches.
 Catching the error afterwards can't tell those apart, so the check comes first.
 
-### Line 158 · `orderBy: { moveNumber: 'asc' },`
+### Line 289 · `orderBy: { moveNumber: 'asc' },`
 
 Inside `private async rebuild(matchId: string)`
 
@@ -287,7 +354,7 @@ and replay() throws on an out-of-sequence row rather than sorting,
 so that a clause forgotten here surfaces as a loud failure
 instead of a plausible board built from a shuffled history.
 
-### Line 171 · `const engine`
+### Line 302 · `const engine`
 
 Inside `private async rebuild(matchId: string)`
 
