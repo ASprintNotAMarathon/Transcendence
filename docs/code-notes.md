@@ -46,6 +46,52 @@ GameName lists reversi, but no engine implements it yet.
 Derived from the registry in @transcendence/shared,
 so adding an engine is the only thing needed to make it appear here.
 
+## `apps/api/src/match/match.controller.ts`
+
+### Line 1 · file header
+
+The HTTP side of matches: what the lobby and the Match button ask before any socket is involved.
+Playing, watching and resigning stay on the socket; this only answers "what is being played?"
+and "where is my game?". Like MatchHandlers it holds no logic: everything is in MatchService.
+
+### Line 7 · `@Controller('matches')`
+
+With the global 'api' prefix from main.ts, the routes below are /api/matches/live and /api/matches/current.
+
+### Line 8 · `@UseGuards(JwtAuthGuard)`
+
+On the class, so it covers every route in it, including any added later.
+No cookie, or a bad one, answers 401 before the method runs.
+The lobby is only for logged-in players, and current needs to know who is asking anyway.
+
+### Line 13 · `live(): Promise<LiveMatch[]>`
+
+Inside `export class MatchController`
+
+Every live match, the caller's own included. The lobby is the one that moves yours to the top,
+so this list means the same thing whoever asks.
+
+### Line 18 · `async current(`
+
+Inside `export class MatchController`
+
+The caller's newest live match, or 204 when they have none.
+204 rather than 200 with null: "nothing here" is a normal answer, not a failure,
+and request() in the web app already turns a 204 into undefined.
+
+### Line 20 · `@Res({ passthrough: true }) res: Response,`
+
+Inside `async current(…)`
+
+Only to change the status code. passthrough keeps Nest in charge of sending the response,
+so the returned value is still what goes out; without it, the method would have to send everything itself.
+
+### Line 24 · `res.status(HttpStatus.NO_CONTENT);`
+
+Inside `async current(…)`
+
+Sets the code and returns nothing. A 204 carries no body, so there is nothing else to send.
+
 ## `apps/api/src/match/match.error.ts`
 
 ### Line 3 · `export class MatchError extends Error`
