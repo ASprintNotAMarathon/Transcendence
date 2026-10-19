@@ -460,6 +460,25 @@ Accent glow used on the "GO" in the logo/title
 
 "Five-in-a-row" inspired spinner (this is the icon for Loading... )
 
+## `apps/web/src/lib/api.ts`
+
+### Line 13 · `import type { LiveMatch } from '@transcendence/shared'`
+
+The same type the api builds in MatchService, so a field renamed on one side
+fails the build on the other instead of showing up as undefined in the lobby.
+
+### Line 118 · `export const matchApi = {`
+
+The lobby's two questions to the api, next to authApi so this stays the only file that calls fetch.
+Both go through request(), so they send the cookie and throw an ApiError the same way login does.
+
+### Line 123 · `async current() {`
+
+Inside `export const matchApi = {`
+
+The api answers 204 with no body when you have no live match, and request() turns a 204 into undefined.
+`?? null` makes that null, so callers check one thing, the same null MatchService.current returns.
+
 ## `apps/web/src/match/GomokuBoard.tsx`
 
 ### Line 1 · file header
@@ -557,6 +576,90 @@ One on every point. On a legal one it is the stone that would be played,
 kept invisible until the pointer is on it: the preview and the hit area
 are the same circle, so what lights up is exactly what a click would place.
 
+## `apps/web/src/match/LiveMatchRow.tsx`
+
+### Line 1 · file header
+
+One game in the lobby: the two players with their stones, how far the game is, and a way in.
+It only draws what it is given; LiveMatches does the loading.
+
+### Line 13 · `function movesLabel(moveNumber: number): string`
+
+moveNumber counts the moves already played, so "3 moves" rather than "Move 3",
+which would read as the move about to be played.
+
+### Line 19 · `function turnLabel(match: LiveMatch, seat: PlayerIndex | null): string`
+
+"Your turn" when the player to move is you, which is the reason to press Resume.
+Everyone else reads whose turn it is by name, like the panel on the match page.
+
+### Line 37 · `const seat = index === -1 ? null : (index as PlayerIndex)`
+
+Inside `function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)`
+
+Your seat in this game, or null when you are not in it. Same pattern as MatchPage.
+
+### Line 56 · `{seat === null ? 'Watch' : 'Resume'}`
+
+Inside `function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)`
+
+Both go to the same /match/:id. The match page already knows the difference:
+a player gets the board and the Resign button, anyone else watches.
+Decided per row rather than by section, so a second live game of yours still says Resume.
+
+## `apps/web/src/match/LiveMatches.tsx`
+
+### Line 1 · file header
+
+The lobby's contents: your game first, then everyone else's.
+Kept out of HomePage so it can move to another page, or sit next to other sections,
+without being rewritten.
+
+Loads once, when it opens. A game that starts or ends afterwards shows on the next visit;
+live updates would need the socket.
+
+### Line 9 · `type Lobby =`
+
+The three states the lobby can be in, as one value rather than three separate flags.
+current and live only exist on 'loaded', so nothing can read them while loading
+or after a failure, and the type says so.
+
+### Line 22 · `let cancelled = false`
+
+Inside `function LiveMatches()`
+
+Leaving the page before the answer arrives must not set state on a component that is gone.
+StrictMode in development mounts every effect twice, so this also stops the first,
+abandoned load from overwriting the second.
+
+### Line 24 · `Promise.all([matchApi.current(), matchApi.live()])`
+
+Inside `function LiveMatches()`
+
+Both requests at once rather than one after the other. If either fails, the whole lobby
+shows the error: half a lobby would hide your own game, or everyone else's, without saying so.
+
+### Line 35 · `}, [attempt])`
+
+Inside `function LiveMatches()`
+
+The effect runs again whenever attempt changes, which is how Try again reloads.
+
+### Line 37 · `const retry = () => {`
+
+Inside `function LiveMatches()`
+
+Shows the loading state again, then bumps attempt to start a new load.
+The loading state is set here, in the click, rather than inside the effect:
+setting state directly in an effect costs an extra render, and the hooks lint rule flags it.
+
+### Line 51 · `const others = live.filter((match) => match.matchId !== current?.matchId)`
+
+Inside `function LiveMatches()`
+
+live includes your own game, since the api answers the same list to everyone.
+It is already shown at the top, so it is taken out of the list below.
+
 ## `apps/web/src/match/MatchPlayers.tsx`
 
 ### Line 1 · file header
@@ -623,6 +726,13 @@ This returns CSS, not a colour value, so whatever it is handed to must be a
 style declaration: `style={{ fill: … }}`, never `fill="…"`.
 var() is not valid in an SVG presentation attribute — it does not fail
 loudly, it just paints black.
+
+## `apps/web/src/pages/HomePage.tsx`
+
+### Line 1 · file header
+
+/home is the lobby: where login lands, and where the logo leads.
+All the content is in LiveMatches; this page only gives it a title and a width.
 
 ## `apps/web/src/pages/MatchPage.tsx`
 
