@@ -35,6 +35,26 @@ Inside `model Match`
 Set together with status = finished and winnerId, and null while the match is running.
 A resignation isn't a move, so unlike the board it can't be rebuilt from the Move rows and has to be stored.
 
+## `apps/api/prisma/seed.ts`
+
+### Line 86 · `secondActive: '00000000-0000-4000-8000-000000000112',`
+
+A second game in progress, so the lobby can be tested from both sides at once:
+alice has her own game to Resume and charlie vs dana to Watch, and charlie sees the reverse.
+Next number after the edge cases, so no existing link changes.
+
+### Line 117 · `const SECOND_ACTIVE_MATCH_MOVES: SeedMove[] = [`
+
+Four moves, so it is player 0's turn: alice reads "Your turn" in the lobby and can play straight away.
+Nobody is close to five, so a quick test move can't end it by accident.
+
+### Line 506 · `const secondActiveRows = toMoveRows(SECOND_ACTIVE_MATCH_MOVES);`
+
+Inside `async function seedMatches(…)`
+
+Same check as charlie vs dana: replay the list before writing it, so a typo that makes it
+illegal or already won fails the seed instead of seeding a game the lobby would hide.
+
 ## `apps/api/src/app.service.ts`
 
 ### Line 10 · `availableGames(): string[]`
@@ -692,6 +712,21 @@ so whoever did it is the one who did not win.
 Inside `function MatchPlayers(props: MatchPlayersProps)`
 
 Highlighted: the player to move, or the winner. Nobody, on a draw.
+
+### Line 34 · `const watching = props.seat === null`
+
+Inside `function MatchPlayers(props: MatchPlayersProps)`
+
+No seat means you are not one of the two players. Named watching rather than read as seat,
+because the player list below has its own seat for each row.
+
+### Line 38 · `{watching && (`
+
+Inside `function MatchPlayers(props: MatchPlayersProps)`
+
+Above the result, so a spectator sees it first: everything under it is someone else's game.
+Stays after the match ends too, since the headline then reads "alice wins" rather than "You won",
+and the label says why.
 
 ## `apps/web/src/match/ResignButton.tsx`
 

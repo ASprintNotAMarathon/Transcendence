@@ -31,9 +31,15 @@ function MatchPlayers(props: MatchPlayersProps) {
   const { players, turn, outcome } = props
   const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null
   const detail = reason(props)
+  const watching = props.seat === null
 
   return (
     <section aria-label="Players" className="flex w-full flex-col gap-3">
+      {watching && (
+        <span className="self-start rounded-full border border-(--color-secondary) px-3 py-0.5 text-xs font-semibold uppercase tracking-widest text-(--color-secondary)">
+          Watching
+        </span>
+      )}
       <div aria-live="polite">
         <p className="font-barrio text-2xl text-(--color-primary-content)">{status(props)}</p>
         {detail !== null && <p className="text-sm text-muted">{detail}</p>}
