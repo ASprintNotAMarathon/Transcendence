@@ -1,6 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
+import {
+	ConflictException,
+	NotFoundException,
+	UnauthorizedException,
+} from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from './users.service';
 
@@ -59,6 +64,92 @@ describe('UsersService.findProfile', () => {
 
 		await expect(service.findProfile(ID)).rejects.toBeInstanceOf(
 			NotFoundException,
+		);
+	});
+});
+
+/** A Prisma 7 error with the given code, shaped as the client reports it. */
+function prismaError(
+	code: string,
+	meta?: Record<string, unknown>,
+): Prisma.PrismaClientKnownRequestError {
+	return new Prisma.PrismaClientKnownRequestError('failed', {
+		code,
+		clientVersion: 'test',
+		meta,
+	});
+}
+
+describe('UsersService.updateDisplayName', () => {
+	const update = vi.fn();
+	let service: UsersService;
+
+	beforeEach(async () => {
+		update.mockReset();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				UsersService,
+				{ provide: PrismaService, useValue: { user: { update } } },
+			],
+		}).compile();
+
+		service = moduleRef.get(UsersService);
+	});
+
+	it('returns the whole user, as /auth/me does', async () => {
+		update.mockResolvedValue({
+			...ROW,
+			email: 'kimia@example.com',
+			displayName: 'renamed',
+		});
+
+		await expect(service.updateDisplayName(ID, 'renamed')).resolves.toEqual(
+			{
+				id: ID,
+				email: 'kimia@example.com',
+				displayName: 'renamed',
+				avatarUrl: null,
+				createdAt: ROW.createdAt,
+			},
+		);
+	});
+
+	it('maps a taken name to a 409 naming the displayName field', async () => {
+		update.mockRejectedValue(
+			prismaError('P2002', {
+				driverAdapterError: {
+					cause: { constraint: { index: 'User_displayName_key' } },
+				},
+			}),
+		);
+
+		const thrown = await service
+			.updateDisplayName(ID, 'taken')
+			.catch((e: unknown) => e);
+
+		expect(thrown).toBeInstanceOf(ConflictException);
+		expect((thrown as ConflictException).getResponse()).toEqual({
+			statusCode: 409,
+			error: 'Conflict',
+			errors: { displayName: 'That display name is taken' },
+		});
+	});
+
+	it('answers 401 when the user behind a valid token is gone', async () => {
+		update.mockRejectedValue(prismaError('P2025'));
+
+		await expect(
+			service.updateDisplayName(ID, 'renamed'),
+		).rejects.toBeInstanceOf(UnauthorizedException);
+	});
+
+	it('rethrows anything it does not recognise', async () => {
+		const failure = new Error('the database is on fire');
+		update.mockRejectedValue(failure);
+
+		await expect(service.updateDisplayName(ID, 'renamed')).rejects.toBe(
+			failure,
 		);
 	});
 });

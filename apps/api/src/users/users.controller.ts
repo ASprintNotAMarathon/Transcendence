@@ -1,11 +1,19 @@
 import {
+	Body,
 	Controller,
 	Get,
 	Param,
 	ParseUUIDPipe,
+	Patch,
 	UseGuards,
 } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth';
+import {
+	CurrentUser,
+	JwtAuthGuard,
+	type AuthUser,
+	type PublicUser,
+} from '../auth';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
 import type { PublicProfile } from './users.types';
 
@@ -27,5 +35,17 @@ export class UsersController {
 	@Get(':id')
 	findOne(@Param('id', ParseUUIDPipe) id: string): Promise<PublicProfile> {
 		return this.users.findProfile(id);
+	}
+
+	/**
+	 * The id comes from the cookie, never the URL, so the only user anyone
+	 * can rename is themselves.
+	 */
+	@Patch('me')
+	updateMe(
+		@CurrentUser() user: AuthUser,
+		@Body() dto: UpdateProfileDto,
+	): Promise<PublicUser> {
+		return this.users.updateDisplayName(user.id, dto.displayName);
 	}
 }
