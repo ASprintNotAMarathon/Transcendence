@@ -12,6 +12,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PasswordService } from './password.service';
 import {
 	PUBLIC_USER_SELECT,
+	toPublicUser,
 	type JwtPayload,
 	type PublicUser,
 } from './auth.types';
@@ -112,7 +113,7 @@ export class AuthService implements OnModuleInit {
 		const passwordHash = await this.passwords.hash(dto.password);
 
 		try {
-			return await this.prisma.user.create({
+			const user = await this.prisma.user.create({
 				data: {
 					email: dto.email,
 					displayName: dto.displayName,
@@ -120,6 +121,7 @@ export class AuthService implements OnModuleInit {
 				},
 				select: PUBLIC_USER_SELECT,
 			});
+			return toPublicUser(user);
 		} catch (error) {
 			if (
 				error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -174,13 +176,9 @@ export class AuthService implements OnModuleInit {
 			throw new UnauthorizedException('Invalid email or password');
 		}
 
-		// Rebuilt field by field, because this query also selected the hash.
-		return {
-			id: user.id,
-			email: user.email,
-			displayName: user.displayName,
-			createdAt: user.createdAt,
-		};
+		// This query also selected the hash. toPublicUser copies only the
+		// public fields, so it stays behind.
+		return toPublicUser(user);
 	}
 
 	/**
@@ -204,6 +202,6 @@ export class AuthService implements OnModuleInit {
 			throw new UnauthorizedException();
 		}
 
-		return user;
+		return toPublicUser(user);
 	}
 }

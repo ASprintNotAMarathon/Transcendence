@@ -257,6 +257,7 @@ describe('auth (e2e)', () => {
 			// Nothing beyond the agreed user object, which also rules out the
 			// password hash riding along.
 			expect(Object.keys(response.body as PublicUser).sort()).toEqual([
+				'avatarUrl',
 				'createdAt',
 				'displayName',
 				'email',

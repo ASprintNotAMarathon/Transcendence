@@ -16,11 +16,22 @@ const DTO: RegisterDto = {
 
 const HASH = '$argon2id$stub';
 
+/** The row Prisma hands back: the avatar as a file name, null until uploaded. */
 const CREATED = {
 	id: '3f1c2e88-9a4b-4c7d-8e21-5b6f0d9a1c33',
 	email: DTO.email,
 	displayName: DTO.displayName,
+	avatarPath: null,
 	createdAt: new Date('2026-09-15T09:13:38.486Z'),
+};
+
+/** What the client gets for that row: the same, with the avatar as a URL. */
+const PUBLIC = {
+	id: CREATED.id,
+	email: CREATED.email,
+	displayName: CREATED.displayName,
+	avatarUrl: null,
+	createdAt: CREATED.createdAt,
 };
 
 /**
@@ -69,7 +80,7 @@ describe('AuthService.register', () => {
 	it('stores the hash and never the password itself', async () => {
 		create.mockResolvedValue(CREATED);
 
-		await expect(service.register(DTO)).resolves.toEqual(CREATED);
+		await expect(service.register(DTO)).resolves.toEqual(PUBLIC);
 
 		const [args] = create.mock.calls[0] as [{ data: RegisterDto }];
 		expect(args.data).toMatchObject({
@@ -161,8 +172,21 @@ describe('AuthService.login', () => {
 
 		const user = await service.login(CREDENTIALS);
 
-		expect(user).toEqual(CREATED);
+		expect(user).toEqual(PUBLIC);
 		expect(user).not.toHaveProperty('passwordHash');
+	});
+
+	it('turns a stored avatar file name into its URL', async () => {
+		findUnique.mockResolvedValue({
+			...STORED_USER,
+			avatarPath: 'a1b2c3.webp',
+		});
+		verify.mockResolvedValue(true);
+
+		const user = await service.login(CREDENTIALS);
+
+		expect(user.avatarUrl).toBe('/api/avatars/a1b2c3.webp');
+		expect(user).not.toHaveProperty('avatarPath');
 	});
 
 	it('answers an unknown email and a wrong password identically', async () => {
