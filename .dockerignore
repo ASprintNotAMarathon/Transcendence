@@ -19,6 +19,9 @@ dist
 .env
 *.local
 
+# Uploaded avatars: user content, never baked into an image.
+uploads
+
 # Not needed to build or run the app
 .git
 .github

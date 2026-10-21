@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { readdir } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
@@ -25,11 +27,20 @@ function sessionCookie(response: request.Response): string {
 	return header.map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
+/** A real 1x1 PNG, the smallest honest upload. */
+const TINY_PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+	'base64',
+);
+
 describe('users (e2e)', () => {
 	let app: INestApplication<App>;
 	let server: App;
 	let cookie: string;
 	let me: PublicUser;
+
+	/** A temporary folder per run, set by vitest.config.e2e.mts. */
+	const avatarDir = process.env.AVATAR_DIR ?? '';
 
 	beforeAll(async () => {
 		const moduleRef = await Test.createTestingModule({
@@ -62,6 +73,21 @@ describe('users (e2e)', () => {
 	afterAll(async () => {
 		await app.close();
 	});
+
+	/** Its own account per test, so a change never leaks into another test. */
+	async function register(): Promise<{
+		cookie: string;
+		user: PublicUser;
+	}> {
+		const response = await request(server)
+			.post('/api/auth/register')
+			.send(freshAccount())
+			.expect(201);
+		return {
+			cookie: sessionCookie(response),
+			user: response.body as PublicUser,
+		};
+	}
 
 	it('returns a profile with exactly the agreed fields, no email', async () => {
 		const response = await request(server)
@@ -96,21 +122,6 @@ describe('users (e2e)', () => {
 	});
 
 	describe('PATCH /users/me', () => {
-		/** Its own account per test, so a rename never changes another test's user. */
-		async function register(): Promise<{
-			cookie: string;
-			user: PublicUser;
-		}> {
-			const response = await request(server)
-				.post('/api/auth/register')
-				.send(freshAccount())
-				.expect(201);
-			return {
-				cookie: sessionCookie(response),
-				user: response.body as PublicUser,
-			};
-		}
-
 		it('renames the caller, and /auth/me sees it at once', async () => {
 			const { cookie, user } = await register();
 			const newName = `r-${randomUUID().slice(0, 8)}`;
@@ -183,6 +194,95 @@ describe('users (e2e)', () => {
 			await request(server)
 				.patch('/api/users/me')
 				.send({ displayName: 'nobody' })
+				.expect(401);
+		});
+	});
+
+	describe('POST /users/me/avatar', () => {
+		it('stores an image and answers with the new avatarUrl', async () => {
+			const { cookie, user } = await register();
+
+			const response = await request(server)
+				.post('/api/users/me/avatar')
+				.set('Cookie', cookie)
+				.attach('avatar', TINY_PNG, 'me.png')
+				.expect(200);
+
+			const body = response.body as PublicUser;
+			expect(body).toEqual({ ...user, avatarUrl: body.avatarUrl });
+			expect(body.avatarUrl).toMatch(
+				/^\/api\/avatars\/[0-9a-f-]{36}\.png$/,
+			);
+			expect(await readdir(avatarDir)).toContain(
+				basename(body.avatarUrl ?? ''),
+			);
+		});
+
+		it('replaces the previous file on a second upload', async () => {
+			const { cookie } = await register();
+			/** Uploads and returns the stored file name. */
+			const upload = async (): Promise<string> => {
+				const response = await request(server)
+					.post('/api/users/me/avatar')
+					.set('Cookie', cookie)
+					.attach('avatar', TINY_PNG, 'me.png')
+					.expect(200);
+				return basename((response.body as PublicUser).avatarUrl ?? '');
+			};
+
+			const first = await upload();
+			const second = await upload();
+
+			const files = await readdir(avatarDir);
+			expect(files).toContain(second);
+			expect(files).not.toContain(first);
+		});
+
+		it('refuses text that claims to be a PNG', async () => {
+			const { cookie } = await register();
+
+			const refused = await request(server)
+				.post('/api/users/me/avatar')
+				.set('Cookie', cookie)
+				.attach('avatar', Buffer.from('not an image'), {
+					filename: 'fake.png',
+					contentType: 'image/png',
+				})
+				.expect(400);
+
+			expect(refused.body).toHaveProperty('errors.avatar');
+		});
+
+		it('answers 413 for a file over 5 MB', async () => {
+			const { cookie } = await register();
+			const huge = Buffer.concat([
+				TINY_PNG,
+				Buffer.alloc(5 * 1024 * 1024),
+			]);
+
+			await request(server)
+				.post('/api/users/me/avatar')
+				.set('Cookie', cookie)
+				.attach('avatar', huge, 'huge.png')
+				.expect(413);
+		});
+
+		it('answers 400 when no file is sent', async () => {
+			const { cookie } = await register();
+
+			const refused = await request(server)
+				.post('/api/users/me/avatar')
+				.set('Cookie', cookie)
+				.field('nothing', 'here')
+				.expect(400);
+
+			expect(refused.body).toHaveProperty('errors.avatar');
+		});
+
+		it('refuses a visitor who is not logged in', async () => {
+			await request(server)
+				.post('/api/users/me/avatar')
+				.attach('avatar', TINY_PNG, 'me.png')
 				.expect(401);
 		});
 	});
