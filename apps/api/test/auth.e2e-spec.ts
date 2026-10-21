@@ -1,13 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from './../src/app.module';
+import { configureApp } from './../src/bootstrap';
 import type { JwtPayload, PublicUser } from './../src/auth';
-import { validationErrorFactory } from './../src/config/validation-error.factory';
 
 /**
  * These run against a live database, so every run registers an address nobody
@@ -65,7 +64,7 @@ function tokenFrom(response: request.Response): string {
 }
 
 describe('auth (e2e)', () => {
-	let app: INestApplication<App>;
+	let app: NestExpressApplication;
 	let server: App;
 
 	beforeAll(async () => {
@@ -73,20 +72,10 @@ describe('auth (e2e)', () => {
 			imports: [AppModule],
 		}).compile();
 
-		// The same bootstrap main.ts performs. Without the pipe and the cookie
-		// parser this suite would test a different application than the one
-		// that ships.
-		app = moduleRef.createNestApplication();
-		app.setGlobalPrefix('api');
-		app.use(cookieParser());
-		app.useGlobalPipes(
-			new ValidationPipe({
-				whitelist: true,
-				forbidNonWhitelisted: true,
-				transform: true,
-				exceptionFactory: validationErrorFactory,
-			}),
-		);
+		// The same setup main.ts performs, from the same function, so this
+		// suite tests the application that ships.
+		app = moduleRef.createNestApplication<NestExpressApplication>();
+		configureApp(app);
 		await app.init();
 		server = app.getHttpServer();
 	});

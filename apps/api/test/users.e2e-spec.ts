@@ -1,15 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { readdir } from 'node:fs/promises';
 import { basename } from 'node:path';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
-import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from './../src/app.module';
+import { configureApp } from './../src/bootstrap';
 import type { PublicUser } from './../src/auth';
-import { validationErrorFactory } from './../src/config/validation-error.factory';
 
 /** A fresh address per run, as in auth.e2e-spec.ts: the database is live. */
 function freshAccount() {
@@ -34,7 +33,7 @@ const TINY_PNG = Buffer.from(
 );
 
 describe('users (e2e)', () => {
-	let app: INestApplication<App>;
+	let app: NestExpressApplication;
 	let server: App;
 	let cookie: string;
 	let me: PublicUser;
@@ -47,18 +46,10 @@ describe('users (e2e)', () => {
 			imports: [AppModule],
 		}).compile();
 
-		// The same bootstrap main.ts performs.
-		app = moduleRef.createNestApplication();
-		app.setGlobalPrefix('api');
-		app.use(cookieParser());
-		app.useGlobalPipes(
-			new ValidationPipe({
-				whitelist: true,
-				forbidNonWhitelisted: true,
-				transform: true,
-				exceptionFactory: validationErrorFactory,
-			}),
-		);
+		// The same setup main.ts performs, from the same function, so this
+		// suite tests the application that ships.
+		app = moduleRef.createNestApplication<NestExpressApplication>();
+		configureApp(app);
 		await app.init();
 		server = app.getHttpServer();
 
@@ -284,6 +275,46 @@ describe('users (e2e)', () => {
 				.post('/api/users/me/avatar')
 				.attach('avatar', TINY_PNG, 'me.png')
 				.expect(401);
+		});
+	});
+
+	describe('GET /api/avatars/:file', () => {
+		it('serves an uploaded avatar as the exact bytes, safely typed and cached', async () => {
+			const { cookie } = await register();
+			const uploaded = await request(server)
+				.post('/api/users/me/avatar')
+				.set('Cookie', cookie)
+				.attach('avatar', TINY_PNG, 'me.png')
+				.expect(200);
+			const url = (uploaded.body as PublicUser).avatarUrl ?? '';
+
+			// No cookie: an <img> loads it like any picture.
+			const served = await request(server)
+				.get(url)
+				.buffer(true)
+				.parse((res, done) => {
+					const chunks: Buffer[] = [];
+					res.on('data', (chunk: Buffer) => chunks.push(chunk));
+					res.on('end', () => done(null, Buffer.concat(chunks)));
+				})
+				.expect(200);
+
+			expect(Buffer.compare(served.body as Buffer, TINY_PNG)).toBe(0);
+			expect(served.headers['content-type']).toBe('image/png');
+			expect(served.headers['x-content-type-options']).toBe('nosniff');
+			expect(served.headers['cache-control']).toBe(
+				'public, max-age=31536000, immutable',
+			);
+		});
+
+		it('answers 404 for a file that does not exist', async () => {
+			await request(server)
+				.get(`/api/avatars/${randomUUID()}.png`)
+				.expect(404);
+		});
+
+		it('never lists the folder', async () => {
+			await request(server).get('/api/avatars/').expect(404);
 		});
 	});
 });
