@@ -15,7 +15,10 @@ import ProfilePage from './pages/ProfilePage.tsx'
 import ChatPage from './pages/ChatPage.tsx'
 import MatchPage from './pages/MatchPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
+import PrivacyPage from './pages/PrivacyPage.tsx'
+import TermsPage from './pages/TermsPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
+
 
 function AppSocketProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth()
@@ -34,6 +37,8 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route element={<PublicLayout />}>
               <Route path="/" element={<LandingPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route element={<GuestOnlyRoute />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
