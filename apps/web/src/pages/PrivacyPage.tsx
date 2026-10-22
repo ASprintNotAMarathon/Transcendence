@@ -21,8 +21,7 @@ function PrivacyPage() {
             password. We cannot read it.
           </li>
           <li>Your profile picture, if you upload one.</li>
-          <li>The games you play: who played, the result and how the game ended.</li>
-          <li>The messages you send in chat.</li>
+          <li>The games you play: who played, every move and when, the result and how the game ended.</li>
           <li>One cookie that keeps you logged in.</li>
         </ul>
       </LegalSection>
@@ -38,7 +37,7 @@ function PrivacyPage() {
         <ul className={listClass}>
           <li>Other players can see your display name, your profile picture and your game results.</li>
           <li>Only you can see your email address. We never show it to other players.</li>
-          <li>Messages can be read by the person you send them to.</li>
+          <li>Messages you send in chat go to the person you write to.</li>
           <li>
             A profile picture can be opened by anyone who has its link, even without logging in. The file names
             are random, so links cannot be guessed.
@@ -54,6 +53,13 @@ function PrivacyPage() {
         <p>
           We use one cookie, to keep you logged in. The website cannot work without it. We do not use cookies for
           advertising or tracking.
+        </p>
+      </LegalSection>
+
+      <LegalSection title="Other services">
+        <p>
+          The fonts on this website are loaded from Google Fonts. When you open a page, your browser connects to
+          Google, which can see your IP address. Google has its own privacy policy.
         </p>
       </LegalSection>
 
