@@ -169,8 +169,8 @@ api container.
 npm run seed
 ```
 
-Creates four users, one finished match (alice beat bob) and one in progress
-(charlie vs dana). Safe to run again.
+Creates four users, one finished match (alice beat bob) and two in progress
+(charlie vs dana, alice vs bob). Safe to run again.
 
 | Email | displayName | Password |
 | --- | --- | --- |

@@ -83,6 +83,7 @@ const MATCH_IDS = {
 	moveAfterWin: '00000000-0000-4000-8000-000000000109',
 	badWinner: '00000000-0000-4000-8000-000000000110',
 	draw: '00000000-0000-4000-8000-000000000111',
+	secondActive: '00000000-0000-4000-8000-000000000112',
 } as const;
 
 // One move as stored in the Move table. `by` is the PlayerIndex (0 or 1).
@@ -111,6 +112,13 @@ const ACTIVE_MATCH_MOVES: SeedMove[] = [
 	{ by: 0, row: 7, col: 7 },
 	{ by: 1, row: 7, col: 8 },
 	{ by: 0, row: 8, col: 8 },
+];
+
+const SECOND_ACTIVE_MATCH_MOVES: SeedMove[] = [
+	{ by: 0, row: 6, col: 6 },
+	{ by: 1, row: 6, col: 7 },
+	{ by: 0, row: 7, col: 6 },
+	{ by: 1, row: 8, col: 8 },
 ];
 
 // Resigned: finished with a winner but nobody has five in a row
@@ -494,6 +502,23 @@ async function seedMatches(
 		},
 	});
 	console.log('match ready: charlie vs dana (in progress)');
+
+	const secondActiveRows = toMoveRows(SECOND_ACTIVE_MATCH_MOVES);
+	if (replay(gomoku, secondActiveRows).outcome !== null) {
+		throw new Error(
+			'seed bug: SECOND_ACTIVE_MATCH_MOVES already contains a finished game',
+		);
+	}
+	await prisma.match.create({
+		data: {
+			id: MATCH_IDS.secondActive,
+			game: 'gomoku',
+			player0Id: alice,
+			player1Id: bob,
+			moves: { createMany: { data: secondActiveRows } },
+		},
+	});
+	console.log('match ready: alice vs bob (in progress)');
 }
 
 // Unusual and deliberately broken matches for testing the match page.

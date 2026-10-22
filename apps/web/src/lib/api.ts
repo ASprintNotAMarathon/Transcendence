@@ -7,8 +7,10 @@
   Three layers:
   1. The shapes of data (LAYER 1)
   2. request(), the one function every call goes through (LAYER 2)
-  3. authApi, the functions the rest of the app calls (LAYER 3)
+  3. authApi and matchApi, the functions the rest of the app calls (LAYER 3)
 */
+
+import type { LiveMatch } from '@transcendence/shared'
 
 /*
   LAYER 1: Shapes of data that go in / out:
@@ -113,3 +115,14 @@ const realAuthApi = {
 
 
 export const authApi = realAuthApi
+
+export const matchApi = {
+  live() {
+    return request<LiveMatch[]>('/matches/live')
+  },
+
+  async current() {
+    const match = await request<LiveMatch | undefined>('/matches/current')
+    return match ?? null
+  },
+}
