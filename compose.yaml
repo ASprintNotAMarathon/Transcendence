@@ -41,12 +41,18 @@ services:
       # means the container itself (the api would then look for postgres inside it's own container and wouldn't find it)
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
       TZ: Europe/Amsterdam
+      # Outside /app, so uploads never land in the bind-mounted repo as root-owned files.
+      AVATAR_DIR: /data/avatars
     ports:
       - "127.0.0.1:${API_PORT}:${API_PORT}"
     volumes:
       - .:/app
       - /app/node_modules
       - /app/apps/api/node_modules
+      # Named like postgres-data, so avatars survive `make down` and rebuilds, and `make fclean`
+      # deletes them together with the rows that point at them.
+      # When nginx arrives it can mount this same volume read-only and serve /api/avatars/ itself.
+      - avatars:/data/avatars
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:' + (process.env.API_PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
@@ -74,3 +80,4 @@ services:
 
 volumes:
   postgres-data:
+  avatars:

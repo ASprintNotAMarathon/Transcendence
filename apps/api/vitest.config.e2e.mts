@@ -1,3 +1,6 @@
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
 
@@ -15,6 +18,13 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     setupFiles: ['reflect-metadata'],
+    // Every suite boots the whole app, and the app creates its avatar folder
+    // at start. A fresh temporary one per run keeps test uploads out of the
+    // repo's uploads/. Set here because ConfigModule reads the environment
+    // the moment app.module is imported, before any beforeAll could.
+    env: {
+      AVATAR_DIR: mkdtempSync(join(tmpdir(), 'e2e-avatars-')),
+    },
   },
   plugins: [
     // Same reason as vitest.config.ts: esbuild cannot emit decorator metadata.

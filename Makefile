@@ -33,7 +33,7 @@ check-env: .env
 up: check-env build	## Start everything
 	$(COMPOSE) up -d --build --wait --wait-timeout 180
 
-down:	## Stop and remove the containers, keeping the database
+down:	## Stop and remove the containers, keeping the database and avatars
 	@vols=$$($(COMPOSE) ps -aq | xargs -r docker inspect \
 		-f '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}} {{end}}{{end}}'); \
 	$(COMPOSE) down; \
@@ -59,8 +59,8 @@ seed:	$(DEPS) $(PRISMA)	## Fill the database with demo users and matches
 
 clean: down ## Alias for down
 
-fclean:	## Stop AND DELETE THE DATABASE
-	@printf "This deletes the database volume. Continue? [y/N] "; read a; [ "$$a" = "y" ] || exit 1
+fclean:	## Stop AND DELETE THE DATABASE AND UPLOADED AVATARS
+	@printf "This deletes the database and avatar volumes. Continue? [y/N] "; read a; [ "$$a" = "y" ] || exit 1
 	$(COMPOSE) down -v --remove-orphans
 
 re: fclean up ## Nuke and restart
