@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import type { AuthUser } from '../lib/api'
 import { AVATAR_HINT, checkAvatarFile } from '../lib/avatarFile'
 import { saveAvatar } from '../lib/fakeProfiles'
+import Avatar from './Avatar'
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
@@ -17,6 +18,17 @@ export default function ChangeAvatarForm({ user, onDone }: Props) {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreviewUrl(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file])
 
   function handleChange(event: ChangeEvent<HTMLInputElement>) {
     const chosen = event.target.files?.[0] ?? null
@@ -49,6 +61,12 @@ export default function ChangeAvatarForm({ user, onDone }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-3" noValidate>
+      {previewUrl && (
+        <div className="flex items-center gap-3">
+          <Avatar displayName={user.displayName} avatarUrl={previewUrl} size="lg" />
+          <p className="text-muted text-sm">Preview</p>
+        </div>
+      )}
       <label htmlFor="avatar" className="text-muted text-sm">
         {AVATAR_HINT}
       </label>
