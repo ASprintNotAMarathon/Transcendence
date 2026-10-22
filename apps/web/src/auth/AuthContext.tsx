@@ -28,6 +28,7 @@ type AuthState = {
   login: (input: LoginInput) => Promise<void>
   register: (input: RegisterInput) => Promise<void>
   logout: () => Promise<void>
+  updateUser: (user: AuthUser) => void
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -72,8 +73,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous')
   }
 
+  // Used when the server hands back a changed version of you, for example
+  // after you changed your display name. Everyone reading useAuth() sees it.
+  function updateUser(updated: AuthUser) {
+    setUser(updated)
+  }
+
   return (
-    <AuthContext.Provider value={{ user, status, login, register, logout }}>
+    <AuthContext.Provider value={{ user, status, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   )

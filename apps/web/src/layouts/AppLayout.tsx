@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { ConnectionStatus } from '../socket/ConnectionStatus'
+import UserMenu from '../components/UserMenu'
 import ChatPopup from '../chat/ChatPopup'
 
 function AppLayout() {
@@ -24,23 +25,18 @@ function AppLayout() {
         </NavLink>
 
         <div className="flex items-center gap-3">
-        <ConnectionStatus />
-        <NavLink to="/chat" className={navButtonClass}>
+          <ConnectionStatus />
+          <NavLink to="/chat" className={navButtonClass}>
             Chat
           </NavLink>
-          <NavLink to="/profile" className={navButtonClass}>
-            Profile
-          </NavLink>
-          <button type="button" onClick={handleLogout} className={navButtonClass}>
-            Log out
-          </button>
+          <UserMenu onLogout={handleLogout} />
         </div>
       </header>
 
       <main className="px-6 py-8">
         <Outlet />
       </main>
-	  <ChatPopup />
+      <ChatPopup />
     </div>
   )
 }
