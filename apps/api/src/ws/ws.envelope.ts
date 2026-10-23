@@ -39,9 +39,17 @@ const PAYLOAD_CHECKS: Record<
 	// there is a match.malformed_move, not a transport errror. Presence is
 	// all this layer can check.
 	'match.move': (p) => isNonEmptyString(p.matchId) && 'move' in p,
+	// A message needs a valid conversation ID and non-empty body.
 	'chat.send': (p) =>
 		isNonEmptyString(p.conversationId) && isNonEmptyString(p.body),
-	'chat.history': (p) => isNonEmptyString(p.conversationId),
+	// Request chat history,
+	'chat.history': (p) =>
+		isNonEmptyString(p.conversationId) && // Identify which conversation to load. 
+		(p.before === undefined || isNonEmptyString(p.before)), // before is a MESSAGE_ID string, optional, to paginate backwards.
+	// Request the authenticated user's conversation list
+	// object.keys(p).length === 0 checks that the payload has no own enumerable string-keyed properties. 
+	// For example, {} passes, while { userId: '123' } fails.
+	'chat.conversations': (p) => Object.keys(p).length === 0,
 	'presence.list': (p) => Object.keys(p).length === 0,
 };
 
