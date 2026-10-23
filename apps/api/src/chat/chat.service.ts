@@ -8,6 +8,9 @@
 
 import { Injectable } from '@nestjs/common';
 import type {
+	ChatConversationsPayload,
+	ChatHistoryPayload,
+	ChatHistoryRequestPayload,
 	ChatMessagePayload,
 	ChatSendPayload,
 } from '@transcendence/shared';
@@ -16,6 +19,9 @@ import { ChatError } from './chat.error';
 
 // Maximum number of characters allowed in a message.
 const MESSAGE_MAX_LENGTH = 1000;
+
+//How many messages one history request returns
+const HISTORY_PAGE_SIZE = 50;
 
 // Describes what ChatService.send() returns:
 // the message to deliver and the IDs of both conversation members.
@@ -50,17 +56,10 @@ export class ChatService {
 		}
 		// Find the conversation in the database using its ID.
 		// "await" waits for the database query to finish.
-		const conversation = await this.prisma.conversation.findUnique({
-			where: { id: payload.conversationId },
-		});
-		// Check that the conversation exists and the sender is one of its two members.
-		const isMember =
-			conversation !== null &&
-			(conversation.user0Id === userId ||
-				conversation.user1Id === userId);
-		if (!isMember) {
-			throw new ChatError('chat.not_found');
-		}
+		const conversation = await this.memberConversation(
+			userId,
+			payload.conversationId,
+		);
 		// Save the message and also fetch the sender's user record.
 		// "stored" is the object returned by Prisma after creating the database row.
 		const stored = await this.prisma.message.create({
@@ -90,5 +89,82 @@ export class ChatService {
 			},
 			memberIds: [conversation.user0Id, conversation.user1Id],
 		};
+	}
+	/** One page of messages, delivered oldest-first; `before` pages further back. */
+	async history(
+		userId: string,
+		payload: ChatHistoryRequestPayload,
+	): Promise<ChatHistoryPayload> {
+		const conversation = await this.memberConversation(
+			userId,
+			payload.conversationId,
+		);
+
+		const rows = await this.prisma.message.findMany({
+			where: { conversationId: conversation.id },
+			orderBy: { createdAt: 'desc' },
+			take: HISTORY_PAGE_SIZE,
+			...(payload.before !== undefined
+				? { cursor: { id: payload.before }, skip: 1 }
+				: {}),
+			include: { sender: true },
+		});
+
+		// Fetched newest-first so the page is the right one; delivered
+		// oldest-first because that is the order a chat screen renders.
+		rows.reverse();
+
+		return {
+			conversationId: conversation.id,
+			messages: rows.map((row) => ({
+				conversationId: conversation.id,
+				messageId: row.id,
+				senderId: row.senderId,
+				senderName: row.sender.displayName,
+				body: row.body,
+				createdAt: row.createdAt.toISOString(),
+			})),
+		};
+	}
+
+	/** Every conversation the user is in, most recently active first. */
+	async conversations(userId: string): Promise<ChatConversationsPayload> {
+		const rows = await this.prisma.conversation.findMany({
+			where: { OR: [{ user0Id: userId }, { user1Id: userId }] },
+			orderBy: { updatedAt: 'desc' },
+			include: { user0: true, user1: true },
+		});
+
+		return {
+			conversations: rows.map((row) => {
+				// The payload describes the OTHER person, whichever seat they hold.
+				const other = row.user0Id === userId ? row.user1 : row.user0;
+				return {
+					conversationId: row.id,
+					otherUserId: other.id,
+					otherUserName: other.displayName,
+					lastActivityAt: row.updatedAt.toISOString(),
+				};
+			}),
+		};
+	}
+
+	/**
+	 * The conversation, but only if the asking user is in it. A conversation
+	 * you are not part of behaves exactly like one that does not exist,
+	 * so conversation ids cannot be probed.
+	 */
+	private async memberConversation(userId: string, conversationId: string) {
+		const conversation = await this.prisma.conversation.findUnique({
+			where: { id: conversationId },
+		});
+		const isMember =
+			conversation !== null &&
+			(conversation.user0Id === userId ||
+				conversation.user1Id === userId);
+		if (!isMember) {
+			throw new ChatError('chat.not_found');
+		}
+		return conversation;
 	}
 }

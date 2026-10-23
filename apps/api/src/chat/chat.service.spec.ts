@@ -132,3 +132,147 @@ describe('ChatService.send', () => {
 		expect(create).not.toHaveBeenCalled();
 	});
 });
+
+describe('ChatService.history', () => {
+	let service: ChatService;
+	let findUnique: ReturnType<typeof vi.fn>;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	function messageRow(id: string, body: string, createdAt: string) {
+		return {
+			id,
+			senderId: USER_0.id,
+			body,
+			createdAt: new Date(createdAt),
+			sender: { displayName: USER_0.displayName },
+		};
+	}
+
+	beforeEach(async () => {
+		findUnique = vi.fn();
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				ChatService,
+				{
+					provide: PrismaService,
+					useValue: {
+						conversation: { findUnique },
+						message: { findMany },
+					},
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(ChatService);
+	});
+
+	it('delivers the page oldest-first', async () => {
+		findUnique.mockResolvedValue(conversationRow());
+		// the database answers newest-first, the way the service asks for it
+		findMany.mockResolvedValue([
+			messageRow('message-2', 'second', '2026-10-23T12:01:00Z'),
+			messageRow('message-1', 'first', '2026-10-23T12:00:00Z'),
+		]);
+
+		const result = await service.history(USER_0.id, {
+			conversationId: CONVERSATION_ID,
+		});
+
+		expect(result.messages.map((m) => m.messageId)).toEqual([
+			'message-1',
+			'message-2',
+		]);
+	});
+
+	it('passes the cursor on when before is given', async () => {
+		findUnique.mockResolvedValue(conversationRow());
+		findMany.mockResolvedValue([]);
+
+		await service.history(USER_0.id, {
+			conversationId: CONVERSATION_ID,
+			before: 'message-9',
+		});
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({ cursor: { id: 'message-9' }, skip: 1 }),
+		);
+	});
+
+	it('refuses a conversation you are not part of', async () => {
+		findUnique.mockResolvedValue(conversationRow());
+
+		await expect(
+			service.history(OUTSIDER_ID, { conversationId: CONVERSATION_ID }),
+		).rejects.toMatchObject({ code: 'chat.not_found' });
+		expect(findMany).not.toHaveBeenCalled();
+	});
+});
+
+describe('ChatService.conversations', () => {
+	let service: ChatService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				ChatService,
+				{
+					provide: PrismaService,
+					useValue: { conversation: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(ChatService);
+	});
+
+	it('describes the other person, whichever seat they hold', async () => {
+		findMany.mockResolvedValue([
+			{
+				id: 'conversation-a',
+				user0Id: USER_0.id,
+				user1Id: USER_1.id,
+				updatedAt: new Date('2026-10-23T12:00:00Z'),
+				user0: USER_0,
+				user1: USER_1,
+			},
+			{
+				id: 'conversation-b',
+				user0Id: USER_1.id,
+				user1Id: USER_0.id,
+				updatedAt: new Date('2026-10-23T11:00:00Z'),
+				user0: USER_1,
+				user1: USER_0,
+			},
+		]);
+
+		const result = await service.conversations(USER_0.id);
+
+		expect(result.conversations).toEqual([
+			{
+				conversationId: 'conversation-a',
+				otherUserId: USER_1.id,
+				otherUserName: 'bob',
+				lastActivityAt: '2026-10-23T12:00:00.000Z',
+			},
+			{
+				conversationId: 'conversation-b',
+				otherUserId: USER_1.id,
+				otherUserName: 'bob',
+				lastActivityAt: '2026-10-23T11:00:00.000Z',
+			},
+		]);
+	});
+
+	it('asks the database for most recently active first', async () => {
+		findMany.mockResolvedValue([]);
+		await service.conversations(USER_0.id);
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({ orderBy: { updatedAt: 'desc' } }),
+		);
+	});
+});

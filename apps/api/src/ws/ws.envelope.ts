@@ -44,10 +44,10 @@ const PAYLOAD_CHECKS: Record<
 		isNonEmptyString(p.conversationId) && isNonEmptyString(p.body),
 	// Request chat history,
 	'chat.history': (p) =>
-		isNonEmptyString(p.conversationId) && // Identify which conversation to load. 
+		isNonEmptyString(p.conversationId) && // Identify which conversation to load.
 		(p.before === undefined || isNonEmptyString(p.before)), // before is a MESSAGE_ID string, optional, to paginate backwards.
 	// Request the authenticated user's conversation list
-	// object.keys(p).length === 0 checks that the payload has no own enumerable string-keyed properties. 
+	// object.keys(p).length === 0 checks that the payload has no own enumerable string-keyed properties.
 	// For example, {} passes, while { userId: '123' } fails.
 	'chat.conversations': (p) => Object.keys(p).length === 0,
 	'presence.list': (p) => Object.keys(p).length === 0,
