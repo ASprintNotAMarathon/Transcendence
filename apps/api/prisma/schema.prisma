@@ -39,6 +39,9 @@ model User {
   matchesAsPlayer0 Match[] @relation("MatchPlayer0")
   matchesAsPlayer1 Match[] @relation("MatchPlayer1")
   matchesWon       Match[] @relation("MatchWinner")
+  conversationsAsUser0 Conversation[] @relation("ConversationUser0")
+	conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+	messagesSent         Message[]      @relation("MessageSender")
 }
 
 /// Which engine runs a match. The values match GameEngine.name in shared/.
@@ -112,4 +115,41 @@ model Move {
   /// Two moves cannot claim the same number,
   /// so a double submit or two racing writers lose at the insert instead of both landing.
   @@unique([matchId, moveNumber])
+}
+
+model Conversation {
+	id        String   @id @default(uuid()) @db.Uuid
+	user0Id   String   @db.Uuid
+	user1Id   String   @db.Uuid
+	createdAt DateTime @default(now()) @db.Timestamptz(3)
+	updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+	// Link the conversation to its two participating users.
+  user0    User      @relation("ConversationUser0", fields: [user0Id], references: [id])
+  user1    User      @relation("ConversationUser1", fields: [user1Id], references: [id])
+
+  // A conversation can contain multiple messages.
+  messages Message[]
+
+  // Prevent duplicate conversations for the same pair of users.
+  // The API sorts the user IDs before storing them.
+  @@unique([user0Id, user1Id])
+}
+
+model Message {
+	id             String   @id @default(uuid()) @db.Uuid
+	conversationId String   @db.Uuid
+	senderId       String   @db.Uuid
+	body           String
+	createdAt      DateTime @default(now()) @db.Timestamptz(3)
+	updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  // Link the message to its conversation; delete messages when the conversation is deleted.
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // Link the message to the user who sent it.
+  sender       User         @relation("MessageSender", fields: [senderId], references: [id])
+
+  // Speed up queries that load a conversation's messages in chronological order.
+  @@index([conversationId, createdAt])
 }

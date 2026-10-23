@@ -236,12 +236,31 @@ export interface ChatMessagePayload {
 /** Request the previous messages in a conversation. */
 export interface ChatHistoryRequestPayload {
 	readonly conversationId: string;
+	/** Only messages older than this message id. Absent = start from the newest. */
+	readonly before?: string;
 }
 
 /** The previous messages in a conversation. */
 export interface ChatHistoryPayload {
 	readonly conversationId: string;
 	readonly messages: readonly ChatMessagePayload[];
+}
+
+/** One conversation as the asking user sees it. */
+export interface ChatConversationPayload {
+	readonly conversationId: string;
+	readonly otherUserId: string;
+	readonly otherUserName: string;
+	/** When something last happened here. The list is sorted by this. */
+	readonly lastActivityAt: string;
+}
+
+/** Request your own conversation list. */
+export type ChatConversationsRequestPayload = Record<string, never>;
+
+/** The asking user's conversations, most recently active first. */
+export interface ChatConversationsPayload {
+	readonly conversations: readonly ChatConversationPayload[];
 }
 
 /** A message the server refused. */
@@ -253,13 +272,15 @@ export interface ChatRejectedPayload {
 /** Client to server. */
 export type ChatClientEvent =
 	| Envelope<"chat.send", ChatSendPayload>
-	| Envelope<"chat.history", ChatHistoryRequestPayload>;
+	| Envelope<"chat.history", ChatHistoryRequestPayload>
+	| Envelope<"chat.conversations", ChatConversationsRequestPayload>;
 
 /** Server to client. */
 export type ChatServerEvent =
 	| Envelope<"chat.message", ChatMessagePayload>
 	| Envelope<"chat.history_result", ChatHistoryPayload>
-	| Envelope<"chat.rejected", ChatRejectedPayload>;
+	| Envelope<"chat.rejected", ChatRejectedPayload>
+	| Envelope<"chat.conversations_result", ChatConversationsPayload>;
 
 
 /* ==========================================================================

@@ -85,6 +85,14 @@ const MATCH_IDS = {
 	draw: '00000000-0000-4000-8000-000000000111',
 } as const;
 
+// Fixed ids for the seeded chat, same idea as MATCH_IDS: stable across reseeds.
+const CHAT_IDS = {
+	conversation: '00000000-0000-0000-0000-000000000201',
+	message1: '00000000-0000-0000-0000-000000000202',
+	message2: '00000000-0000-0000-0000-000000000203',
+	message3: '00000000-0000-0000-0000-000000000204',
+} as const;
+
 // One move as stored in the Move table. `by` is the PlayerIndex (0 or 1).
 interface SeedMove {
 	by: 0 | 1;
@@ -433,6 +441,15 @@ async function clearSeedData(prisma: PrismaClient): Promise<void> {
 	});
 	// store the ids of the existing users in a variable
 	const oldIds = existing.map((user) => user.id);
+		// Chat rows reference users, so they must go before the users do.
+	// Deleted only when BOTH members are seed users; messages cascade
+	// with their conversation, like moves with a match.
+	await prisma.conversation.deleteMany({
+		where: {
+			user0Id: { in: oldIds },
+			user1Id: { in: oldIds },
+		},
+	});
 	//delete rows from the match table where both players are in the oldIds list/seed users
 	const { count } = await prisma.match.deleteMany({
 		where: { player0Id: { in: oldIds }, player1Id: { in: oldIds } },
@@ -494,6 +511,44 @@ async function seedMatches(
 		},
 	});
 	console.log('match ready: charlie vs dana (in progress)');
+}
+
+/**
+ * One conversation between alice and bob with a few messages, so the chat
+ * backend has something to show right after a reseed. Fixed ids and fixed
+ * timestamps; clearSeedData removes the previous copy, so re-running is safe.
+ */
+async function seedChat(prisma: PrismaClient): Promise<void> {
+	await prisma.conversation.create({
+		data: {
+			id: CHAT_IDS.conversation,
+			user0Id: SEED_USERS[0].id, // alice
+			user1Id: SEED_USERS[1].id, // bob
+			messages: {
+				create: [
+					{
+						id: CHAT_IDS.message1,
+						senderId: SEED_USERS[0].id,
+						body: 'hey bob, ready for a game?',
+						createdAt: new Date('2026-10-20T12:00:00Z'),
+					},
+					{
+						id: CHAT_IDS.message2,
+						senderId: SEED_USERS[1].id,
+						body: 'always. rematch after lunch?',
+						createdAt: new Date('2026-10-20T12:01:00Z'),
+					},
+					{
+						id: CHAT_IDS.message3,
+						senderId: SEED_USERS[0].id,
+						body: 'deal. loser seeds the database.',
+						createdAt: new Date('2026-10-20T12:02:00Z'),
+					},
+				],
+			},
+		},
+	});
+	console.log('seeded 1 conversation with 3 messages (alice ↔ bob)');
 }
 
 // Unusual and deliberately broken matches for testing the match page.
@@ -655,6 +710,7 @@ async function runSeed(): Promise<void> {
 		await clearSeedData(prisma);
 		const ids = await seedUsers(prisma);
 		await seedMatches(prisma, ids);
+		await seedChat(prisma);
 		if (SEED_EDGE_CASES) {
 			await seedEdgeCases(prisma, ids);
 		}

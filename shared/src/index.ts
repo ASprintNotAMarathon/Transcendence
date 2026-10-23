@@ -19,6 +19,9 @@ export type { MatchSeats, MoveRow, ReplayResult } from "./match.js";
 
 export type {
 	ChatClientEvent,
+	ChatConversationPayload,
+	ChatConversationsPayload,
+	ChatConversationsRequestPayload,
 	ChatErrorCode,
 	ChatHistoryPayload,
 	ChatHistoryRequestPayload,
