@@ -28,6 +28,11 @@ model User {
   /// argon2 output, which embeds its own salt and parameters. Never the password.
   passwordHash String
 
+  /// The avatar's file name, which the server generates on upload. Null until
+  /// the user uploads one. Only the name is stored, not a URL, so moving the
+  /// files somewhere else changes one line of code instead of every row.
+  avatarPath String?
+
   /// Every table carries these two. @db.Timestamptz stores an absolute instant
   /// rather than a wall-clock reading with no timezone, so `now()` in raw SQL
   /// and a Date from Node mean the same thing.

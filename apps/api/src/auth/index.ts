@@ -19,3 +19,6 @@ export { JwtAuthGuard } from './jwt-auth.guard';
 export { CurrentUser } from './current-user.decorator';
 export { PasswordService } from './password.service';
 export type { AuthUser, JwtPayload, PublicUser } from './auth.types';
+// So a route that answers with the caller's own user (renaming, a new avatar)
+// returns exactly what /auth/me does.
+export { PUBLIC_USER_SELECT, toPublicUser } from './auth.types';
