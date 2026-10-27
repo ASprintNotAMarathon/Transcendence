@@ -664,6 +664,190 @@ describe('MatchService.resign', () => {
 	});
 });
 
+const STARTED_AT = new Date('2026-10-17T10:00:00.000Z');
+const OTHER_MATCH_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+function liveRow(overrides: Record<string, unknown> = {}) {
+	return matchRow({
+		createdAt: STARTED_AT,
+		moves: rowsFor(quietMoves),
+		...overrides,
+	});
+}
+
+const brokenMoves: MoveRow[] = [
+	{ moveNumber: 2, by: 0, payload: { row: 7, col: 7 } },
+];
+
+describe('MatchService.live', () => {
+	let service: MatchService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: { match: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('lists an active match that replays cleanly', async () => {
+		findMany.mockResolvedValue([liveRow()]);
+
+		expect(await service.live()).toEqual([
+			{
+				matchId: MATCH_ID,
+				game: 'gomoku',
+				players: [
+					{ userId: PLAYER_0.id, displayName: PLAYER_0.displayName },
+					{ userId: PLAYER_1.id, displayName: PLAYER_1.displayName },
+				],
+				turn: 0,
+				moveNumber: 2,
+				startedAt: '2026-10-17T10:00:00.000Z',
+			},
+		]);
+	});
+
+	it('gives whose turn it is and the move number from the replay', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ moves: rowsFor([{ row: 7, col: 7 }]) }),
+		]);
+
+		const [match] = await service.live();
+
+		expect(match.turn).toBe(1);
+		expect(match.moveNumber).toBe(1);
+	});
+
+	it('leaves out a match whose history does not replay', async () => {
+		findMany.mockResolvedValue([liveRow({ moves: brokenMoves })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('leaves out a match already won on the board', async () => {
+		findMany.mockResolvedValue([liveRow({ moves: rowsFor(winningMoves) })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('leaves out a match for a game with no engine', async () => {
+		findMany.mockResolvedValue([liveRow({ game: 'reversi', moves: [] })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('only asks for active matches, newest first', async () => {
+		findMany.mockResolvedValue([]);
+
+		await service.live();
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { status: 'active' },
+				orderBy: { createdAt: 'desc' },
+			}),
+		);
+	});
+
+	it('keeps the order the database gave', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const matches = await service.live();
+
+		expect(matches.map((match) => match.matchId)).toEqual([
+			OTHER_MATCH_ID,
+			MATCH_ID,
+		]);
+	});
+
+	it('is empty when nothing is being played', async () => {
+		findMany.mockResolvedValue([]);
+
+		expect(await service.live()).toEqual([]);
+	});
+});
+
+describe('MatchService.current', () => {
+	let service: MatchService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: { match: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('only asks for active matches the user plays in', async () => {
+		findMany.mockResolvedValue([]);
+
+		await service.current(PLAYER_1.id);
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					OR: [
+						{ player0Id: PLAYER_1.id },
+						{ player1Id: PLAYER_1.id },
+					],
+					status: 'active',
+				},
+				orderBy: { createdAt: 'desc' },
+			}),
+		);
+	});
+
+	it('gives the newest live match when the user has several', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const match = await service.current(PLAYER_0.id);
+
+		expect(match?.matchId).toBe(OTHER_MATCH_ID);
+	});
+
+	it('skips a broken match and gives the next one', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID, moves: brokenMoves }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const match = await service.current(PLAYER_0.id);
+
+		expect(match?.matchId).toBe(MATCH_ID);
+	});
+
+	it('is null when the user has no live match', async () => {
+		findMany.mockResolvedValue([]);
+
+		expect(await service.current(PLAYER_0.id)).toBeNull();
+	});
+});
+
 describe('the game names', () => {
 	it('agree with the GameName enum in schema.prisma', () => {
 		// shared/ declares its own union because it must stay free of Prisma, so

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { gomoku } from '@transcendence/shared'
 import type {
   GameOutcome,
@@ -20,6 +20,7 @@ import LoadingState from '../components/states/LoadingState'
 import { joinMatch, leaveMatch, resign, sendMove } from '../lib/protocol'
 import GomokuBoard from '../match/GomokuBoard'
 import MatchPlayers from '../match/MatchPlayers'
+import MatchStatus from '../match/MatchStatus'
 import ResignButton from '../match/ResignButton'
 import { useSocket } from '../socket/context'
 interface MatchView {
@@ -189,6 +190,7 @@ function MatchPage() {
 
   const playing = seat !== null && view.outcome === null
   const myTurn = playing && view.turn === seat
+  const backToLobby = view.outcome !== null || seat === null
 
   const play = (move: GomokuMove) => {
     setRefused(null)
@@ -198,30 +200,40 @@ function MatchPage() {
   const notice = refusedMove ? REJECTION_MESSAGES[refused.code] : null
 
   return (
-    <div className="flex flex-col items-center gap-6">
-      <div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">
-        <div className="flex w-full max-w-[32rem] flex-col items-center gap-3 xl:col-start-2">
-          <GomokuBoard
-            state={view.board}
-            onPlay={view.outcome === null ? play : undefined}
-            preview={myTurn}
-            flash={view.outcome === null}
-          />
-          <p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">
-            {notice}
-          </p>
-        </div>
-        <div className="flex w-full max-w-[32rem] flex-col gap-6 xl:w-56 xl:justify-self-start">
-          <MatchPlayers
-            players={view.players}
-            seat={seat}
-            turn={view.turn}
-            outcome={view.outcome}
-            endReason={view.endReason}
-          />
-          {playing && <ResignButton key={matchId} onResign={() => send(resign(matchId))} />}
-        </div>
+    <div className="match-layout">
+      <div className="match-status flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-start">
+        <MatchStatus
+          players={view.players}
+          seat={seat}
+          turn={view.turn}
+          outcome={view.outcome}
+          endReason={view.endReason}
+        />
+        {backToLobby && (
+          <Link to="/home" className="btn btn-sm shrink-0 tracking-wide border-2 btn-outline-accent">
+            ← Back to lobby
+          </Link>
+        )}
       </div>
+      <div className="match-board flex flex-col items-center gap-3">
+        <GomokuBoard
+          state={view.board}
+          onPlay={view.outcome === null ? play : undefined}
+          preview={myTurn}
+          flash={view.outcome === null}
+        />
+        <p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">
+          {notice}
+        </p>
+      </div>
+      <div className="match-players">
+        <MatchPlayers players={view.players} turn={view.turn} outcome={view.outcome} />
+      </div>
+      {playing && (
+        <div className="match-actions">
+          <ResignButton key={matchId} onResign={() => send(resign(matchId))} />
+        </div>
+      )}
     </div>
   )
 }
