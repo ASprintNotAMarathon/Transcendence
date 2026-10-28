@@ -30,7 +30,7 @@ check-env: .env
 			echo "	expected:	$$expected"; \
 			echo "	actual:		$$DATABASE_URL"; exit 1; }
 
-up: check-env build	## Start everything
+up: check-env build $(PRISMA)	## Start everything
 	$(COMPOSE) up -d --build --wait --wait-timeout 180
 
 down:	## Stop and remove the containers, keeping the database and avatars
