@@ -21,6 +21,9 @@ export type { LiveMatch } from "./lobby.js";
 
 export type {
 	ChatClientEvent,
+	ChatConversationPayload,
+	ChatConversationsPayload,
+	ChatConversationsRequestPayload,
 	ChatErrorCode,
 	ChatHistoryPayload,
 	ChatHistoryRequestPayload,

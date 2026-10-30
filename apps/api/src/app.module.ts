@@ -9,6 +9,7 @@ import { MatchModule } from './match/match.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { WsModule } from './ws/ws.module';
 import { AuthModule } from './auth/auth.module';
+import { ChatModule } from './chat/chat.module';
 import { UsersModule } from './users/users.module';
 
 // The repo keeps a single .env at its root. Without this, @nestjs/config looks
@@ -30,6 +31,7 @@ const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
 		UsersModule,
 		WsModule,
 		MatchModule,
+		ChatModule,
 	],
 	controllers: [AppController, HealthController],
 	providers: [AppService],
