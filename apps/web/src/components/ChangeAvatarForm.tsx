@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import type { AuthUser } from '../lib/api'
+import { ApiError, usersApi, type AuthUser } from '../lib/api'
 import { AVATAR_HINT, checkAvatarFile } from '../lib/avatarFile'
-import { saveAvatar } from '../lib/fakeProfiles'
 import Avatar from './Avatar'
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -50,11 +49,17 @@ export default function ChangeAvatarForm({ user, onDone }: Props) {
     }
     setSaving(true)
     try {
-      const updated = await saveAvatar(user, file)
+      const updated = await usersApi.uploadAvatar(file)
       updateUser(updated)
       onDone()
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (caught) {
+      if (caught instanceof ApiError && caught.status === 413) {
+        setError('This file is too large. The maximum is 5 MB.')
+      } else if (caught instanceof ApiError && caught.fieldErrors?.avatar) {
+        setError(caught.fieldErrors.avatar)
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
       setSaving(false)
     }
   }

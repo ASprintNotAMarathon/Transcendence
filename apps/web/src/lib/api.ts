@@ -66,7 +66,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     // If login seems to work but /me gives a 401 right after, check the cookie in the browser.
     credentials: 'include',
     headers: {
-      'Content-Type': 'application/json',
+      ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...init?.headers,
     },
     ...init,
@@ -124,5 +124,29 @@ export const matchApi = {
   async current() {
     const match = await request<LiveMatch | undefined>('/matches/current')
     return match ?? null
+  },
+}
+
+export type Profile = {
+  id: string
+  displayName: string
+  avatarUrl: string | null
+  createdAt: string
+}
+
+export const usersApi = {
+  get(id: string) {
+    return request<Profile>(`/users/${id}`)
+  },
+  updateName(displayName: string) {
+    return request<AuthUser>('/users/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ displayName }),
+    })
+  },
+  uploadAvatar(file: File) {
+    const form = new FormData()
+    form.append('avatar', file)
+    return request<AuthUser>('/users/me/avatar', { method: 'POST', body: form })
   },
 }

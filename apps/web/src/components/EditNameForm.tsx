@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
-import { ApiError, type AuthUser } from '../lib/api'
+import { ApiError, usersApi, type AuthUser } from '../lib/api'
 import { DISPLAY_NAME_MESSAGE, DISPLAY_NAME_PATTERN } from '../lib/displayName'
-import { saveDisplayName } from '../lib/fakeProfiles'
 import FormField from './FormField'
 
 /*
@@ -41,7 +40,7 @@ function EditNameForm({ user, onDone }: EditNameFormProps) {
 
     setSaving(true)
     try {
-      const updated = await saveDisplayName(user, name)
+      const updated = await usersApi.updateName(name)
       updateUser(updated)
       onDone()
     } catch (caught) {
