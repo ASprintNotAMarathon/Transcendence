@@ -116,10 +116,50 @@ body::before {
   animation: stone-flash 0.8s ease-out forwards;
 }
 
-.stone-won {
-  stroke: var(--color-secondary);
-  stroke-width: 2px;
-  filter: drop-shadow(0 0 10px var(--color-secondary));
+.match-layout {
+  display: grid;
+  grid-template-areas: "status" "board" "players" "actions";
+  gap: 1rem;
+  width: 100%;
+  max-width: 32rem;
+  margin-inline: auto;
+  padding-bottom: 3rem;
+
+  @variant xl {
+    max-width: none;
+    padding-bottom: 0;
+    grid-template-columns: 1fr 32rem 1fr;
+    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas:
+      ". board status"
+      ". board players"
+      ". board actions"
+      ". board .";
+    column-gap: 2rem;
+    row-gap: 1.5rem;
+    align-items: start;
+  }
+}
+
+.match-status { grid-area: status; }
+.match-board { grid-area: board; }
+.match-players { grid-area: players; }
+.match-actions { grid-area: actions; }
+
+.match-status,
+.match-players,
+.match-actions {
+  @variant xl {
+    width: 14rem;
+  }
+}
+
+.board-win-line {
+  animation: win-line-draw 0.4s ease-out backwards;
+}
+
+.board-win-glow {
+  animation: stone-glow 0.4s ease-out backwards;
 }
 
 .stone-lost {
@@ -157,7 +197,9 @@ body::before {
 
 @media (prefers-reduced-motion: reduce) {
   .stone-pop,
-  .stone-win-line {
+  .stone-win-line,
+  .board-win-line,
+  .board-win-glow {
     animation: none;
   }
 

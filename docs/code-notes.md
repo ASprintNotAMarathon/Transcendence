@@ -20,6 +20,41 @@ So `make test` on an up-to-date clone skips the install, but still works on a fr
 npm writes that file only when an install finishes, so a failed `npm ci` leaves it missing and the next make tries again.
 node_modules/ itself can't be the target: npm ci updates its timestamp even when it fails halfway, and make would then skip every retry.
 
+## `apps/api/prisma/schema.prisma`
+
+### Line 55 · `enum EndReason {`
+
+Why a finished match ended: `board` when the engine decided it (five in a row, a full board),
+`resigned` when a player gave up. `abandoned` is for #4, where a player who stays disconnected loses;
+it exists already so that issue needs no migration.
+
+### Line 80 · `endReason EndReason?`
+
+Inside `model Match`
+
+Set together with status = finished and winnerId, and null while the match is running.
+A resignation isn't a move, so unlike the board it can't be rebuilt from the Move rows and has to be stored.
+
+## `apps/api/prisma/seed.ts`
+
+### Line 86 · `secondActive: '00000000-0000-4000-8000-000000000112',`
+
+A second game in progress, so the lobby can be tested from both sides at once:
+alice has her own game to Resume and charlie vs dana to Watch, and charlie sees the reverse.
+Next number after the edge cases, so no existing link changes.
+
+### Line 117 · `const SECOND_ACTIVE_MATCH_MOVES: SeedMove[] = [`
+
+Four moves, so it is player 0's turn: alice reads "Your turn" in the lobby and can play straight away.
+Nobody is close to five, so a quick test move can't end it by accident.
+
+### Line 506 · `const secondActiveRows = toMoveRows(SECOND_ACTIVE_MATCH_MOVES);`
+
+Inside `async function seedMatches(…)`
+
+Same check as charlie vs dana: replay the list before writing it, so a typo that makes it
+illegal or already won fails the seed instead of seeding a game the lobby would hide.
+
 ## `apps/api/src/app.service.ts`
 
 ### Line 10 · `availableGames(): string[]`
@@ -30,6 +65,52 @@ The games that can actually be played, which is narrower than the games the sche
 GameName lists reversi, but no engine implements it yet.
 Derived from the registry in @transcendence/shared,
 so adding an engine is the only thing needed to make it appear here.
+
+## `apps/api/src/match/match.controller.ts`
+
+### Line 1 · file header
+
+The HTTP side of matches: what the lobby and the Match button ask before any socket is involved.
+Playing, watching and resigning stay on the socket; this only answers "what is being played?"
+and "where is my game?". Like MatchHandlers it holds no logic: everything is in MatchService.
+
+### Line 7 · `@Controller('matches')`
+
+With the global 'api' prefix from main.ts, the routes below are /api/matches/live and /api/matches/current.
+
+### Line 8 · `@UseGuards(JwtAuthGuard)`
+
+On the class, so it covers every route in it, including any added later.
+No cookie, or a bad one, answers 401 before the method runs.
+The lobby is only for logged-in players, and current needs to know who is asking anyway.
+
+### Line 13 · `live(): Promise<LiveMatch[]>`
+
+Inside `export class MatchController`
+
+Every live match, the caller's own included. The lobby is the one that moves yours to the top,
+so this list means the same thing whoever asks.
+
+### Line 18 · `async current(`
+
+Inside `export class MatchController`
+
+The caller's newest live match, or 204 when they have none.
+204 rather than 200 with null: "nothing here" is a normal answer, not a failure,
+and request() in the web app already turns a 204 into undefined.
+
+### Line 20 · `@Res({ passthrough: true }) res: Response,`
+
+Inside `async current(…)`
+
+Only to change the status code. passthrough keeps Nest in charge of sending the response,
+so the returned value is still what goes out; without it, the method would have to send everything itself.
+
+### Line 24 · `res.status(HttpStatus.NO_CONTENT);`
+
+Inside `async current(…)`
+
+Sets the code and returns nothing. A 204 carries no body, so there is nothing else to send.
 
 ## `apps/api/src/match/match.error.ts`
 
@@ -108,13 +189,22 @@ rethrown for the dispatcher to log.
 
 ## `apps/api/src/match/match.service.ts`
 
-### Line 18 · `function isMoveNumberTaken(error: unknown): boolean`
+### Line 23 · `function isMoveNumberTaken(error: unknown): boolean`
 
 Move has exactly one composite unique constraint, on (matchId, moveNumber),
 so a P2002 from inserting a move can only mean that number was already taken.
 The code alone is enough.
 
-### Line 25 · `@Injectable() export class MatchService`
+### Line 30 · `function replayOrNull(game: string, moves: readonly MoveRow[])`
+
+The lobby's version of opening a match: replay it, and if that fails, say so with null
+instead of throwing. rebuild() lets the error through because one broken match should be loud;
+a list should not go down with it, so here the broken match just drops out.
+
+getEngine sits inside the try on purpose. A match for a game this server cannot run
+can't be watched either, so it drops out the same way rather than turning the whole lobby into a 500.
+
+### Line 38 · `@Injectable() export class MatchService`
 
 The match runtime. The server owns the board; this is where it keeps it.
 
@@ -127,7 +217,7 @@ can never leave a stored board and a stored history disagreeing.
 The user id arrives as a plain argument rather than off a socket, so all of
 this can be written and tested before the gateway in #21 exists.
 
-### Line 29 · `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+### Line 42 · `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
 Inside `@Injectable() export class MatchService`
 
@@ -139,7 +229,7 @@ MatchJoinPayload is documented as joining "as a player or as a spectator", so th
 that arrives in step 4, where seatOf() returning null becomes a match.not_a_player rejection.
 The parameter stays because the gateway will pass it and any future visibility rule belongs right here.
 
-### Line 46 · `state: engine.serialize(position.state)`
+### Line 59 · `state: engine.serialize(position.state)`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
@@ -149,7 +239,7 @@ For gomoku the two happen to look alike,
 which is exactly why skipping it would go unnoticed
 until an engine whose state is not already JSON.
 
-### Line 47 · `outcome: match.status === 'finished' ? outcomeOf(match.winnerId, match) : position.outcome`
+### Line 60 · `outcome: match.status === 'finished' ? outcomeOf(match.winnerId, match) : position.outcome`
 
 Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 
@@ -162,7 +252,14 @@ An active match whose replay does show a win is an inconsistency step 4 prevents
 by closing the match in the same write that stores the winning move.
 Report it, never repair it: a read path that writes is a surprise nobody wants to debug.
 
-### Line 55 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
+### Line 64 · `endReason: match.status === 'finished' ? (match.endReason ?? 'played') : null`
+
+Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+
+Matches that finished before the endReason column existed have it null.
+Back then a game could only end on the board, so that is what null on a finished match means.
+
+### Line 72 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
 Inside `@Injectable() export class MatchService`
 
@@ -179,7 +276,7 @@ even though both are true of a finished match.
 The payload is the client speaking,
 and a client that could name its own player id could play as its opponent.
 
-### Line 69 · `if (match.status === 'finished' || position.outcome !== null) {`
+### Line 86 · `if (match.status === 'finished' || position.outcome !== null) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -187,7 +284,7 @@ Two witnesses, and either one is enough to refuse.
 The status column is the record; the replayed board is what actually happened.
 They agree unless a crash landed a winning move without closing the match.
 
-### Line 83 · `let move: unknown`
+### Line 100 · `let move: unknown`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -196,7 +293,7 @@ It knows nothing about the position,
 so "shaped like a move" and "playable here" are two separate answers,
 and the protocol has a separate code for each.
 
-### Line 115 · `if (outcome !== null) {`
+### Line 132 · `if (outcome !== null) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -204,7 +301,15 @@ Same transaction as the move that ended the game,
 so a finished match can never exist without its result,
 and a result can never exist without the move that caused it.
 
-### Line 126 · `if (isMoveNumberTaken(error)) {`
+### Line 133 · `const { count } = await tx.match.updateMany({`
+
+Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
+
+Only closes a match that is still active. If a resignation landed between the checks above and this write,
+count is 0, and throwing inside the transaction undoes the move as well,
+so the stored result stays the resignation instead of being overwritten.
+
+### Line 150 · `if (isMoveNumberTaken(error)) {`
 
 Inside `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
@@ -214,7 +319,81 @@ and the database decides: one insert lands, the other loses.
 Losing means the position moved on while this request was in flight,
 which is exactly "not your turn" by the time it mattered.
 
-### Line 145 · `private async rebuild(matchId: string)`
+### Line 169 · `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
+
+Inside `@Injectable() export class MatchService`
+
+The same checks as a move, in the same order: is this a player, and is the game still running.
+The opponent wins, and the result goes out as match.ended rather than match.moved, since no move was played.
+
+### Line 192 · `const { count } = await this.prisma.match.updateMany({`
+
+Inside `async resign(userId: string, matchId: string): Promise<MatchEndedPayload>`
+
+The checks above read the match a moment before this write.
+In between, the other player can resign or play a winning move.
+Writing only where the status is still active lets the database decide which one counts;
+count 0 means this resignation lost and the game had already ended.
+
+### Line 210 · `live(): Promise<LiveMatch[]>`
+
+Inside `@Injectable() export class MatchService`
+
+Every game being played right now, for the lobby. Newest first.
+Not async: it only hands back liveMatches' promise, so there is nothing to await here.
+
+### Line 214 · `async current(userId: string): Promise<LiveMatch | null>`
+
+Inside `@Injectable() export class MatchService`
+
+The newest live match this user plays in, or null. What the Match button opens.
+A player should only ever have one, but nothing in the schema stops two
+(the seed gives charlie two active matches), so this picks rather than assumes.
+
+### Line 216 · `OR: [{ player0Id: userId }, { player1Id: userId }],`
+
+Inside `async current(userId: string): Promise<LiveMatch | null>`
+
+"Is player 0 or player 1". The two seats are separate columns, each with its own index,
+so this is two index lookups rather than a scan.
+
+### Line 221 · `private async liveMatches(`
+
+Inside `@Injectable() export class MatchService`
+
+The one query live() and current() share, so the rule for what counts as live
+is written once. A live match is active, replays cleanly, and has no winner on the board yet.
+status alone is not enough: a broken history or an unclosed win still says active.
+
+### Line 225 · `where: { ...where, status: 'active' },`
+
+Inside `private async liveMatches(…)`
+
+The caller's filter, with status always added on top.
+Spread first, so no caller can ask for finished matches by accident.
+
+### Line 226 · `orderBy: { createdAt: 'desc' },`
+
+Inside `private async liveMatches(…)`
+
+createdAt, not updatedAt: a move adds a Move row and never touches the Match row,
+so updatedAt stays put for the whole game and says nothing about activity.
+
+### Line 243 · `if (position === null || position.outcome !== null) {`
+
+Inside `private async liveMatches(…)`
+
+null: the history doesn't replay. An outcome: someone already has five in a row
+and the match was never closed. Neither is a game anyone can still play or watch.
+
+### Line 262 · `startedAt: match.createdAt.toISOString(),`
+
+Inside `private async liveMatches(…)`
+
+Prisma gives a Date; LiveMatch says string, which is what JSON would turn it into anyway.
+Converting here keeps the type honest about what reaches the browser.
+
+### Line 268 · `private async rebuild(matchId: string)`
 
 Inside `@Injectable() export class MatchService`
 
@@ -223,7 +402,16 @@ Load a match and replay it into a position, or throw match.not_found.
 Shared by join and move, so there is one query and one orderBy to get right
 instead of two that could drift apart.
 
-### Line 158 · `orderBy: { moveNumber: 'asc' },`
+### Line 269 · `if (!isUUID(matchId)) {`
+
+Inside `private async rebuild(matchId: string)`
+
+An id that isn't a uuid, like /match/abc, never reaches the database.
+Postgres refuses it for a uuid column, and Prisma batches findUnique calls made in the same tick into one query,
+so that one bad id would fail every lookup in the batch, including other people's valid matches.
+Catching the error afterwards can't tell those apart, so the check comes first.
+
+### Line 289 · `orderBy: { moveNumber: 'asc' },`
 
 Inside `private async rebuild(matchId: string)`
 
@@ -232,7 +420,7 @@ and replay() throws on an out-of-sequence row rather than sorting,
 so that a clause forgotten here surfaces as a loud failure
 instead of a plausible board built from a shuffled history.
 
-### Line 171 · `const engine`
+### Line 302 · `const engine`
 
 Inside `private async rebuild(matchId: string)`
 
@@ -267,18 +455,85 @@ stones pop in one by one, winning line and winning stones
 glow together once the last stone lands. See the timing note on
 .stone-win-glow below for how these four pieces stay in sync.
 
-### Line 111 · `.stone-win-glow {`
+### Line 119 · `.match-layout {`
+
+The match page as four areas: status, board, players and actions (the Resign button).
+On a phone they stack in that order, so whose turn it is, or how it ended, is the first thing on screen
+rather than below a board that fills the whole height.
+The page renders each piece once; only this grid moves them.
+
+### Line 126 · `padding-bottom: 3rem;`
+
+Inside `.match-layout {`
+
+Room at the bottom for the Chat button, which ChatPopup pins to the bottom-right of the screen on every page.
+Without it, on a phone the last row (the players, or Resign) scrolls under that button,
+or sits beside it at a slightly different height, which looks like a misaligned pair.
+Only on the match page for now, while the button's place isn't settled; if it stays,
+this belongs on AppLayout's main for every page. Removed from xl up, where nothing reaches that corner.
+
+### Line 128 · `@variant xl {`
+
+Inside `.match-layout {`
+
+From xl up there is room beside the board, so it takes the middle column and the other three areas
+stack in the right one. The empty left column balances the right, keeping the board in the exact centre.
+The last row (1fr) absorbs the board's extra height, so status, players and actions stay together at the top.
+@variant xl compiles to the same breakpoint as the xl: classes in the components, so the two can't drift apart.
+
+### Line 144 · `.match-status { grid-area: status; }`
+
+Which area each piece of MatchPage goes in. Kept here with the grid that names the areas,
+so a renamed area is changed in one file.
+
+### Line 149 · `.match-status,`
+
+The right column is 14rem wide on desktop, the width the old player panel had.
+On a phone the pieces take the full width of the layout instead.
+
+### Line 157 · `.board-win-line {`
+
+The match board's winning line: the landing page's fade, without its 1.3s wait.
+That delay lines up with the illustration's stones popping in one by one;
+on a real board the last stone is already down, so the line shows straight away.
+
+### Line 161 · `.board-win-glow {`
+
+The landing page's glow on the winning stones, played once with the line.
+Backwards rather than forwards, so when it finishes the glow is gone,
+and the line is what stays.
+
+### Line 179 · `.stone-win-glow {`
 
 Win line + winning stones glow together at 1.3s, synced with the
 last stone's pop-in animation finishing (10 stones x 0.12s delay).
 
-### Line 117 · `@keyframes title-glow {`
+### Line 185 · `@keyframes title-glow {`
 
 Accent glow used on the "GO" in the logo/title
 
-### Line 152 · `@keyframes stone-loading-pulse {`
+### Line 231 · `@keyframes stone-loading-pulse {`
 
 "Five-in-a-row" inspired spinner (this is the icon for Loading... )
+
+## `apps/web/src/lib/api.ts`
+
+### Line 13 · `import type { LiveMatch } from '@transcendence/shared'`
+
+The same type the api builds in MatchService, so a field renamed on one side
+fails the build on the other instead of showing up as undefined in the lobby.
+
+### Line 118 · `export const matchApi = {`
+
+The lobby's two questions to the api, next to authApi so this stays the only file that calls fetch.
+Both go through request(), so they send the cookie and throw an ApiError the same way login does.
+
+### Line 123 · `async current() {`
+
+Inside `export const matchApi = {`
+
+The api answers 204 with no body when you have no live match, and request() turns a 204 into undefined.
+`?? null` makes that null, so callers check one thing, the same null MatchService.current returns.
 
 ## `apps/web/src/match/GomokuBoard.tsx`
 
@@ -305,60 +560,271 @@ The traditional marker points on a 15×15 board: the centre and four around it.
 Defined once here, not inside the component, so the 30 grid lines share one
 object instead of building a new one on every render.
 Styles rather than attributes: var() only resolves in a declaration,
-see the note in stones.ts.
+see the note in stones.ts. winLine below is the same, for the red winning line.
 
-### Line 22 · `onPlay?: (move: GomokuMove) => void`
+### Line 23 · `onPlay?: (move: GomokuMove) => void`
 
 Called with the point that was clicked, legal or not:
 the server is the one that says no, and says why.
 Left out and the board is the picture it has always been.
 
-### Line 23 · `preview?: boolean`
+### Line 24 · `preview?: boolean`
 
 Whether hovering shows the stone a click would place.
 Off when the click is not yours to make, between turns or while watching:
 the point still answers, so the server can say why,
 but it never shows a stone that is not going to appear.
 
-### Line 30 · `const legal = useMemo(…)`
+### Line 25 · `flash?: boolean`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Whether the last stone played gets its ring.
+It marks the move that just happened, so it is only worth showing while the game goes on.
+Once the match is over, the result says what happened,
+and a ring on every reload of a finished match would point at nothing new.
+The board cannot tell on its own: a resigned match looks like any other position.
+
+### Line 35 · `const wins = useMemo(() => winningLines(state), [state])`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+The winning lines, one array each, from winningLines in the shared engine.
+Kept apart so each one gets its own line drawn through it;
+won flattens them into one set, for the stones.
+
+### Line 41 · `const legal = useMemo(…)`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 Which points are legal is the engine's answer, not this file's:
 every empty one, and none at all once somebody has won.
 Only those respond to the pointer. The rest still take a click,
 so a stone or a finished game gets the server's reason instead of silence.
 
-### Line 53 · `<circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />`
+### Line 64 · `<circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 The glow spills past the board, so it must not catch clicks meant for what sits around it.
 
-### Line 80 · `{onPlay !== undefined && board.flatMap((cells, row) =>`
+### Line 77 · `{wins.map((line) => {`
 
-Inside `function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps)`
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+One red line per winning run, centre of its first stone to centre of its last,
+as on the landing page. Drawn before the stones, so it shows in the gaps
+between them and the stones sit on top of it.
+
+### Line 103 · `className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'board-win-glow' : 'stone-lost'}`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
+
+Once someone has won, the stones on the winning lines glow once
+and every other stone fades back, so the line and its stones are what you see.
+The class arrives with the win, so the glow plays on the winning move
+and again only when the board is opened fresh.
+
+### Line 123 · `{onPlay !== undefined && board.flatMap((cells, row) =>`
+
+Inside `function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps)`
 
 Last, so the targets sit above the grid and the stones and catch the click themselves.
 One on every point. On a legal one it is the stone that would be played,
 kept invisible until the pointer is on it: the preview and the hit area
 are the same circle, so what lights up is exactly what a click would place.
 
+## `apps/web/src/match/LiveMatchRow.tsx`
+
+### Line 1 · file header
+
+One game in the lobby: the two players with their stones, how far the game is, and a way in.
+It only draws what it is given; LiveMatches does the loading.
+
+### Line 13 · `function movesLabel(moveNumber: number): string`
+
+moveNumber counts the moves already played, so "3 moves" rather than "Move 3",
+which would read as the move about to be played.
+
+### Line 19 · `function turnLabel(match: LiveMatch, seat: PlayerIndex | null): string`
+
+"Your turn" when the player to move is you, which is the reason to press Resume.
+Everyone else reads whose turn it is by name, like the panel on the match page.
+
+### Line 37 · `const seat = index === -1 ? null : (index as PlayerIndex)`
+
+Inside `function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)`
+
+Your seat in this game, or null when you are not in it. Same pattern as MatchPage.
+
+### Line 56 · `{seat === null ? 'Watch' : 'Resume'}`
+
+Inside `function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)`
+
+Both go to the same /match/:id. The match page already knows the difference:
+a player gets the board and the Resign button, anyone else watches.
+Decided per row rather than by section, so a second live game of yours still says Resume.
+
+## `apps/web/src/match/LiveMatches.tsx`
+
+### Line 1 · file header
+
+The lobby's contents: your game first, then everyone else's.
+Kept out of HomePage so it can move to another page, or sit next to other sections,
+without being rewritten.
+
+Loads once, when it opens. A game that starts or ends afterwards shows on the next visit;
+live updates would need the socket.
+
+### Line 9 · `type Lobby =`
+
+The three states the lobby can be in, as one value rather than three separate flags.
+current and live only exist on 'loaded', so nothing can read them while loading
+or after a failure, and the type says so.
+
+### Line 22 · `let cancelled = false`
+
+Inside `function LiveMatches()`
+
+Leaving the page before the answer arrives must not set state on a component that is gone.
+StrictMode in development mounts every effect twice, so this also stops the first,
+abandoned load from overwriting the second.
+
+### Line 24 · `Promise.all([matchApi.current(), matchApi.live()])`
+
+Inside `function LiveMatches()`
+
+Both requests at once rather than one after the other. If either fails, the whole lobby
+shows the error: half a lobby would hide your own game, or everyone else's, without saying so.
+
+### Line 35 · `}, [attempt])`
+
+Inside `function LiveMatches()`
+
+The effect runs again whenever attempt changes, which is how Try again reloads.
+
+### Line 37 · `const retry = () => {`
+
+Inside `function LiveMatches()`
+
+Shows the loading state again, then bumps attempt to start a new load.
+The loading state is set here, in the click, rather than inside the effect:
+setting state directly in an effect costs an extra render, and the hooks lint rule flags it.
+
+### Line 51 · `const others = live.filter((match) => match.matchId !== current?.matchId)`
+
+Inside `function LiveMatches()`
+
+live includes your own game, since the api answers the same list to everyone.
+It is already shown at the top, so it is taken out of the list below.
+
 ## `apps/web/src/match/MatchPlayers.tsx`
 
 ### Line 1 · file header
 
-MatchPlayers sits beside the board: both players, their stone,
-and whose turn it is (or who won, once the match is over).
+The two players and their stones, with the one to move (or the winner) outlined.
+The headline and the reason line used to live here too; they moved to MatchStatus
+so the page can put the result above the board on a phone and the players below it.
 
 Like GomokuBoard it only draws what it is given.
 `turn` means nothing once `outcome` is set, so it is only read while the match runs.
 
-### Line 17 · `const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null`
+### Line 11 · `const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null`
 
 Inside `function MatchPlayers({ players, turn, outcome }: MatchPlayersProps)`
 
 Highlighted: the player to move, or the winner. Nobody, on a draw.
+
+### Line 14 · `<ul aria-label="Players" className="grid grid-cols-2 gap-2 xl:grid-cols-1">`
+
+Inside `function MatchPlayers({ players, turn, outcome }: MatchPlayersProps)`
+
+Side by side on a phone, so both players take one short row under the board.
+One per row from xl, where the column beside the board is narrow and tall.
+
+### Line 24 · `: 'border-(--color-board-line) text-muted xl:border-transparent'`
+
+Inside `function MatchPlayers({ players, turn, outcome }: MatchPlayersProps)`
+
+Side by side, two chips need edges to read as two things, so the inactive one keeps a faint border.
+Stacked on desktop it doesn't, and stays borderless as before.
+
+## `apps/web/src/match/MatchStatus.tsx`
+
+### Line 1 · file header
+
+What is happening in this match, in one line: whose turn, or how it ended, and why.
+Plus the Watching label for anyone who isn't playing.
+Its own component so MatchPage can place it apart from the player list.
+
+### Line 11 · `function headline({ players, seat, turn, outcome }: MatchStatusProps): string`
+
+Written from where you sit:
+a player reads "You won" or "You lost", a spectator reads who won.
+
+### Line 18 · `function reason({ players, seat, outcome, endReason }: MatchStatusProps): string | null`
+
+The line after the headline: how the match ended. Nothing while it runs.
+Sits on the same line as the headline when there's room, and wraps under it when there isn't.
+
+### Line 20 · `if (outcome.kind === 'draw') return 'The board is full'`
+
+Inside `function reason(…)`
+
+The engine only calls a draw when all 225 points are filled, so that is always the reason.
+
+### Line 22 · `const name = (player: PlayerIndex) => (player === seat ? 'You' : players[player].displayName)`
+
+Inside `function reason(…)`
+
+"You" for your own seat, the name for anyone else, so the same sentence works for
+both players and for spectators: "You resigned", "dana resigned", "You got five in a row".
+
+### Line 28 · `` return `${name(winner)} got five in a row` ``
+
+Inside `function reason(…)`
+
+Anything not resigned or abandoned ended on the board. A finished match with no stored reason
+arrives as 'played' from the server, so it lands here too.
+
+### Line 33 · `const watching = props.seat === null`
+
+Inside `function MatchStatus(props: MatchStatusProps)`
+
+No seat means you are not one of the two players.
+
+### Line 36 · `<div className="flex min-w-0 flex-col items-start gap-2">`
+
+Inside `function MatchStatus(props: MatchStatusProps)`
+
+min-w-0 lets this shrink when MatchPage puts it in a row next to Back to lobby,
+so a long headline or reason wraps instead of pushing the link off the screen.
+A flex item won't shrink below its content without it.
+
+### Line 37 · `{watching && (`
+
+Inside `function MatchStatus(props: MatchStatusProps)`
+
+Above the headline, so a spectator sees it first: everything under it is someone else's game.
+Stays after the match ends too, since the headline then reads "alice wins" rather than "You won",
+and the label says why.
+
+## `apps/web/src/match/ResignButton.tsx`
+
+### Line 1 · file header
+
+Resign, in two clicks: the first asks, the second sends.
+The question replaces the button rather than opening a browser dialog,
+so it sits in the page and can be answered or cancelled from there.
+
+Like the board it only offers. Nothing changes on screen until match.ended
+comes back and MatchPage takes the button away.
+
+### Line 11 · `const [sent, setSent] = useState(false)`
+
+Inside `function ResignButton({ onResign }: ResignButtonProps)`
+
+Once the resignation is on its way, both buttons go quiet:
+a second click would only earn "This match is already over".
+Never reset, because the component does not outlive the match ending.
 
 ## `apps/web/src/match/stones.ts`
 
@@ -374,6 +840,13 @@ This returns CSS, not a colour value, so whatever it is handed to must be a
 style declaration: `style={{ fill: … }}`, never `fill="…"`.
 var() is not valid in an SVG presentation attribute — it does not fail
 loudly, it just paints black.
+
+## `apps/web/src/pages/HomePage.tsx`
+
+### Line 1 · file header
+
+/home is the lobby: where login lands, and where the logo leads.
+All the content is in LiveMatches; this page only gives it a title and a width.
 
 ## `apps/web/src/pages/MatchPage.tsx`
 
@@ -391,7 +864,9 @@ and this page renders whatever those return.
 
   join ──────────────► match.state   the whole board, once
                        match.moved   one move at a time, from then on
+                       match.ended   a match that ended off the board
   click ─────────────► match.move    an offer, drawn only once it comes back
+  resign ────────────► match.resign  answered with match.ended, like a move with match.moved
                        match.rejected  a join or a move the server refused
 
 A gap in moveNumber means this tab missed a move. The cure is to rejoin,
@@ -399,7 +874,7 @@ which answers with a fresh board, so the view is marked stale
 and the page sends match.join again.
 ```
 
-### Line 22 · `interface MatchView`
+### Line 26 · `interface MatchView`
 
 What this page is showing right now.
 
@@ -409,13 +884,20 @@ match.state replaces the whole view,
 while match.moved carries one move rather than a board
 and needs this to apply that move onto.
 
-### Line 28 · `readonly board: GomokuState | null`
+### Line 31 · `readonly endReason: MatchEndReason | null`
+
+Inside `interface MatchView`
+
+How the match ended, so the player panel can say "dana resigned"
+and not just who won. null while the match is still running.
+
+### Line 33 · `readonly board: GomokuState | null`
 
 Inside `interface MatchView`
 
 null when the server sent a board this client cannot read. See readBoard.
 
-### Line 29 · `readonly stale: boolean`
+### Line 34 · `readonly stale: boolean`
 
 Inside `interface MatchView`
 
@@ -423,7 +905,7 @@ This board has fallen behind the server's:
 a move was missed, or one would not play on it.
 Moves are ignored until a fresh match.state replaces the whole view.
 
-### Line 32 · `const NOTICE_MS`
+### Line 37 · `const NOTICE_MS`
 
 The server sends a code and never prose, so the wording lives here.
 A Record rather than a switch so a code added to the protocol
@@ -431,23 +913,23 @@ fails the build until it has a sentence.
 A refused join shows one as the whole page; a refused move, under the board.
 How long a refused move stays under the board.
 
-### Line 43 · `function readBoard(game: string, state: unknown): GomokuState | null`
+### Line 48 · `function readBoard(game: string, state: unknown): GomokuState | null`
 
 A deserialize failure means the server sent a board this client cannot read.
 That is a bug to report, not something to draw around,
 so it gets an error screen rather than an empty board.
 
-### Line 52 · `function viewFromState(payload: MatchStatePayload): MatchView`
+### Line 57 · `function viewFromState(payload: MatchStatePayload): MatchView`
 
 A snapshot arrives whole, so it is read once, here,
 rather than on every render.
 The page never touches payload.state itself.
 
-### Line 64 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
+### Line 70 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 The same match, one move later.
 
-### Line 67 · `if (payload.moveNumber <= view.moveNumber) return view`
+### Line 73 · `if (payload.moveNumber <= view.moveNumber) return view`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -456,14 +938,14 @@ Joining the room before reading the snapshot can deliver a move the snapshot
 already holds (see match.handlers.ts), so a number we have passed is dropped
 rather than played twice.
 
-### Line 69 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
+### Line 75 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 A number further ahead means a move in between never arrived.
 Playing this one on top would draw a board nobody has.
 
-### Line 75 · `return { ...view, stale: true }`
+### Line 81 · `return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -471,7 +953,7 @@ The server accepted this move against its own board,
 so a throw here means the two boards have drifted apart.
 Drawing it anyway would only widen the difference.
 
-### Line 78 · `return {`
+### Line 84 · `return {`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -479,7 +961,27 @@ turn and outcome come from the payload, not from what apply worked out.
 The server decides both, and a client that computes its own
 would be the first thing to disagree.
 
-### Line 96 · `const view`
+### Line 89 · `endReason: payload.outcome === null ? null : 'played',`
+
+Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
+
+A move only ever ends a match on the board.
+Resigning and abandoning arrive as match.ended instead.
+
+### Line 94 · `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
+
+The same match, over. The board stays as it was:
+nothing was played, somebody stopped playing.
+
+### Line 95 · `if (view.outcome !== null) return view`
+
+Inside `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
+
+The server writes an ending only while the match is still active,
+so a second one cannot be real. Kept out anyway,
+so whatever ended the match first is what the page keeps saying.
+
+### Line 108 · `const view`
 
 Inside `function MatchPage()`
 
@@ -489,14 +991,14 @@ on screen until the new snapshot arrived.
 Derived rather than reset in the effect below,
 which would cost a second render every time.
 
-### Line 104 · `const unsubscribe = subscribe(…)`
+### Line 116 · `const unsubscribe = subscribe(…)`
 
 Inside `function MatchPage()`
 
 One socket serves the whole tab, so every event arrives here,
 including events about other matches and other features.
 
-### Line 114 · `setReceived((current) =>`
+### Line 126 · `setReceived((current) =>`
 
 Inside `function MatchPage()`
 
@@ -506,14 +1008,21 @@ rather than from anything captured here.
 A move that arrives before the first snapshot has nothing to land on
 and is dropped: the snapshot is on its way and will already contain it.
 
-### Line 120 · `setRefused(null)`
+### Line 132 · `setRefused(null)`
 
 Inside `function MatchPage()`
 
 The board has moved on, so "it's not your turn" from before
 no longer describes it.
 
-### Line 124 · `if (event.type === 'match.rejected') {`
+### Line 136 · `if (event.type === 'match.ended') {`
+
+Inside `function MatchPage()`
+
+Handled like match.moved: applied onto the view React holds,
+and any refusal still showing is cleared, since the match it refused a move in is over.
+
+### Line 149 · `if (event.type === 'match.rejected') {`
 
 Inside `function MatchPage()`
 
@@ -521,7 +1030,7 @@ Kept whatever it refused. Only the render below decides it matters:
 before a board arrives it can only be the join,
 and after one it is a refused move, which leaves the board as it was.
 
-### Line 136 · `const stale`
+### Line 161 · `const stale`
 
 Inside `function MatchPage()`
 
@@ -530,7 +1039,7 @@ with a fresh match.state, and viewFromState clears the flag. Sent with
 send, not join, because the standing join registered above already covers
 reconnects; this only asks for one more snapshot.
 
-### Line 141 · `const refusedMove`
+### Line 166 · `const refusedMove`
 
 Inside `function MatchPage()`
 
@@ -538,24 +1047,40 @@ A refused move is a passing remark, so it goes after three seconds.
 A refused join is not: with no board it is the whole page, and it stays.
 Keyed on the refusal itself, so a new one starts the three seconds again.
 
-### Line 163 · `const seat = view.players.findIndex(…)`
+### Line 189 · `const seat = index === -1 ? null : (index as PlayerIndex)`
 
 Inside `function MatchPage()`
 
-Which seat is yours, or -1 while you are only watching.
+Which seat is yours, or null while you are only watching.
+findIndex answers -1 for "not found"; turned into null here
+so the player panel can take it as a PlayerIndex.
 The logged-in user is the same identity the socket authenticated with,
 so this agrees with the seat the server checks every move against.
 
-### Line 166 · `const myTurn`
+### Line 191 · `const playing = seat !== null && view.outcome === null`
+
+Inside `function MatchPage()`
+
+You hold a seat and the match is still going:
+the only time there is anything to play, or to resign.
+
+### Line 192 · `const myTurn`
 
 Inside `function MatchPage()`
 
 Only the player to move sees the stone a click would place.
-Everyone else can still click, and the server says why it will not count:
-it's not your turn, that point is taken, the match is over,
-or you are only watching.
+Everyone else can still click while the match runs, and the server says why it will not count:
+it's not your turn, that point is taken, or you are only watching.
 
-### Line 168 · `const play = (move: GomokuMove) =>`
+### Line 193 · `const backToLobby = view.outcome !== null || seat === null`
+
+Inside `function MatchPage()`
+
+When to offer the way back: once the match is over, for everyone,
+and at any time for a spectator, who has no Resign button and nothing else to do here.
+A player in a running game doesn't see it; the logo still leads to the lobby.
+
+### Line 195 · `const play = (move: GomokuMove) =>`
 
 Inside `function MatchPage()`
 
@@ -568,21 +1093,56 @@ so inside one it counts as possibly undefined again.
 The last refusal is cleared on every click, so the same refusal twice
 in a row still reads as a new answer rather than a leftover.
 
-### Line 177 · `<div className="grid w-full justify-items-center gap-8 xl:grid-cols-[1fr_32rem_1fr] xl:items-start">`
+### Line 203 · `<div className="match-layout">`
 
 Inside `function MatchPage()`
 
-Three columns so the board stays in the exact centre of the page:
-an empty one on the left balances the player panel on the right.
-Below xl there isn't room beside the board, so the panel goes under it.
+Four areas, laid out by .match-layout in index.css: the result above the board on a phone,
+the board centred with a column on its right on desktop.
 
-### Line 180 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
+### Line 204 · `<div className="match-status flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-start">`
+
+Inside `function MatchPage()`
+
+On a phone the result and Back to lobby share a row, the link on the right, lined up with the headline's last line.
+Stacked, the WATCHING pill, the headline and the link took three rows and pushed the players off a small screen.
+flex-wrap lets a long reason push the link to its own line rather than squeezing the text.
+On desktop the right column is too narrow to share, so it goes back to one under the other.
+
+### Line 212 · `{backToLobby && (`
+
+Inside `function MatchPage()`
+
+Next to the result, because that is the moment you want to leave.
+A plain link: there is nothing to clean up, the page's own effect leaves the match room on the way out.
+shrink-0 keeps it whole when the row is tight; the text beside it wraps instead.
+
+### Line 221 · `onPlay={view.outcome === null ? play : undefined}`
+
+Inside `function MatchPage()`
+
+A finished match is a picture: without onPlay the board draws no click targets,
+so nothing is sent and nothing comes back refused.
+"This match is already over" still exists for a click that crosses the ending on the wire:
+sent before this page heard the match was over, refused once it was.
+
+### Line 225 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
 
 Inside `function MatchPage()`
 
 Always in the page, empty when there is nothing to say:
 a screen reader only announces a live region it was already watching,
 and a reserved line keeps the board from jumping when one appears.
+
+### Line 232 · `{playing && (`
+
+Inside `function MatchPage()`
+
+Gone the moment the match ends, however it ended,
+so a finished match never offers to be resigned.
+Keyed on the match so moving to another one
+starts with the plain button, never a confirmation left open.
+Its own area, under the players on a phone, so a stray tap near the result can't start a resignation.
 
 ## `apps/web/src/socket/SocketProvider.tsx`
 
@@ -616,3 +1176,37 @@ socket is down, so a match.leave sent during a reconnect can be delivered
 after the match.join that follows it.
 
 Nothing to close over: the socket is one module-level object.
+
+## `shared/src/lobby.ts`
+
+### Line 1 · file header
+
+What the lobby is told about each game being played.
+It travels over HTTP rather than the socket, but lives in shared for the same reason ws.ts does:
+the api builds it and the web app reads it, and one definition keeps the two from drifting.
+
+### Line 4 · `export interface LiveMatch`
+
+A match counts as live while it is active, its moves replay cleanly,
+and nobody has won on the board yet. MatchService decides that; this is only the shape.
+
+### Line 7 · `readonly players: readonly [MatchPlayer, MatchPlayer];`
+
+Inside `export interface LiveMatch`
+
+The same pair match.state sends, so the lobby and the match page name players the same way.
+Index 0 moves first.
+
+### Line 8 · `readonly turn: PlayerIndex;`
+
+Inside `export interface LiveMatch`
+
+Lets the lobby say "Your turn" next to Resume without opening the match.
+
+### Line 10 · `readonly startedAt: string;`
+
+Inside `export interface LiveMatch`
+
+When the match was created, as an ISO string: JSON has no dates,
+so a Date on the server arrives as a string anyway. Saying so in the type
+keeps anyone from calling Date methods on it without parsing it first.

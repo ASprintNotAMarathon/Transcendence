@@ -6,11 +6,29 @@
  * Passed to ConfigModule.forRoot({ validate }) in app.module.ts.
  */
 
+import { isAbsolute, join, resolve } from 'node:path';
+
 export interface EnvConfig {
 	API_PORT: number;
 	DATABASE_URL: string;
 	JWT_SECRET: string;
+	/** Absolute by the time anything reads it. */
+	AVATAR_DIR: string;
 }
+
+/**
+ * The repo root, four levels above this file from both apps/api/src/config
+ * (dev) and apps/api/dist/config (built), the same reasoning as ROOT_ENV in
+ * app.module.ts.
+ */
+const REPO_ROOT = join(__dirname, '..', '..', '..', '..');
+
+/**
+ * Uploaded avatars. Outside Docker this lands in the repo, where .gitignore
+ * keeps it out of commits. A relative AVATAR_DIR is read from the repo root
+ * too, so it means the same folder wherever the API was started from.
+ */
+const DEFAULT_AVATAR_DIR = 'uploads/avatars';
 
 const REQUIRED = ['DATABASE_URL', 'JWT_SECRET'] as const;
 
@@ -51,9 +69,17 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
 		);
 	}
 
+	const avatarDir =
+		typeof config.AVATAR_DIR === 'string' && config.AVATAR_DIR !== ''
+			? config.AVATAR_DIR
+			: DEFAULT_AVATAR_DIR;
+
 	return {
 		API_PORT: port,
 		DATABASE_URL: String(config.DATABASE_URL),
 		JWT_SECRET: jwtSecret,
+		AVATAR_DIR: isAbsolute(avatarDir)
+			? avatarDir
+			: resolve(REPO_ROOT, avatarDir),
 	};
 }

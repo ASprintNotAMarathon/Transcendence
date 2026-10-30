@@ -83,6 +83,7 @@ const MATCH_IDS = {
 	moveAfterWin: '00000000-0000-4000-8000-000000000109',
 	badWinner: '00000000-0000-4000-8000-000000000110',
 	draw: '00000000-0000-4000-8000-000000000111',
+	secondActive: '00000000-0000-4000-8000-000000000112',
 } as const;
 
 // Fixed ids for the seeded chat, same idea as MATCH_IDS: stable across reseeds.
@@ -119,6 +120,13 @@ const ACTIVE_MATCH_MOVES: SeedMove[] = [
 	{ by: 0, row: 7, col: 7 },
 	{ by: 1, row: 7, col: 8 },
 	{ by: 0, row: 8, col: 8 },
+];
+
+const SECOND_ACTIVE_MATCH_MOVES: SeedMove[] = [
+	{ by: 0, row: 6, col: 6 },
+	{ by: 1, row: 6, col: 7 },
+	{ by: 0, row: 7, col: 6 },
+	{ by: 1, row: 8, col: 8 },
 ];
 
 // Resigned: finished with a winner but nobody has five in a row
@@ -484,6 +492,7 @@ async function seedMatches(
 			id: MATCH_IDS.finished,
 			game: 'gomoku',
 			status: 'finished',
+			endReason: 'played',
 			player0Id: alice,
 			player1Id: bob,
 			winnerId: alice,
@@ -510,6 +519,23 @@ async function seedMatches(
 		},
 	});
 	console.log('match ready: charlie vs dana (in progress)');
+
+	const secondActiveRows = toMoveRows(SECOND_ACTIVE_MATCH_MOVES);
+	if (replay(gomoku, secondActiveRows).outcome !== null) {
+		throw new Error(
+			'seed bug: SECOND_ACTIVE_MATCH_MOVES already contains a finished game',
+		);
+	}
+	await prisma.match.create({
+		data: {
+			id: MATCH_IDS.secondActive,
+			game: 'gomoku',
+			player0Id: alice,
+			player1Id: bob,
+			moves: { createMany: { data: secondActiveRows } },
+		},
+	});
+	console.log('match ready: alice vs bob (in progress)');
 }
 
 /**
@@ -574,6 +600,7 @@ async function seedEdgeCases(
 			id: MATCH_IDS.resigned,
 			game: 'gomoku',
 			status: 'finished',
+			endReason: 'resigned',
 			player0Id: dana,
 			player1Id: bob,
 			winnerId: dana,
@@ -658,6 +685,7 @@ async function seedEdgeCases(
 			id: MATCH_IDS.badWinner,
 			game: 'gomoku',
 			status: 'finished',
+			endReason: 'resigned',
 			player0Id: alice,
 			player1Id: bob,
 			winnerId: charlie,
@@ -675,6 +703,7 @@ async function seedEdgeCases(
 			id: MATCH_IDS.draw,
 			game: 'gomoku',
 			status: 'finished',
+			endReason: 'played',
 			player0Id: charlie,
 			player1Id: dana,
 			moves: { createMany: { data: drawRows } },

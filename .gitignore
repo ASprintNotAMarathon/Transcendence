@@ -5,6 +5,9 @@ dist-ssr/
 .env
 *.local
 
+# Uploaded avatars (AVATAR_DIR's default). User content, never committed.
+uploads/
+
 # Personal Docker Compose tweaks, like opening the web port to the local network.
 compose.override.yaml
 

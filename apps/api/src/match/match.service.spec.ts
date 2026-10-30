@@ -11,7 +11,8 @@ import { MatchService } from './match.service';
 const PLAYER_0 = { id: 'player-0-uuid', displayName: 'lisandro' };
 const PLAYER_1 = { id: 'player-1-uuid', displayName: 'kimia' };
 const SPECTATOR_ID = 'spectator-uuid';
-const MATCH_ID = 'match-uuid';
+const MATCH_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+const UNKNOWN_MATCH_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
 type MoveRow = { moveNumber: number; by: number; payload: unknown };
 
@@ -55,6 +56,7 @@ function matchRow(overrides: Record<string, unknown> = {}) {
 		player0Id: PLAYER_0.id,
 		player1Id: PLAYER_1.id,
 		winnerId: null as string | null,
+		endReason: null as string | null,
 		player0: PLAYER_0,
 		player1: PLAYER_1,
 		moves: [] as MoveRow[],
@@ -152,12 +154,21 @@ describe('MatchService.join', () => {
 	it('rejects an unknown match with match.not_found', async () => {
 		findUnique.mockResolvedValue(null);
 
-		await expect(service.join(PLAYER_0.id, 'nope')).rejects.toBeInstanceOf(
-			MatchError,
-		);
-		await expect(service.join(PLAYER_0.id, 'nope')).rejects.toMatchObject({
+		await expect(
+			service.join(PLAYER_0.id, UNKNOWN_MATCH_ID),
+		).rejects.toBeInstanceOf(MatchError);
+		await expect(
+			service.join(PLAYER_0.id, UNKNOWN_MATCH_ID),
+		).rejects.toMatchObject({
 			code: 'match.not_found',
 		});
+	});
+
+	it('rejects an id that is not a uuid with match.not_found', async () => {
+		await expect(service.join(PLAYER_0.id, 'abc')).rejects.toMatchObject({
+			code: 'match.not_found',
+		});
+		expect(findUnique).not.toHaveBeenCalled();
 	});
 
 	it('asks the database for the moves in move-number order', async () => {
@@ -202,6 +213,44 @@ describe('MatchService.join', () => {
 		const state = await service.join(PLAYER_0.id, MATCH_ID);
 
 		expect(state.outcome).toEqual({ kind: 'draw' });
+	});
+
+	it('has no end reason while the match is still running', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.endReason).toBeNull();
+	});
+
+	it('gives the stored end reason of a finished match', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({
+				moves: rowsFor(quietMoves),
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+				endReason: 'resigned',
+			}),
+		);
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.outcome).toEqual({ kind: 'win', player: 1 });
+		expect(state.endReason).toBe('resigned');
+	});
+
+	it('reads a finished match with no stored end reason as ended on the board', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({
+				moves: rowsFor(winningMoves),
+				status: 'finished',
+				winnerId: PLAYER_0.id,
+			}),
+		);
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.endReason).toBe('played');
 	});
 
 	it('reports a win the board shows while the match is still active', async () => {
@@ -255,7 +304,7 @@ describe('MatchService.move', () => {
 	beforeEach(async () => {
 		findUnique = vi.fn();
 		createMove = vi.fn();
-		updateMatch = vi.fn();
+		updateMatch = vi.fn().mockResolvedValue({ count: 1 });
 
 		// The real $transaction hands a scoped client to the callback.
 		// This fake hands back the same mocks,
@@ -263,7 +312,7 @@ describe('MatchService.move', () => {
 		transaction = vi.fn((run: (tx: unknown) => Promise<unknown>) =>
 			run({
 				move: { create: createMove },
-				match: { update: updateMatch },
+				match: { updateMany: updateMatch },
 			}),
 		);
 
@@ -323,13 +372,31 @@ describe('MatchService.move', () => {
 		expect(moved.outcome).toEqual({ kind: 'win', player: 0 });
 		expect(moved.moveNumber).toBe(winningMoves.length);
 		expect(updateMatch).toHaveBeenCalledWith({
-			where: { id: MATCH_ID },
-			data: { status: 'finished', winnerId: PLAYER_0.id },
+			where: { id: MATCH_ID, status: 'active' },
+			data: {
+				status: 'finished',
+				winnerId: PLAYER_0.id,
+				endReason: 'played',
+			},
 		});
 
 		// Both writes went through a single $transaction call,
 		// which is what stops a finished match existing without its result.
 		expect(transaction).toHaveBeenCalledTimes(1);
+	});
+
+	it('refuses a winning move when the match ended before it landed', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({ moves: rowsFor(almostWinning) }),
+		);
+		updateMatch.mockResolvedValue({ count: 0 });
+
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: MATCH_ID,
+				move: winningMove,
+			}),
+		).rejects.toMatchObject({ code: 'match.already_over' });
 	});
 
 	// The three refusals issue #22 names by hand.
@@ -429,10 +496,20 @@ describe('MatchService.move', () => {
 
 		await expect(
 			service.move(PLAYER_0.id, {
-				matchId: 'nope',
+				matchId: UNKNOWN_MATCH_ID,
 				move: { row: 3, col: 3 },
 			}),
 		).rejects.toMatchObject({ code: 'match.not_found' });
+	});
+
+	it('refuses an id that is not a uuid with match.not_found', async () => {
+		await expect(
+			service.move(PLAYER_0.id, {
+				matchId: 'abc',
+				move: { row: 3, col: 3 },
+			}),
+		).rejects.toMatchObject({ code: 'match.not_found' });
+		expect(findUnique).not.toHaveBeenCalled();
 	});
 
 	it('writes nothing at all when a check refuses the move', async () => {
@@ -474,6 +551,300 @@ describe('MatchService.move', () => {
 
 		await expect(attempt).rejects.toThrow(/connection reset/);
 		await expect(attempt).rejects.not.toBeInstanceOf(MatchError);
+	});
+});
+
+describe('MatchService.resign', () => {
+	let service: MatchService;
+	let findUnique: ReturnType<typeof vi.fn>;
+	let updateMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findUnique = vi.fn();
+		updateMany = vi.fn().mockResolvedValue({ count: 1 });
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: { match: { findUnique, updateMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('ends the match as a win for the opponent and stores why', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const ended = await service.resign(PLAYER_0.id, MATCH_ID);
+
+		expect(ended).toEqual({
+			matchId: MATCH_ID,
+			outcome: { kind: 'win', player: 1 },
+			reason: 'resigned',
+		});
+		expect(updateMany).toHaveBeenCalledWith({
+			where: { id: MATCH_ID, status: 'active' },
+			data: {
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+				endReason: 'resigned',
+			},
+		});
+	});
+
+	it('gives the win to player 0 when player 1 resigns', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const ended = await service.resign(PLAYER_1.id, MATCH_ID);
+
+		expect(ended.outcome).toEqual({ kind: 'win', player: 0 });
+	});
+
+	it('refuses a spectator with match.not_a_player', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.resign(SPECTATOR_ID, MATCH_ID),
+		).rejects.toMatchObject({
+			code: 'match.not_a_player',
+		});
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it('refuses a finished match with match.already_over', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({
+				moves: rowsFor(quietMoves),
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+			}),
+		);
+
+		await expect(
+			service.resign(PLAYER_0.id, MATCH_ID),
+		).rejects.toMatchObject({
+			code: 'match.already_over',
+		});
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it('refuses a match already won on the board even if the status still says active', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({ moves: rowsFor(winningMoves) }),
+		);
+
+		await expect(
+			service.resign(PLAYER_1.id, MATCH_ID),
+		).rejects.toMatchObject({
+			code: 'match.already_over',
+		});
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it('turns a match that ended in the meantime into match.already_over', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+		updateMany.mockResolvedValue({ count: 0 });
+
+		await expect(
+			service.resign(PLAYER_0.id, MATCH_ID),
+		).rejects.toMatchObject({
+			code: 'match.already_over',
+		});
+	});
+
+	it('refuses an id that is not a uuid with match.not_found', async () => {
+		await expect(service.resign(PLAYER_0.id, 'abc')).rejects.toMatchObject({
+			code: 'match.not_found',
+		});
+		expect(findUnique).not.toHaveBeenCalled();
+	});
+});
+
+const STARTED_AT = new Date('2026-10-17T10:00:00.000Z');
+const OTHER_MATCH_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+
+function liveRow(overrides: Record<string, unknown> = {}) {
+	return matchRow({
+		createdAt: STARTED_AT,
+		moves: rowsFor(quietMoves),
+		...overrides,
+	});
+}
+
+const brokenMoves: MoveRow[] = [
+	{ moveNumber: 2, by: 0, payload: { row: 7, col: 7 } },
+];
+
+describe('MatchService.live', () => {
+	let service: MatchService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: { match: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('lists an active match that replays cleanly', async () => {
+		findMany.mockResolvedValue([liveRow()]);
+
+		expect(await service.live()).toEqual([
+			{
+				matchId: MATCH_ID,
+				game: 'gomoku',
+				players: [
+					{ userId: PLAYER_0.id, displayName: PLAYER_0.displayName },
+					{ userId: PLAYER_1.id, displayName: PLAYER_1.displayName },
+				],
+				turn: 0,
+				moveNumber: 2,
+				startedAt: '2026-10-17T10:00:00.000Z',
+			},
+		]);
+	});
+
+	it('gives whose turn it is and the move number from the replay', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ moves: rowsFor([{ row: 7, col: 7 }]) }),
+		]);
+
+		const [match] = await service.live();
+
+		expect(match.turn).toBe(1);
+		expect(match.moveNumber).toBe(1);
+	});
+
+	it('leaves out a match whose history does not replay', async () => {
+		findMany.mockResolvedValue([liveRow({ moves: brokenMoves })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('leaves out a match already won on the board', async () => {
+		findMany.mockResolvedValue([liveRow({ moves: rowsFor(winningMoves) })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('leaves out a match for a game with no engine', async () => {
+		findMany.mockResolvedValue([liveRow({ game: 'reversi', moves: [] })]);
+
+		expect(await service.live()).toEqual([]);
+	});
+
+	it('only asks for active matches, newest first', async () => {
+		findMany.mockResolvedValue([]);
+
+		await service.live();
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { status: 'active' },
+				orderBy: { createdAt: 'desc' },
+			}),
+		);
+	});
+
+	it('keeps the order the database gave', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const matches = await service.live();
+
+		expect(matches.map((match) => match.matchId)).toEqual([
+			OTHER_MATCH_ID,
+			MATCH_ID,
+		]);
+	});
+
+	it('is empty when nothing is being played', async () => {
+		findMany.mockResolvedValue([]);
+
+		expect(await service.live()).toEqual([]);
+	});
+});
+
+describe('MatchService.current', () => {
+	let service: MatchService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				{
+					provide: PrismaService,
+					useValue: { match: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('only asks for active matches the user plays in', async () => {
+		findMany.mockResolvedValue([]);
+
+		await service.current(PLAYER_1.id);
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					OR: [
+						{ player0Id: PLAYER_1.id },
+						{ player1Id: PLAYER_1.id },
+					],
+					status: 'active',
+				},
+				orderBy: { createdAt: 'desc' },
+			}),
+		);
+	});
+
+	it('gives the newest live match when the user has several', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const match = await service.current(PLAYER_0.id);
+
+		expect(match?.matchId).toBe(OTHER_MATCH_ID);
+	});
+
+	it('skips a broken match and gives the next one', async () => {
+		findMany.mockResolvedValue([
+			liveRow({ id: OTHER_MATCH_ID, moves: brokenMoves }),
+			liveRow({ id: MATCH_ID }),
+		]);
+
+		const match = await service.current(PLAYER_0.id);
+
+		expect(match?.matchId).toBe(MATCH_ID);
+	});
+
+	it('is null when the user has no live match', async () => {
+		findMany.mockResolvedValue([]);
+
+		expect(await service.current(PLAYER_0.id)).toBeNull();
 	});
 });
 

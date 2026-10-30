@@ -1,8 +1,11 @@
-import EmptyState from '../components/states/EmptyState'
+import LiveMatches from '../match/LiveMatches'
 
 function HomePage() {
   return (
-    <EmptyState title="Lobby" message="Authenticated home, no interface yet." />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
+      <h1 className="font-barrio text-3xl text-(--color-base-content)">Lobby</h1>
+      <LiveMatches />
+    </div>
   )
 }
 

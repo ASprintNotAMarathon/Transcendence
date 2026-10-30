@@ -1,7 +1,9 @@
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { ConnectionStatus } from '../socket/ConnectionStatus'
+import UserMenu from '../components/UserMenu'
 import ChatPopup from '../chat/ChatPopup'
+import Footer from '../components/Footer'
 
 function AppLayout() {
   const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -17,30 +19,26 @@ function AppLayout() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <header className="relative z-10 flex items-center justify-between bg-(--color-base-200)/50 px-6 py-5 backdrop-blur-md">
         <NavLink to="/home" className="font-barrio text-4xl text-(--color-primary-content)">
           <span className="glow-pulse text-(--color-primary)">GO</span>MOKU FRIENDS
         </NavLink>
 
         <div className="flex items-center gap-3">
-        <ConnectionStatus />
-        <NavLink to="/chat" className={navButtonClass}>
+          <ConnectionStatus />
+          <NavLink to="/chat" className={navButtonClass}>
             Chat
           </NavLink>
-          <NavLink to="/profile" className={navButtonClass}>
-            Profile
-          </NavLink>
-          <button type="button" onClick={handleLogout} className={navButtonClass}>
-            Log out
-          </button>
+          <UserMenu onLogout={handleLogout} />
         </div>
       </header>
 
-      <main className="px-6 py-8">
+      <main className="flex-1 px-6 py-8">
         <Outlet />
       </main>
-	  <ChatPopup />
+      <Footer />
+      <ChatPopup />
     </div>
   )
 }

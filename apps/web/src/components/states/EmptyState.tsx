@@ -1,6 +1,6 @@
 /*
     EmptyState. 
-    Used by HomePage and ProfilePage as placeholder screen.
+    Used by ProfilePage as placeholder screen.
 
     LOBBY                                 <- title
     Authenticated home, no interface yet. <- message

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BOARD_SIZE, gomoku, winningLine, type Cell, type GomokuMove, type GomokuState } from "./gomoku.js";
+import { BOARD_SIZE, gomoku, winningLines, type Cell, type GomokuMove, type GomokuState } from "./gomoku.js";
 
 /** Play a list of moves in order, alternating players automatically. */
 function play(moves: GomokuMove[], from = gomoku.initialState()): GomokuState {
@@ -231,7 +231,7 @@ describe("win detection", () => {
 	});
 });
 
-describe("winningLine", () => {
+describe("winningLines", () => {
 	const sorted = (moves: GomokuMove[]) =>
 		[...moves].sort((a, b) => a.row - b.row || a.col - b.col);
 
@@ -247,17 +247,17 @@ describe("winningLine", () => {
 	}
 
 	it("is empty on a fresh board and while nobody has won", () => {
-		expect(winningLine(gomoku.initialState())).toEqual([]);
+		expect(winningLines(gomoku.initialState())).toEqual([]);
 		const s = play(runFor([
 			{ row: 7, col: 3 },
 			{ row: 7, col: 4 },
 			{ row: 7, col: 5 },
 			{ row: 7, col: 6 },
 		]));
-		expect(winningLine(s)).toEqual([]);
+		expect(winningLines(s)).toEqual([]);
 	});
 
-	it("returns the five stones of a win, wherever the last stone landed in them", () => {
+	it("returns the five stones of a win in order, wherever the last stone landed in them", () => {
 		const s = play(runFor([
 			{ row: 7, col: 3 },
 			{ row: 7, col: 4 },
@@ -265,12 +265,14 @@ describe("winningLine", () => {
 			{ row: 7, col: 7 },
 			{ row: 7, col: 5 },
 		]));
-		expect(sorted(winningLine(s))).toEqual([3, 4, 5, 6, 7].map((col) => ({ row: 7, col })));
+		expect(winningLines(s)).toEqual([[3, 4, 5, 6, 7].map((col) => ({ row: 7, col }))]);
 	});
 
 	it("finds a diagonal", () => {
 		const s = play(runFor([0, 1, 2, 3, 4].map((i) => ({ row: 2 + i, col: 6 - i }))));
-		expect(sorted(winningLine(s))).toEqual(sorted([0, 1, 2, 3, 4].map((i) => ({ row: 2 + i, col: 6 - i }))));
+		const lines = winningLines(s);
+		expect(lines).toHaveLength(1);
+		expect(sorted(lines[0])).toEqual(sorted([0, 1, 2, 3, 4].map((i) => ({ row: 2 + i, col: 6 - i }))));
 	});
 
 	it("includes every stone of a run longer than five", () => {
@@ -282,10 +284,10 @@ describe("winningLine", () => {
 			{ row: 5, col: 5 },
 			{ row: 5, col: 3 },
 		]));
-		expect(winningLine(s)).toHaveLength(6);
+		expect(winningLines(s)).toEqual([[0, 1, 2, 3, 4, 5].map((col) => ({ row: 5, col }))]);
 	});
 
-	it("returns both lines when one stone completes two", () => {
+	it("returns each line separately when one stone completes two", () => {
 		const s = play(spacedRunFor([
 			{ row: 7, col: 3 },
 			{ row: 7, col: 4 },
@@ -297,7 +299,10 @@ describe("winningLine", () => {
 			{ row: 6, col: 7 },
 			{ row: 7, col: 7 },
 		]));
-		expect(winningLine(s)).toHaveLength(9);
+		expect(winningLines(s)).toEqual([
+			[3, 4, 5, 6, 7].map((col) => ({ row: 7, col })),
+			[3, 4, 5, 6, 7].map((row) => ({ row, col: 7 })),
+		]);
 	});
 });
 

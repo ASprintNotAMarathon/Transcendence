@@ -1,5 +1,5 @@
 import { useId, useMemo } from 'react'
-import { BOARD_SIZE, gomoku, winningLine } from '@transcendence/shared'
+import { BOARD_SIZE, gomoku, winningLines } from '@transcendence/shared'
 import type { GomokuMove, GomokuState } from '@transcendence/shared'
 import { stoneFill } from './stones'
 
@@ -16,23 +16,26 @@ const lines = Array.from({ length: BOARD_SIZE }, (_, i) => i * SPACING)
 
 const gridLine = { stroke: 'var(--color-board-line)' }
 const starPoint = { fill: 'var(--color-board-line)' }
+const winLine = { stroke: 'var(--color-primary)' }
 
 type GomokuBoardProps = {
   state: GomokuState
   onPlay?: (move: GomokuMove) => void
   preview?: boolean
+  flash?: boolean
 }
 
-function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
+function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoardProps) {
   const { board, moveCount, lastMove } = state
   const glowId = useId()
 
   const lastBy = lastMove === null ? null : board[lastMove.row][lastMove.col]
   const lastPlayed = lastMove === null || lastBy === null ? null : { ...lastMove, by: lastBy }
 
+  const wins = useMemo(() => winningLines(state), [state])
   const won = useMemo(
-    () => new Set(winningLine(state).map((move) => move.row * BOARD_SIZE + move.col)),
-    [state],
+    () => new Set(wins.flat().map((move) => move.row * BOARD_SIZE + move.col)),
+    [wins],
   )
 
   const legal = useMemo(
@@ -71,6 +74,24 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
         <circle key={`star-${row}-${col}`} cx={col * SPACING} cy={row * SPACING} r={3} style={starPoint} />
       ))}
 
+      {wins.map((line) => {
+        const start = line[0]
+        const end = line[line.length - 1]
+        return (
+          <line
+            key={`win-${start.row}-${start.col}-${end.row}-${end.col}`}
+            x1={start.col * SPACING}
+            y1={start.row * SPACING}
+            x2={end.col * SPACING}
+            y2={end.row * SPACING}
+            strokeWidth={3}
+            strokeLinecap="round"
+            className="board-win-line"
+            style={winLine}
+          />
+        )
+      })}
+
       {board.flatMap((cells, row) =>
         cells.map((cell, col) =>
           cell === null ? null : (
@@ -79,14 +100,14 @@ function GomokuBoard({ state, onPlay, preview = true }: GomokuBoardProps) {
               cx={col * SPACING}
               cy={row * SPACING}
               r={STONE_RADIUS}
-              className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'stone-won' : 'stone-lost'}
+              className={won.size === 0 ? undefined : won.has(row * BOARD_SIZE + col) ? 'board-win-glow' : 'stone-lost'}
               style={{ fill: stoneFill(cell) }}
             />
           ),
         ),
       )}
 
-      {lastPlayed !== null && (
+      {flash && lastPlayed !== null && (
         <circle
           key={`flash-${moveCount}`}
           cx={lastPlayed.col * SPACING}

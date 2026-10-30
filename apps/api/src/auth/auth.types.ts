@@ -1,4 +1,5 @@
 import type { Request } from 'express';
+import { avatarUrl } from '../users/avatar';
 
 /**
  * Contract decision 03: register, login and /me all return this same object,
@@ -9,6 +10,7 @@ export type PublicUser = {
 	id: string;
 	email: string;
 	displayName: string;
+	avatarUrl: string | null;
 	createdAt: Date;
 };
 
@@ -16,13 +18,42 @@ export type PublicUser = {
  * Passed to every query that returns a user. Selecting the fields keeps
  * passwordHash out of the object entirely, rather than reading the whole row
  * and trusting every future caller to strip it.
+ *
+ * It reads avatarPath, not avatarUrl: the row holds a file name and
+ * toPublicUser turns it into the URL the client gets.
  */
 export const PUBLIC_USER_SELECT = {
 	id: true,
 	email: true,
 	displayName: true,
+	avatarPath: true,
 	createdAt: true,
 } as const;
+
+/** What a query with PUBLIC_USER_SELECT hands back. */
+export type PublicUserRow = {
+	id: string;
+	email: string;
+	displayName: string;
+	avatarPath: string | null;
+	createdAt: Date;
+};
+
+/**
+ * The one serialiser. Every route that returns a user goes through it, so the
+ * file-name-to-URL step cannot be forgotten on one of them. Built field by
+ * field, so a caller that selected more (login also reads the hash) can pass
+ * its row in and nothing extra leaks out.
+ */
+export function toPublicUser(row: PublicUserRow): PublicUser {
+	return {
+		id: row.id,
+		email: row.email,
+		displayName: row.displayName,
+		avatarUrl: avatarUrl(row.avatarPath),
+		createdAt: row.createdAt,
+	};
+}
 
 /**
  * What the token carries: the user id, plus the issued-at and expiry the

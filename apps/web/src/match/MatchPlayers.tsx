@@ -7,43 +7,31 @@ type MatchPlayersProps = {
   outcome: GameOutcome | null
 }
 
-function status(players: MatchPlayersProps['players'], turn: PlayerIndex, outcome: GameOutcome | null): string {
-  if (outcome === null) return `${players[turn].displayName}'s turn`
-  if (outcome.kind === 'draw') return 'Draw'
-  return `${players[outcome.player].displayName} wins`
-}
-
 function MatchPlayers({ players, turn, outcome }: MatchPlayersProps) {
   const highlighted = outcome === null ? turn : outcome.kind === 'win' ? outcome.player : null
 
   return (
-    <section aria-label="Players" className="flex w-full flex-col gap-3">
-      <p aria-live="polite" className="font-barrio text-2xl text-(--color-primary-content)">
-        {status(players, turn, outcome)}
-      </p>
-
-      <ul className="flex flex-col gap-2">
-        {players.map((player, index) => {
-          const seat = index as PlayerIndex
-          const active = highlighted === seat
-          return (
-            <li
-              key={player.userId}
-              className={`flex items-center gap-3 rounded-box border-2 px-4 py-3 transition-colors ${
-                active
-                  ? 'border-(--color-primary) bg-(--color-base-100) text-(--color-primary-content)'
-                  : 'border-transparent text-muted'
-              }`}
-            >
-              <svg viewBox="-8 -8 16 16" className="size-5 shrink-0" aria-hidden="true">
-                <circle r={7} style={{ fill: stoneFill(seat) }} />
-              </svg>
-              <span className="truncate">{player.displayName}</span>
-            </li>
-          )
-        })}
-      </ul>
-    </section>
+    <ul aria-label="Players" className="grid grid-cols-2 gap-2 xl:grid-cols-1">
+      {players.map((player, index) => {
+        const seat = index as PlayerIndex
+        const active = highlighted === seat
+        return (
+          <li
+            key={player.userId}
+            className={`flex min-w-0 items-center gap-2 rounded-box border-2 px-3 py-2 transition-colors xl:gap-3 xl:px-4 xl:py-3 ${
+              active
+                ? 'border-(--color-primary) bg-(--color-base-100) text-(--color-primary-content)'
+                : 'border-(--color-board-line) text-muted xl:border-transparent'
+            }`}
+          >
+            <svg viewBox="-8 -8 16 16" className="size-4 shrink-0 xl:size-5" aria-hidden="true">
+              <circle r={7} style={{ fill: stoneFill(seat) }} />
+            </svg>
+            <span className="truncate">{player.displayName}</span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
