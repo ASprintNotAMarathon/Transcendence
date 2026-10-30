@@ -80,7 +80,7 @@ function LoginPage() {
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="mx-auto flex min-h-screen w-full max-w-sm flex-col justify-center gap-4 px-4"
+      className="mx-auto flex flex-1 w-full max-w-sm flex-col justify-center gap-4 px-4"
     >
       <h1 className="font-barrio text-2xl text-(--color-primary-content)">Welcome back!</h1>
 

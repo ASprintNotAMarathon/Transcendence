@@ -93,7 +93,7 @@ function BoardIllustration() {
 
 function LandingPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-10 px-6 py-16 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-16 text-center">
       <BoardIllustration />
 
       <div className="flex max-w-3xl flex-col items-center gap-4">
