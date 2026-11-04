@@ -429,6 +429,116 @@ the game column is an enum this server wrote itself,
 so an unknown or unimplemented value means a match was created that nothing can run.
 getEngine throws.
 
+## `apps/api/src/ws/ws.gateway.ts`
+
+### Line 42 · `pingInterval: 10_000,`
+
+Not a default worth keeping. A connection that dies without a close frame — a laptop losing
+wifi — is only noticed when a ping goes unanswered, and Socket.IO's defaults
+(25s between pings, 20s to answer) can take 45s to do it.
+That is longer than the 30s grace period a dropped player gets in #57,
+so the match would be abandoned before anything had noticed the player left.
+At 10s and 5s the drop surfaces within 15s, for one extra ping every 15s per socket.
+
+### Line 128 · `if (cameOnline) {`
+
+Inside `handleConnection(client: WsSocket): void`
+
+`registry.add` returns true only for a user's first socket, so the hook fires on arrival
+and not on a second tab. Without that, a player with two tabs open who closes one
+would be announced as gone while still sitting in front of the board.
+
+### Line 142 · `if (wentOffline) {`
+
+Inside `handleDisconnect(client: WsSocket): void`
+
+The other half of the same rule: `registry.remove` returns true only on the last socket,
+so a departure means every tab is closed rather than one of them.
+
+## `apps/api/src/ws/ws.lifecycle.ts`
+
+### Line 3 · `export type WsPresenceListener`
+
+A function type, not a data shape: it describes the callback another slice hands us
+to be called later. Nothing here knows what a listener does — in #57 the match slice
+registers one that looks up the player's active match and starts a timer.
+
+Returns `void | Promise<void>` because a listener may need the database, and that union
+is what lets one be either a plain function (which returns `undefined`, i.e. `void`)
+or an `async` one (which returns a promise). `fire` handles the promise,
+so a listener never has to catch on its own behalf.
+
+### Line 6 · `@Injectable() export class WsLifecycle`
+
+The counterpart to WsDispatcher: that one routes messages, this one routes the connection itself.
+The transport still knows nothing about matches or chat — it knows only that somebody
+asked to hear about arrivals and departures, which is what keeps the grace timer for #57
+out of the gateway.
+
+### Line 8 · `private readonly logger = new Logger(WsLifecycle.name);`
+
+Inside `export class WsLifecycle`
+
+Nest's logger rather than console.log: it carries a severity, a timestamp and a context tag,
+so a line comes out as `ERROR [WsLifecycle] …` and you can tell which class wrote it.
+`WsLifecycle.name` is the static `.name` every JS class has, holding its own name as a string,
+so renaming the class renames the tag. One logger per class as a private field,
+the same as ws.dispatch.ts and ws.gateway.ts.
+
+### Line 10 · `private readonly online = new Set<WsPresenceListener>();`
+
+Inside `export class WsLifecycle`
+
+Two collections rather than one tagged collection, because a listener registered for arrivals
+must never be called on a departure. Keeping them apart makes that structural:
+`fire` is handed one of them and cannot reach the other.
+
+A Set rather than an array because removal is by value — `delete(listener)` drops that exact
+function, where an array needs indexOf then splice — and because registering the same function
+twice stores it once. That last part deduplicates by reference identity, not by what the
+function does, so two separately written arrows with identical source are two entries.
+In practice listeners register once in onModuleInit, so it rarely comes up.
+
+### Line 13 · `onUserOnline(listener: WsPresenceListener): () => void`
+
+The return type is itself a function type: this returns an unsubscribe function.
+It is a closure over `listener`, so the caller does not have to keep the reference around
+to deregister, and over `this` — an arrow takes `this` lexically from where it was written,
+so it still works when called much later from a teardown that knows nothing about this object.
+
+Returning the unsubscriber rather than offering an `offUserOnline(listener)` method is what
+lets a subscription and its cancellation travel as one value. It is also React's cleanup
+convention, which is why SocketProvider.tsx can write
+`useEffect(() => clientSocket.onStatus(setStatus), [])` and nothing else.
+
+`Set.delete` returns a boolean while the declared type says void. That compiles because
+TypeScript allows a value-returning function where a void-returning one is expected:
+the declaration says callers should ignore the result, not that there is none.
+
+### Line 31 · `private fire(`
+
+One listener failing must not stop the rest and must not take the gateway's
+connection handling down with it, so the `try` sits inside the loop and each listener
+gets its own attempt. Wrapping the loop instead would let the first throw skip the others.
+
+`listeners` is typed ReadonlySet, which a real Set satisfies structurally, because this
+iterates a collection while calling arbitrary third-party code and mutating a Set mid-iteration
+is a real hazard. The type makes it unwritable. `what` is only a label for the log line,
+and it is the reason one implementation serves both events and still says which failed.
+
+`Promise.resolve(listener(userId))` normalises the two kinds of listener: given a promise it
+returns it unchanged, given `undefined` it wraps it, so there is one code path instead of a
+branch on what came back. Both a synchronous throw and a rejected promise are caught, because
+the listener type allows either: a plain function that throws does so while `listener(userId)`
+is still being evaluated, before any promise exists for `.catch` to attach to, while an async
+failure arrives as a rejection that `try` would never see. An unhandled rejection takes the
+process down by default, so neither can be left out. `error: unknown` rather than `any` is
+useUnknownInCatchVariables — a thrown value is not guaranteed to be an Error.
+
+The promise is deliberately not awaited. `fire` returns before an async listener has finished,
+which is what keeps the gateway's synchronous connection hooks from waiting on database work,
+and means the #57 grace timer starts a moment after handleDisconnect has already returned.
+
 ## `apps/web/src/index.css`
 
 ### Line 1 · file header
@@ -1210,3 +1320,32 @@ Inside `export interface LiveMatch`
 When the match was created, as an ISO string: JSON has no dates,
 so a Date on the server arrives as a string anyway. Saying so in the type
 keeps anyone from calling Date methods on it without parsing it first.
+
+## `shared/src/ws.ts`
+
+### Line 168 · `readonly disconnected: MatchDisconnectedPayload | null;`
+
+Inside `export interface MatchStatePayload`
+
+The same payload the event carries, repeated on the snapshot because match.state is
+everything about a match. Someone who reloads halfway through a countdown has missed
+the event, and without this they would see a match that merely looks idle,
+with no sign anyone is waiting for a player to come back.
+
+### Line 203 · `export interface MatchDisconnectedPayload`
+
+Not an ending, and it never becomes one on its own: if the deadline passes,
+a match.ended with reason "abandoned" says so. A client therefore never decides a match
+is over by watching a clock it owns, which is what keeps two tabs — or a spectator whose
+clock is a minute out — from disagreeing about whether the game is still running.
+
+### Line 208 · `readonly deadline: string;`
+
+Inside `export interface MatchDisconnectedPayload`
+
+An instant rather than a number of seconds left. A count is already stale by however long
+the message spent in flight, and wrong by much more for a client that loads halfway through,
+so the client subtracts its own clock once and ticks locally.
+One message then covers the whole window instead of a broadcast per second.
+The server's timer stays the authority on when the match actually ends;
+the countdown is only a display.
