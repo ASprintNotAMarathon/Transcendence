@@ -66,6 +66,7 @@ export class MatchService {
 					? (match.endReason ?? 'played')
 					: null,
 			moveNumber: position.moveNumber,
+			disconnected: null,
 		};
 	}
 
