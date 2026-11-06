@@ -11,5 +11,7 @@ import { FriendsService } from './friends.service';
 	imports: [AuthModule],
 	controllers: [FriendsController],
 	providers: [FriendsService],
+	// UsersModule uses it for the friendship field on a profile.
+	exports: [FriendsService],
 })
 export class FriendsModule {}

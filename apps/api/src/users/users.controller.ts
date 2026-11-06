@@ -19,6 +19,8 @@ import {
 	type AuthUser,
 	type PublicUser,
 } from '../auth';
+import { FriendsService } from '../friends/friends.service';
+import type { FriendshipState } from '../friends/friends.types';
 import { AVATAR_FIELD, AVATAR_MAX_BYTES } from './avatar';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
@@ -38,16 +40,30 @@ type UploadedAvatar = { buffer: Buffer };
 @UseGuards(JwtAuthGuard)
 @Controller('users')
 export class UsersController {
-	constructor(private readonly users: UsersService) {}
+	constructor(
+		private readonly users: UsersService,
+		private readonly friends: FriendsService,
+	) {}
 
 	/**
 	 * ParseUUIDPipe turns `/users/abc` into a 400. Without it the string
 	 * reaches a uuid column, Postgres refuses it, and the client gets a 500
 	 * for what is really its own mistake.
+	 *
+	 * `friendship` is seen from the caller's side, so the profile page knows
+	 * which button to show. Both lookups run at once; a missing user is
+	 * still the 404 from findProfile.
 	 */
 	@Get(':id')
-	findOne(@Param('id', ParseUUIDPipe) id: string): Promise<PublicProfile> {
-		return this.users.findProfile(id);
+	async findOne(
+		@CurrentUser() user: AuthUser,
+		@Param('id', ParseUUIDPipe) id: string,
+	): Promise<PublicProfile & { friendship: FriendshipState }> {
+		const [profile, friendship] = await Promise.all([
+			this.users.findProfile(id),
+			this.friends.stateBetween(user.id, id),
+		]);
+		return { ...profile, friendship };
 	}
 
 	/**

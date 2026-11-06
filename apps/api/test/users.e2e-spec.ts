@@ -91,6 +91,7 @@ describe('users (e2e)', () => {
 			displayName: me.displayName,
 			avatarUrl: null,
 			createdAt: me.createdAt,
+			friendship: 'self',
 		});
 	});
 

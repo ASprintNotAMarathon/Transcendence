@@ -94,6 +94,29 @@ export class FriendsService {
 	}
 
 	/**
+	 * How I relate to another user, for the button on their profile.
+	 * One indexed lookup on the pair.
+	 */
+	async stateBetween(me: string, otherId: string): Promise<FriendshipState> {
+		if (me === otherId) {
+			return 'self';
+		}
+
+		const row = await this.prisma.friendship.findUnique({
+			where: { user0Id_user1Id: orderedPair(me, otherId) },
+			select: { status: true, requesterId: true },
+		});
+
+		if (!row) {
+			return 'none';
+		}
+		if (row.status === 'accepted') {
+			return 'friends';
+		}
+		return row.requesterId === me ? 'requested' : 'incoming';
+	}
+
+	/**
 	 * Sends a request and answers with the new state. If they already
 	 * asked me, this accepts theirs instead of failing.
 	 */

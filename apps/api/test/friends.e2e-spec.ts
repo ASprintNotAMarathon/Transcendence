@@ -222,6 +222,36 @@ describe('friends (e2e)', () => {
 			.expect(404);
 	});
 
+	it('the profile shows the friendship from each side', async () => {
+		const a = await register();
+		const b = await register();
+
+		async function seenBy(viewer: Player, owner: Player) {
+			const response = await request(server)
+				.get(`/api/users/${owner.user.id}`)
+				.set('Cookie', viewer.cookie)
+				.expect(200);
+			return (response.body as { friendship: string }).friendship;
+		}
+
+		expect(await seenBy(a, a)).toBe('self');
+		expect(await seenBy(a, b)).toBe('none');
+
+		await send(a, b).expect(201);
+		expect(await seenBy(a, b)).toBe('requested');
+		expect(await seenBy(b, a)).toBe('incoming');
+
+		await send(b, a).expect(201);
+		expect(await seenBy(a, b)).toBe('friends');
+		expect(await seenBy(b, a)).toBe('friends');
+
+		await request(server)
+			.delete(`/api/friends/${b.user.id}`)
+			.set('Cookie', a.cookie)
+			.expect(204);
+		expect(await seenBy(b, a)).toBe('none');
+	});
+
 	it('refuses a visitor who is not logged in', async () => {
 		await request(server).get('/api/friends').expect(401);
 		await request(server).get('/api/friends/requests').expect(401);

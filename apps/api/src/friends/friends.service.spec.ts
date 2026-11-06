@@ -243,3 +243,36 @@ describe('FriendsService.remove', () => {
 		);
 	});
 });
+
+describe('FriendsService.stateBetween', () => {
+	it('is self on your own profile, without asking the database', async () => {
+		await expect(service.stateBetween(ME, ME)).resolves.toBe('self');
+		expect(prisma.friendship.findUnique).not.toHaveBeenCalled();
+	});
+
+	it('is none when there is no row', async () => {
+		prisma.friendship.findUnique.mockResolvedValue(null);
+
+		await expect(service.stateBetween(ME, OTHER)).resolves.toBe('none');
+	});
+
+	it('is friends once accepted', async () => {
+		prisma.friendship.findUnique.mockResolvedValue({
+			status: 'accepted',
+			requesterId: OTHER,
+		});
+
+		await expect(service.stateBetween(ME, OTHER)).resolves.toBe('friends');
+	});
+
+	it('is requested when I sent it, incoming when they did', async () => {
+		prisma.friendship.findUnique.mockResolvedValue({
+			status: 'pending',
+			requesterId: ME,
+		});
+		await expect(service.stateBetween(ME, OTHER)).resolves.toBe(
+			'requested',
+		);
+		await expect(service.stateBetween(OTHER, ME)).resolves.toBe('incoming');
+	});
+});
