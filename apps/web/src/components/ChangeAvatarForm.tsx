@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { ChangeEvent, FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError, usersApi, type AuthUser } from '../lib/api'
-import { AVATAR_HINT, checkAvatarFile } from '../lib/avatarFile'
+import { AVATAR_HINT, AVATAR_TOO_LARGE, checkAvatarFile } from '../lib/avatarFile'
 import Avatar from './Avatar'
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
@@ -54,7 +54,7 @@ export default function ChangeAvatarForm({ user, onDone }: Props) {
       onDone()
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 413) {
-        setError('This file is too large. The maximum is 5 MB.')
+        setError(AVATAR_TOO_LARGE)
       } else if (caught instanceof ApiError && caught.fieldErrors?.avatar) {
         setError(caught.fieldErrors.avatar)
       } else {

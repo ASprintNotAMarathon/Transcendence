@@ -136,7 +136,7 @@ export type Profile = {
 
 export const usersApi = {
   get(id: string) {
-    return request<Profile>(`/users/${id}`)
+    return request<Profile>(`/users/${encodeURIComponent(id)}`)
   },
   updateName(displayName: string) {
     return request<AuthUser>('/users/me', {
