@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth';
 import { WsModule } from '../ws/ws.module';
 import { MatchController } from './match.controller';
+import { MatchDisconnects } from './match.disconnects';
 import { MatchHandlers } from './match.handlers';
 import { MatchService } from './match.service';
 
@@ -16,6 +17,6 @@ import { MatchService } from './match.service';
 @Module({
 	imports: [AuthModule, WsModule],
 	controllers: [MatchController],
-	providers: [MatchService, MatchHandlers],
+	providers: [MatchService, MatchHandlers, MatchDisconnects],
 })
 export class MatchModule {}

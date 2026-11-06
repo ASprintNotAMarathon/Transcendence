@@ -112,6 +112,56 @@ Inside `async current(…)`
 
 Sets the code and returns nothing. A 204 carries no body, so there is nothing else to send.
 
+## `apps/api/src/match/match.disconnects.ts`
+
+### Line 7 · `export const GRACE_MS = 30_000;`
+
+How long a dropped player keeps their match, from #57. It stays on this side of the wire:
+the client is told a deadline rather than a duration, so nothing in the web app needs
+the number and changing it breaks nothing there.
+
+### Line 19 · `private readonly byUser = new Map<string, Pending>();`
+
+Inside `export class MatchDisconnects`
+
+Keyed by user rather than by match, because both players can be gone at once and a
+match-keyed entry would have the second drop overwrite the first.
+A user is in at most one active match — MatchService.current returns a single row —
+so a user key is unique without a compound one.
+
+In memory on purpose, and the trade is explicit: a restart forgets every timer and leaves
+those matches active rather than abandoned, which is recoverable by playing or resigning.
+A `graceUntil` column would survive the restart and cost a migration plus a sweep on boot,
+which is not worth it while the api is one container.
+
+### Line 29 · `const deadline = new Date(Date.now() + GRACE_MS).toISOString();`
+
+Inside `start(…)`
+
+Stored as the string that goes on the wire, so the value the opponent counts down to is
+the same one every later join reports. Recomputing it per send would hand two clients
+two different deadlines for one drop. ISO strings in this format also sort
+lexicographically, which is what lets forMatch compare them with `<`.
+
+### Line 31 · `this.byUser.delete(userId);`
+
+Inside `start(…)`
+
+The entry goes before the callback runs, not after. The callback ends the match, and
+anything it triggers — a match.state built on the way out, say — must not still see
+a countdown that has already fired.
+
+### Line 53 · `forMatch(matchId: string)`
+
+A match has one `disconnected` field on the wire but can have two players missing,
+so the soonest deadline wins: that is the one that decides when the match actually ends.
+
+### Line 72 · `onModuleDestroy(): void`
+
+A pending timer holds a reference to the callback, which holds the service graph.
+Clearing them on shutdown keeps a restart in watch mode from firing an abandon
+against the previous process's state.
+
 ## `apps/api/src/match/match.error.ts`
 
 ### Line 3 · `export class MatchError extends Error`
@@ -259,6 +309,14 @@ Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 Matches that finished before the endReason column existed have it null.
 Back then a game could only end on the board, so that is what null on a finished match means.
 
+### Line 73 · `disconnected: match.status === 'finished' ? null : this.disconnects.forMatch(match.id)`
+
+Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+
+The one piece of this payload that is not in the database. A finished match reports nobody
+missing whatever the book says: a win on the board can land while a timer is still armed,
+and a result screen with a countdown under it would be nonsense.
+
 ### Line 72 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
 Inside `@Injectable() export class MatchService`
@@ -332,6 +390,19 @@ Inside `async resign(userId: string, matchId: string): Promise<MatchEndedPayload
 
 The checks above read the match a moment before this write.
 In between, the other player can resign or play a winning move.
+
+### Line 222 · `async abandon(userId: string, matchId: string): Promise<MatchEndedPayload | null>`
+
+Inside `@Injectable() export class MatchService`
+
+The same ending as a resignation, from the other direction: the player who left loses,
+and #57's timer is what calls it rather than a player.
+
+Which is why it answers null where resign throws. A MatchError exists to be turned into a
+match.rejected for whoever sent the message, and nobody sent this one — the four ways it can
+be moot (not a player, already finished, already won on the board, the row taken between the
+read and the write) are all ordinary races against a timer, not faults to report.
+Null means there is nothing to announce.
 Writing only where the status is still active lets the database decide which one counts;
 count 0 means this resignation lost and the game had already ended.
 
