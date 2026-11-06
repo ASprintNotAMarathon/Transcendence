@@ -10,7 +10,7 @@ function HomePage() {
       </aside>
 
       <div className="flex min-w-0 flex-col gap-8">
-        <h1 className="font-barrio text-3xl text-(--color-base-content)">Lobby</h1>
+        <h1 className="sr-only">Lobby</h1>
         <LiveMatches />
       </div>
     </div>

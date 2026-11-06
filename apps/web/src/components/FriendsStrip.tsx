@@ -45,9 +45,14 @@ function FriendsStrip() {
   }, [])
 
   return (
-    <Card as ="section">
-      <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-sm uppercase tracking-wide text-muted">Friends</h2>
+    <section aria-labelledby="friends-heading" className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <h2
+          id="friends-heading"
+          className="text-xs font-semibold uppercase tracking-widest text-muted"
+        >
+          Friends
+        </h2>
         {state.status === 'ready' && state.requestCount > 0 && (
           <Link
             to="/friends"
@@ -58,46 +63,48 @@ function FriendsStrip() {
         )}
       </div>
 
-      {state.status === 'loading' && <p className="text-sm text-muted">Loading…</p>}
-      {state.status === 'error' && (
-        <p role="alert" className="text-sm text-red-400">
-          We could not load your friends.
-        </p>
-      )}
+      <Card>
+        {state.status === 'loading' && <p className="text-sm text-muted">Loading…</p>}
+        {state.status === 'error' && (
+          <p role="alert" className="text-sm text-red-400">
+            We could not load your friends.
+          </p>
+        )}
 
-      {state.status === 'ready' && state.friends.length === 0 && (
-        <p className="text-sm text-muted">
-          No friends yet. Open a player's profile and choose Add friend.
-        </p>
-      )}
+        {state.status === 'ready' && state.friends.length === 0 && (
+          <p className="text-sm text-muted">
+            No friends yet. Open a player's profile and choose Add friend.
+          </p>
+        )}
 
-      {state.status === 'ready' && state.friends.length > 0 && (
-        <ul className="flex flex-wrap gap-4">
-          {state.friends.slice(0, MAX_SHOWN).map((friend) => (
-            <li key={friend.id}>
-              <Link
-                to={`/profile/${encodeURIComponent(friend.id)}`}
-                className="flex w-16 flex-col items-center gap-1 text-xs text-muted hover:text-(--color-base-content)"
-              >
-                <Avatar
-                  displayName={friend.displayName}
-                  avatarUrl={friend.avatarUrl}
-                  size="md"
-                  online={onlineIds ? onlineIds.has(friend.id) : friend.online}
-                />
-                <span className="w-full truncate text-center">{friend.displayName}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+        {state.status === 'ready' && state.friends.length > 0 && (
+          <ul className="flex flex-wrap gap-4">
+            {state.friends.slice(0, MAX_SHOWN).map((friend) => (
+              <li key={friend.id}>
+                <Link
+                  to={`/profile/${encodeURIComponent(friend.id)}`}
+                  className="flex w-16 flex-col items-center gap-1 text-xs text-muted hover:text-(--color-base-content)"
+                >
+                  <Avatar
+                    displayName={friend.displayName}
+                    avatarUrl={friend.avatarUrl}
+                    size="md"
+                    online={onlineIds ? onlineIds.has(friend.id) : friend.online}
+                  />
+                  <span className="w-full truncate text-center">{friend.displayName}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
 
-      {state.status === 'ready' && (
-        <Link to="/friends" className="mt-3 inline-block text-sm text-muted underline">
-          See all friends
-        </Link>
-      )}
-    </Card>
+        {state.status === 'ready' && (
+          <Link to="/friends" className="mt-3 inline-block text-sm text-muted underline">
+            See all friends
+          </Link>
+        )}
+      </Card>
+    </section>
   )
 }
 
