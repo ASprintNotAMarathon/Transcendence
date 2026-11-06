@@ -92,6 +92,7 @@ describe('users (e2e)', () => {
 			avatarUrl: null,
 			createdAt: me.createdAt,
 			friendship: 'self',
+			online: false,
 		});
 	});
 

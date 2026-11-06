@@ -11,10 +11,9 @@ import {
 	UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard, type AuthUser } from '../auth';
-import type { PublicProfile } from '../users/users.types';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { FriendsService } from './friends.service';
-import type { FriendRequests, FriendshipState } from './friends.types';
+import type { Friend, FriendRequests, FriendshipState } from './friends.types';
 
 /**
  * Every route is about the caller's own friends, so the caller's id always
@@ -26,7 +25,7 @@ export class FriendsController {
 	constructor(private readonly friends: FriendsService) {}
 
 	@Get()
-	list(@CurrentUser() user: AuthUser): Promise<PublicProfile[]> {
+	list(@CurrentUser() user: AuthUser): Promise<Friend[]> {
 		return this.friends.listFriends(user.id);
 	}
 

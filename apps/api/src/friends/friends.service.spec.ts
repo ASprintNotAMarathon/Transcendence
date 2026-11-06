@@ -7,6 +7,7 @@ import { Test } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { WsRegistry } from '../ws/ws.registry';
 import { FriendsService } from './friends.service';
 
 // Chosen so ALICE < ME < OTHER: ME is user0 next to OTHER, user1 next to ALICE.
@@ -33,6 +34,9 @@ const prisma = {
 	},
 };
 
+/** Who has a socket open. Every test says who is online. */
+const registry = { isOnline: vi.fn() };
+
 let service: FriendsService;
 
 beforeEach(async () => {
@@ -41,6 +45,7 @@ beforeEach(async () => {
 		providers: [
 			FriendsService,
 			{ provide: PrismaService, useValue: prisma },
+			{ provide: WsRegistry, useValue: registry },
 		],
 	}).compile();
 	service = moduleRef.get(FriendsService);
@@ -65,6 +70,50 @@ describe('FriendsService.listFriends', () => {
 
 		expect(friends.map((f) => f.displayName)).toEqual(['alice', 'zed']);
 		expect(friends[0]).not.toHaveProperty('email');
+	});
+
+	it('marks each friend online or not from the socket registry', async () => {
+		prisma.friendship.findMany.mockResolvedValue([
+			{
+				user0Id: ME,
+				user0: profile(ME, 'me'),
+				user1: profile(OTHER, 'zed'),
+			},
+			{
+				user0Id: ALICE,
+				user0: profile(ALICE, 'alice'),
+				user1: profile(ME, 'me'),
+			},
+		]);
+		registry.isOnline.mockImplementation((id: string) => id === OTHER);
+
+		const friends = await service.listFriends(ME);
+
+		expect(friends.map((f) => [f.displayName, f.online])).toEqual([
+			['alice', false],
+			['zed', true],
+		]);
+	});
+});
+
+describe('FriendsService.isOnlineFor', () => {
+	it('is the real status for a friend', () => {
+		registry.isOnline.mockReturnValue(true);
+
+		expect(service.isOnlineFor('friends', OTHER)).toBe(true);
+	});
+
+	it('is false for anyone who is not a friend, even when they are online', () => {
+		registry.isOnline.mockReturnValue(true);
+
+		for (const state of [
+			'none',
+			'requested',
+			'incoming',
+			'self',
+		] as const) {
+			expect(service.isOnlineFor(state, OTHER)).toBe(false);
+		}
 	});
 });
 

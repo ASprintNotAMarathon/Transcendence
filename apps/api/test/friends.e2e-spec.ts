@@ -119,6 +119,8 @@ describe('friends (e2e)', () => {
 				displayName: b.user.displayName,
 				avatarUrl: null,
 				createdAt: b.user.createdAt,
+				// No socket is open in this test, so nobody is online.
+				online: false,
 			},
 		]);
 	});

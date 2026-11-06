@@ -6,13 +6,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { uniqueViolationIndex } from '../prisma/unique-violation';
-import {
-	PUBLIC_PROFILE_SELECT,
-	toPublicProfile,
-	type PublicProfile,
-} from '../users/users.types';
+import { PUBLIC_PROFILE_SELECT, toPublicProfile } from '../users/users.types';
+import { WsRegistry } from '../ws/ws.registry';
 import {
 	orderedPair,
+	type Friend,
 	type FriendRequests,
 	type FriendshipState,
 } from './friends.types';
@@ -55,18 +53,32 @@ function incomingRequest(me: string, requestId: string) {
 
 @Injectable()
 export class FriendsService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly registry: WsRegistry,
+	) {}
 
-	/** My friends, sorted by name. */
-	async listFriends(me: string): Promise<PublicProfile[]> {
+	/** My friends, sorted by name, each with whether they are online now. */
+	async listFriends(me: string): Promise<Friend[]> {
 		const rows = await this.prisma.friendship.findMany({
 			where: { status: 'accepted', ...mine(me) },
 			include: BOTH_USERS,
 		});
 
 		return rows
-			.map((row) => toPublicProfile(otherUser(row, me)))
+			.map((row) => {
+				const friend = toPublicProfile(otherUser(row, me));
+				return { ...friend, online: this.registry.isOnline(friend.id) };
+			})
 			.sort((a, b) => a.displayName.localeCompare(b.displayName));
+	}
+
+	/**
+	 * Only friends see whether you are online. Anyone else, and you on
+	 * your own profile, gets false.
+	 */
+	isOnlineFor(state: FriendshipState, userId: string): boolean {
+		return state === 'friends' && this.registry.isOnline(userId);
 	}
 
 	/** Pending requests, split by who sent them. Newest first. */

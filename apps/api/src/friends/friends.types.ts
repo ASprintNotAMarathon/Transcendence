@@ -4,6 +4,9 @@ import type { PublicProfile } from '../users/users.types';
 export type FriendshipState =
 	'none' | 'requested' | 'incoming' | 'friends' | 'self';
 
+/** A friend in my list: their profile, plus the green dot. */
+export type Friend = PublicProfile & { online: boolean };
+
 /** A pending request, seen from my side: `user` is always the other person. */
 export type FriendRequest = {
 	id: string;

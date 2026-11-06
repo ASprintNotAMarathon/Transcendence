@@ -52,18 +52,25 @@ export class UsersController {
 	 *
 	 * `friendship` is seen from the caller's side, so the profile page knows
 	 * which button to show. Both lookups run at once; a missing user is
-	 * still the 404 from findProfile.
+	 * still the 404 from findProfile. `online` is only true for friends,
+	 * as the issue asks.
 	 */
 	@Get(':id')
 	async findOne(
 		@CurrentUser() user: AuthUser,
 		@Param('id', ParseUUIDPipe) id: string,
-	): Promise<PublicProfile & { friendship: FriendshipState }> {
+	): Promise<
+		PublicProfile & { friendship: FriendshipState; online: boolean }
+	> {
 		const [profile, friendship] = await Promise.all([
 			this.users.findProfile(id),
 			this.friends.stateBetween(user.id, id),
 		]);
-		return { ...profile, friendship };
+		return {
+			...profile,
+			friendship,
+			online: this.friends.isOnlineFor(friendship, id),
+		};
 	}
 
 	/**

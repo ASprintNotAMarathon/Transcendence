@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth';
+import { WsModule } from '../ws/ws.module';
 import { FriendsController } from './friends.controller';
 import { FriendsService } from './friends.service';
 
@@ -8,7 +9,8 @@ import { FriendsService } from './friends.service';
  * imported for JwtAuthGuard.
  */
 @Module({
-	imports: [AuthModule],
+	// WsModule for WsRegistry: who has a socket open right now.
+	imports: [AuthModule, WsModule],
 	controllers: [FriendsController],
 	providers: [FriendsService],
 	// UsersModule uses it for the friendship field on a profile.
