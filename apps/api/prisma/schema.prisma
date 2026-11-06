@@ -47,6 +47,8 @@ model User {
   conversationsAsUser0 Conversation[] @relation("ConversationUser0")
 	conversationsAsUser1 Conversation[] @relation("ConversationUser1")
 	messagesSent         Message[]      @relation("MessageSender")
+  friendshipsAsUser0   Friendship[]   @relation("FriendshipUser0")
+  friendshipsAsUser1   Friendship[]   @relation("FriendshipUser1")
 }
 
 /// Which engine runs a match. The values match GameEngine.name in shared/.
@@ -157,4 +159,35 @@ model Message {
 
   // Speed up queries that load a conversation's messages in chronological order.
   @@index([conversationId, createdAt])
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+}
+
+/// One row per pair of users: a request while pending, a friendship once accepted.
+/// Declining, cancelling and removing all delete the row.
+model Friendship {
+  id String @id @default(uuid()) @db.Uuid
+
+  /// The two users, smaller id first (the API sorts them, like Conversation),
+  /// so A+B and B+A are the same row.
+  user0Id String @db.Uuid
+  user1Id String @db.Uuid
+  user0   User   @relation("FriendshipUser0", fields: [user0Id], references: [id])
+  user1   User   @relation("FriendshipUser1", fields: [user1Id], references: [id])
+
+  /// Who sent the request. Always user0Id or user1Id.
+  requesterId String @db.Uuid
+
+  status FriendshipStatus @default(pending)
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  /// One row per pair, decided by the database.
+  @@unique([user0Id, user1Id])
+  /// "My friends" looks from both sides; the unique index already covers user0Id.
+  @@index([user1Id])
 }
