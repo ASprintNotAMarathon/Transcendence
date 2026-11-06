@@ -4,6 +4,7 @@ import {
 	Injectable,
 	NotFoundException,
 } from '@nestjs/common';
+import type { PresenceUser } from '@transcendence/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { uniqueViolationIndex } from '../prisma/unique-violation';
 import { PUBLIC_PROFILE_SELECT, toPublicProfile } from '../users/users.types';
@@ -71,6 +72,26 @@ export class FriendsService {
 				return { ...friend, online: this.registry.isOnline(friend.id) };
 			})
 			.sort((a, b) => a.displayName.localeCompare(b.displayName));
+	}
+
+	/** My friends' ids: the people to tell when I come or go. */
+	async friendIdsOf(me: string): Promise<string[]> {
+		const rows = await this.prisma.friendship.findMany({
+			where: { status: 'accepted', ...mine(me) },
+			select: { user0Id: true, user1Id: true },
+		});
+		return rows.map((row) =>
+			row.user0Id === me ? row.user1Id : row.user0Id,
+		);
+	}
+
+	/** How the presence events name a user. Null if they are gone. */
+	async presenceUser(userId: string): Promise<PresenceUser | null> {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+			select: { displayName: true },
+		});
+		return user ? { userId, displayName: user.displayName } : null;
 	}
 
 	/**
