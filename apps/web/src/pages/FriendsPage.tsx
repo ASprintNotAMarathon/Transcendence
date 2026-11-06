@@ -56,7 +56,7 @@ function Row({ person, online, children }: RowProps) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section className="mt-8">
+        <section>
             <h2 className="mb-3 text-sm uppercase tracking-wide text-muted">{title}</h2>
             {children}
         </section>
@@ -106,8 +106,8 @@ function FriendsPage() {
     }
 
     return (
-        <div className="max-w-2xl">
-            <h1 className="font-barrio text-3xl text-(--color-base-content)">Friends</h1>
+        <div className="mx-auto flex w-full max-w-xl flex-col gap-8">
+            <h1 className="sr-only">Friends</h1>
 
             {state.status === 'loading' && <LoadingState />}
             {state.status === 'error' && <ErrorState onRetry={handleRetry} />}
@@ -115,7 +115,7 @@ function FriendsPage() {
             {state.status === 'ready' && (
                 <>
                     {actionError && (
-                        <p role="alert" className="mt-4 text-sm text-red-400">
+                        <p role="alert" className="text-sm text-red-400">
                             {actionError}
                         </p>
                     )}
