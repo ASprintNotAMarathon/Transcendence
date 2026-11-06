@@ -72,6 +72,9 @@ function UserMenu({ onLogout }: UserMenuProps) {
       {open && (
         <div className="absolute right-0 top-full z-20 mt-2 w-48 rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-2">
           <p className="truncate px-3 pb-2 text-sm text-muted">{user.displayName}</p>
+          <Link to="/home" onClick={() => setOpen(false)} className={itemClass}>
+            Lobby
+          </Link>
           <Link to="/profile" onClick={() => setOpen(false)} className={itemClass}>
             Profile
           </Link>

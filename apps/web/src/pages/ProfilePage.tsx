@@ -107,8 +107,8 @@ function ProfilePage() {
   const viewingSomeoneElse = id !== undefined && id !== user.id
 
   return (
-    <div>
-      <h1 className="font-barrio text-3xl text-(--color-base-content)">Profile</h1>
+    <div className="mx-auto w-full max-w-xl">
+      <h1 className="sr-only">Profile</h1>
       {viewingSomeoneElse ? <OtherProfile key={id} id={id} /> : <OwnProfile user={user} />}
     </div>
   )
