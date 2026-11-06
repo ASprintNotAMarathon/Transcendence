@@ -75,6 +75,9 @@ function UserMenu({ onLogout }: UserMenuProps) {
           <Link to="/profile" onClick={() => setOpen(false)} className={itemClass}>
             Profile
           </Link>
+          <Link to="/friends" onClick={() => setOpen(false)} className={itemClass}>
+            Friends
+          </Link>
           <button type="button" onClick={onLogout} className={itemClass}>
             Log out
           </button>

@@ -13,6 +13,7 @@ import RegisterPage from './pages/RegisterPage.tsx'
 import HomePage from './pages/HomePage.tsx'
 import ProfilePage from './pages/ProfilePage.tsx'
 import ChatPage from './pages/ChatPage.tsx'
+import FriendsPage from './pages/FriendsPage.tsx'
 import MatchPage from './pages/MatchPage.tsx'
 import NotFoundPage from './pages/NotFoundPage.tsx'
 import PrivacyPage from './pages/PrivacyPage.tsx'
@@ -51,6 +52,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:id" element={<ProfilePage />} />
                 <Route path="/chat" element={<ChatPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/match/:matchId" element={<MatchPage />} />
               </Route>
             </Route>
