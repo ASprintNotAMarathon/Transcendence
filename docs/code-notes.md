@@ -1414,9 +1414,15 @@ clock is a minute out — from disagreeing about whether the game is still runni
 
 Inside `export interface MatchDisconnectedPayload`
 
-An instant rather than a number of seconds left. A count is already stale by however long
-the message spent in flight, and wrong by much more for a client that loads halfway through,
-so the client subtracts its own clock once and ticks locally.
-One message then covers the whole window instead of a broadcast per second.
-The server's timer stays the authority on when the match actually ends;
+An instant rather than a number of seconds left, because it is the simpler of the two.
+The server works it out once and sends the same string in match.disconnected and in match.state,
+and the client ticks with `Date.parse(deadline) - Date.now()`. A count of seconds left would
+have to be recomputed for every match.state, and turned into a local end time the moment it arrived.
+
+The cost is that the countdown is off by however far the browser's clock and the server's disagree.
+That is normally under a second. If it ever looks wrong, check the API container's clock first:
+Docker on WSL2 is known to drift after the laptop sleeps.
+
+Either way, one message covers the whole window instead of a broadcast per second,
+and the server's timer stays the authority on when the match actually ends;
 the countdown is only a display.
