@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
-import type { AuthUser } from '../lib/api'
-import { loadProfile, type Profile } from '../lib/fakeProfiles'
+import { ApiError, usersApi, type AuthUser, type Profile } from '../lib/api'
 import ProfileCard from '../components/ProfileCard'
 import EditNameForm from '../components/EditNameForm'
 import ChangeAvatarForm from '../components/ChangeAvatarForm'
@@ -60,13 +59,16 @@ function OtherProfile({ id }: { id: string }) {
   useEffect(() => {
     // If you leave the page before the answer arrives, ignore the answer.
     let ignore = false
-    loadProfile(id)
+    usersApi
+      .get(id)
       .then((profile) => {
-        if (ignore) return
-        setState(profile ? { status: 'ready', profile } : { status: 'notFound' })
+        if (!ignore) setState({ status: 'ready', profile })
       })
-      .catch(() => {
-        if (!ignore) setState({ status: 'error' })
+      .catch((caught) => {
+        if (ignore) return
+        const missing =
+          caught instanceof ApiError && (caught.status === 404 || caught.status === 400)
+        setState(missing ? { status: 'notFound' } : { status: 'error' })
       })
     return () => {
       ignore = true
