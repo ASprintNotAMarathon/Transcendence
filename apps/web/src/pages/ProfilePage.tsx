@@ -7,6 +7,7 @@ import EditNameForm from '../components/EditNameForm'
 import ChangeAvatarForm from '../components/ChangeAvatarForm'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
+import FriendButton from '../components/FriendButton'
 
 /*
   ProfilePage. /profile is your own profile, /profile/:id is someone else's.
@@ -90,7 +91,9 @@ function OtherProfile({ id }: { id: string }) {
       displayName={profile.displayName}
       avatarUrl={profile.avatarUrl}
       createdAt={profile.createdAt}
-    />
+    >
+      <FriendButton userId={profile.id} />
+    </ProfileCard>
   )
 }
 
@@ -104,8 +107,8 @@ function ProfilePage() {
   const viewingSomeoneElse = id !== undefined && id !== user.id
 
   return (
-    <div>
-      <h1 className="font-barrio text-3xl text-(--color-base-content)">Profile</h1>
+    <div className="mx-auto w-full max-w-xl">
+      <h1 className="sr-only">Profile</h1>
       {viewingSomeoneElse ? <OtherProfile key={id} id={id} /> : <OwnProfile user={user} />}
     </div>
   )

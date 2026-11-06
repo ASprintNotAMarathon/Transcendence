@@ -6,7 +6,6 @@ import ChatPopup from '../chat/ChatPopup'
 import Footer from '../components/Footer'
 
 function AppLayout() {
-  const navButtonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
   const { logout } = useAuth()
   const navigate = useNavigate()
 
@@ -27,9 +26,6 @@ function AppLayout() {
 
         <div className="flex items-center gap-3">
           <ConnectionStatus />
-          <NavLink to="/chat" className={navButtonClass}>
-            Chat
-          </NavLink>
           <UserMenu onLogout={handleLogout} />
         </div>
       </header>

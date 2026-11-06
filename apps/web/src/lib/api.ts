@@ -8,9 +8,12 @@
   1. The shapes of data (LAYER 1)
   2. request(), the one function every call goes through (LAYER 2)
   3. authApi and matchApi, the functions the rest of the app calls (LAYER 3)
+
+  Friends have their own file: friends.ts (it uses request() from here).
 */
 
 import type { LiveMatch } from '@transcendence/shared'
+import type { Friendship } from './friends'
 
 /*
   LAYER 1: Shapes of data that go in / out:
@@ -59,7 +62,7 @@ export class ApiError extends Error {
   LAYER 2   request(): function that for each call does the same:
             send to /api, send cookies with it, checks if succeed, if not, send ApiError.
 */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
     // Goes through the Vite proxy, so this is same origin. No CORS needed.
     // The cookie is Secure in every environment, also on localhost (decision 09).
@@ -132,6 +135,7 @@ export type Profile = {
   displayName: string
   avatarUrl: string | null
   createdAt: string
+  friendship?: Friendship
 }
 
 export const usersApi = {
