@@ -5,6 +5,7 @@ import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import { friendsApi, type Friend, type FriendRequests, type Person } from '../lib/friends'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
+import Card from '../components/Card'
 
 /*
   FriendsPage. /friends
@@ -40,7 +41,7 @@ type RowProps = {
 // One person: avatar, name (links to their profile) and the actions on the right.
 function Row({ person, online, children }: RowProps) {
     return (
-        <li className="flex items-center gap-3 rounded-2xl border-2 border-(--color-base-300) px-4 py-3">
+        <Card as="li" size="sm" className="flex items-center gap-3">
             <Avatar displayName={person.displayName} avatarUrl={person.avatarUrl} size="md" online={online} />
             <Link
                 to={`/profile/${encodeURIComponent(person.id)}`}
@@ -49,7 +50,7 @@ function Row({ person, online, children }: RowProps) {
                 {person.displayName}
             </Link>
             <div className="flex items-center gap-3">{children}</div>
-        </li>
+        </Card>
     )
 }
 
