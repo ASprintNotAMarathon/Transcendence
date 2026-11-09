@@ -181,7 +181,7 @@ borrowing HTTP semantics here would only have to be unpicked in the gateway.
 
 ## `apps/api/src/match/match.handlers.ts`
 
-### Line 10 · `@Injectable() export class MatchHandlers implements OnModuleInit`
+### Line 13 · `@Injectable() export class MatchHandlers implements OnModuleInit`
 
 Where match messages leave the socket layer and reach MatchService.
 
@@ -193,7 +193,7 @@ and who should hear the answer.
 The user id is always `client.data.userId`, set by the handshake.
 The payload is never read for it, even if a client puts one there.
 
-### Line 24 · `join: WsHandler<'match.join'> = async (client, event) =>`
+### Line 35 · `join: WsHandler<'match.join'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
@@ -205,14 +205,14 @@ neither: too late for the snapshot, too early for the room. This order
 can at worst deliver a match.moved the snapshot already contains, which
 the client drops by its moveNumber.
 
-### Line 37 · `await client.leave(room);`
+### Line 48 · `await client.leave(room);`
 
 Inside `join: WsHandler<'match.join'> = async (client, event) =>`
 
 A refused join must not leave the socket in the room, or a
 mistyped id would keep a subscription to a match nobody sees.
 
-### Line 42 · `move: WsHandler<'match.move'> = async (client, event) =>`
+### Line 53 · `move: WsHandler<'match.move'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
@@ -223,13 +223,66 @@ broadcast can never announce a move the database does not have.
 No cid on the broadcast: it answers nobody in particular, and the sender
 recognises its own move by `by` and `moveNumber` like everyone else.
 
-### Line 62 · `leave: WsHandler<'match.leave'> = async (client, event) =>`
+### Line 93 · `leave: WsHandler<'match.leave'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
 Stop receiving updates. Not a resignation, and nothing to reply.
 
-### Line 66 · `private rejectOrRethrow( client: WsSocket, cid: string | undefined, matchId: string, error: unknown, ): void`
+### Line 31 · `this.lifecycle.onUserOffline(this.userWentOffline);`
+
+Inside `onModuleInit(): void`
+
+The listeners live here rather than in MatchDisconnects so that class can stay a plain
+book of timers. This class already has the sender and knows which room a match lives in,
+which is everything a drop needs beyond the timer itself.
+
+### Line 97 · `userWentOffline = async (userId: string): Promise<void> =>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+The last socket of a user closed. If they are playing, give them the grace window and tell the room.
+
+No seat is ever looked up for a spectator: `service.current` only finds matches the user
+plays in, so someone watching can drop without anything happening.
+
+### Line 99 · `if (match === null || this.registry.isOnline(userId)) {`
+
+Inside `userWentOffline`
+
+The online check has to come after the lookup, because the lookup is the only place this
+listener waits. On a page reload the old socket closes and the new one connects within
+milliseconds, so the user can be back before `current` answers. userCameOnline has already
+run by then and found no timer to cancel, and nothing else would ever cancel this one:
+the match would be abandoned 30 seconds later with the player sitting in it.
+
+### Line 109 · `() => void this.abandon(userId, matchId),`
+
+Inside `userWentOffline`
+
+`void` because MatchDisconnects calls this and ignores what comes back.
+That is safe only because `abandon` below never rejects.
+
+### Line 117 · `userCameOnline = (userId: string): void =>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+`cancel` answering null means there was no timer, so most connections end here without a broadcast.
+The client gets the board back through its own `match.join` replay; this event is for the
+opponent, who needs to know the countdown stopped.
+
+### Line 129 · `private async abandon(userId: string, matchId: string): Promise<void>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+Runs from a timer, so no dispatcher is above it to catch a failure and it logs its own.
+A failure leaves the match active, the same recoverable state a restart leaves it in.
+
+A null from the service means there is nothing to announce: the match was won or resigned
+during the window, or the other player's timer got there first. That is why a normal ending
+does not bother cancelling the timer, and why with both players gone the first deadline decides.
+
+### Line 146 · `private rejectOrRethrow( client: WsSocket, cid: string | undefined, matchId: string, error: unknown, ): void`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
