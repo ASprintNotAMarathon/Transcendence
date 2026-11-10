@@ -92,6 +92,9 @@ const CHAT_IDS = {
 	message1: '00000000-0000-0000-0000-000000000202',
 	message2: '00000000-0000-0000-0000-000000000203',
 	message3: '00000000-0000-0000-0000-000000000204',
+	conversation2: '00000000-0000-0000-0000-000000000205',
+	message5: '00000000-0000-0000-0000-000000000206',
+	message6: '00000000-0000-0000-0000-000000000207',
 } as const;
 
 // One move as stored in the Move table. `by` is the PlayerIndex (0 or 1).
@@ -573,7 +576,30 @@ async function seedChat(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log('seeded 1 conversation with 3 messages (alice ↔ bob)');
+	await prisma.conversation.create({
+		data: {
+			id: CHAT_IDS.conversation2,
+			user0Id: SEED_USERS[0].id, // alice
+			user1Id: SEED_USERS[2].id, // charlie
+			messages: {
+				create: [
+					{
+						id: CHAT_IDS.message5,
+						senderId: SEED_USERS[2].id,
+						body: 'did you survive the seed review?',
+						createdAt: new Date('2026-10-20T11:00:00Z'),
+					},
+					{
+						id: CHAT_IDS.message6,
+						senderId: SEED_USERS[0].id,
+						body: 'all merged. chat server next.',
+						createdAt: new Date('2026-10-20T11:01:00Z'),
+					},
+				],
+			},
+		},
+	});
+	console.log('seeded 2 conversation with 3 messages (alice ↔ bob, alice ↔ charlie)');
 }
 
 // Unusual and deliberately broken matches for testing the match page.

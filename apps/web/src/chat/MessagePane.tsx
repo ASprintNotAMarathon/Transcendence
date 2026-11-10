@@ -173,7 +173,7 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 							{/* max-w + break-words: a long message wraps instead of widening the layout.
 							    whitespace-pre-wrap keeps the newlines from Shift+Enter and pasted text. */}
 							<div
-								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words whitespace-pre-wrap ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-100)'}`}
+								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words whitespace-pre-wrap ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-200)'}`}
 							>
 								<p>{message.body}</p>
 								{/* dateTime keeps the exact timestamp; the visible text is just hh:mm */}
