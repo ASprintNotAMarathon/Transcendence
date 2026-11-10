@@ -429,6 +429,23 @@ the game column is an enum this server wrote itself,
 so an unknown or unimplemented value means a match was created that nothing can run.
 getEngine throws.
 
+## `apps/api/src/ws/ws.envelope.ts`
+
+### Line 42 · `'queue.join': (p) => isNonEmptyString(p.game),`
+
+Inside `const PAYLOAD_CHECKS`
+
+Only checks that a game was named. Whether it can be played is the queue handler's call,
+which refuses Reversi with queue.unknown_game rather than transport.invalid_payload,
+so the Play button can say "not available yet" instead of treating it as a broken message.
+
+### Line 43 · `'queue.leave': (p) => Object.keys(p).length === 0,`
+
+Inside `const PAYLOAD_CHECKS`
+
+Empty because a user is in at most one queue, so there is nothing to name.
+Same check as chat.conversations and presence.list.
+
 ## `apps/web/src/index.css`
 
 ### Line 1 · file header
@@ -1210,3 +1227,32 @@ Inside `export interface LiveMatch`
 When the match was created, as an ISO string: JSON has no dates,
 so a Date on the server arrives as a string anyway. Saying so in the type
 keeps anyone from calling Date methods on it without parsing it first.
+
+## `shared/src/ws.ts`
+
+### Line 91 · `export type QueueErrorCode =`
+
+Why a queue.join was refused, or why a pairing fell through.
+unknown_game: the game has no engine yet, like Reversi today.
+already_queued: the user is already searching, usually from another tab.
+in_match: the user has a game in progress and has to finish it first.
+failed: two players were paired but the match couldn't be saved. Both are told, and neither is left in the queue.
+
+### Line 228 · `readonly game: GameName;`
+
+Inside `export interface QueueJoinPayload`
+
+There is one queue per game, so the browser says which one.
+Typed as GameName rather than string so the web app can't send a name that doesn't exist.
+The server still gets an untrusted string and checks it against implementedGames.
+
+### Line 233 · `export interface QueueMatchedPayload`
+
+Sent to the tab that clicked Play, for both players, once their match is saved.
+The browser goes to /match/:matchId and loads it the normal way with match.join,
+so this carries only the id and not the board.
+
+### Line 237 · `export interface QueueRejectedPayload`
+
+No matchId, unlike match.rejected: there is no match to point at yet.
+It echoes the cid of the queue.join it answers.

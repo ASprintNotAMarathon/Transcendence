@@ -39,6 +39,8 @@ const PAYLOAD_CHECKS: Record<
 	// there is a match.malformed_move, not a transport errror. Presence is
 	// all this layer can check.
 	'match.move': (p) => isNonEmptyString(p.matchId) && 'move' in p,
+	'queue.join': (p) => isNonEmptyString(p.game),
+	'queue.leave': (p) => Object.keys(p).length === 0,
 	// A message needs a valid conversation ID and non-empty body.
 	'chat.send': (p) =>
 		isNonEmptyString(p.conversationId) && isNonEmptyString(p.body),
