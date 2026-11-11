@@ -187,6 +187,47 @@ A MatchError is the player's doing: tell that one socket and nobody else.
 Anything else is a server fault with no protocol code to send, so it is
 rethrown for the dispatcher to log.
 
+## `apps/api/src/match/match.queue.ts`
+
+### Line 4 · `export interface Waiting`
+
+One player waiting for an opponent. socketId is the tab that clicked Play,
+so closing that tab can take them out of the queue while their other tabs stay open.
+Only the id, not the socket: queue.matched goes to all of a player's tabs through the user room.
+
+### Line 10 · `@Injectable() export class MatchQueue`
+
+Everyone waiting for a game, plus everyone whose click is being handled right now.
+Kept in memory, so an API restart empties it. Nobody loses a match that way,
+because nothing in here has been saved yet, and the browser sends queue.join again when it reconnects.
+No sockets, database or messages, which is what lets the spec test it with plain calls.
+
+### Line 13 · `private readonly busy = new Set<string>();`
+
+Inside `@Injectable() export class MatchQueue`
+
+Stops two tabs from creating two matches.
+Checking for a game in progress means asking the database, and two clicks could both hear "no game"
+before either match exists. claim marks the user busy the moment the click arrives,
+before any await, so the second click is refused straight away.
+It also stops self-pairing: while your own click is handled you are busy, not waiting,
+and takeFor only looks at players who are waiting.
+
+### Line 27 · `takeFor(game: GameName): Waiting | null`
+
+Inside `@Injectable() export class MatchQueue`
+
+Oldest waiter first, so whoever waited longer becomes player 0 and moves first.
+The player it takes is marked busy, so they can't click Play in another tab
+while their match is being saved. The handler releases them once it is.
+
+### Line 45 · `leaveSocket(socketId: string): void`
+
+Inside `@Injectable() export class MatchQueue`
+
+Called when a tab closes. Matching on the socket rather than the user means
+closing some other tab of the same user leaves them waiting.
+
 ## `apps/api/src/match/match.service.ts`
 
 ### Line 24 · `function isMoveNumberTaken(error: unknown): boolean`
