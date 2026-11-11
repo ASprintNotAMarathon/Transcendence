@@ -187,6 +187,51 @@ A MatchError is the player's doing: tell that one socket and nobody else.
 Anything else is a server fault with no protocol code to send, so it is
 rethrown for the dispatcher to log.
 
+## `apps/api/src/match/match.queue.handlers.ts`
+
+### Line 18 · `private readonly watched = new WeakSet<WsSocket>();`
+
+Inside `@Injectable() export class MatchQueueHandlers implements OnModuleInit`
+
+The tabs we already listen to for closing. A tab that clicks Play and Cancel over and over
+would otherwise get a new disconnect listener each time, and Node warns once there are more than ten.
+A WeakSet, so a closed socket isn't kept in memory just because it's in here.
+
+### Line 32 · `readonly join: WsHandler<'queue.join'> = async (client, event) =>`
+
+Inside `@Injectable() export class MatchQueueHandlers implements OnModuleInit`
+
+The checks run cheapest first, and the order matters.
+The game check needs nothing. claim runs before any await, so a second tab is refused
+before either click has asked the database anything. Only then does it look for a game in progress.
+The finally releases the user whatever happens, so a refusal or a failure can't leave them stuck as busy.
+
+### Line 50 · `if (client.disconnected) {`
+
+Inside `readonly join: WsHandler<'queue.join'> = async (client, event) =>`
+
+The tab can close while the lookup is running. Its disconnect has already happened by then,
+so a listener added now would never fire, and the entry would stay in the queue
+with nobody to tell when someone is paired with it.
+
+### Line 60 · `} catch (error) {`
+
+Inside `readonly join: WsHandler<'queue.join'> = async (client, event) =>`
+
+Without this, a failed lookup would only be logged by the dispatcher,
+and the tab would keep searching with nothing on the server looking for a match.
+queue.failed tells it to stop.
+
+### Line 85 · `private async pair(`
+
+Inside `@Injectable() export class MatchQueueHandlers implements OnModuleInit`
+
+The waiter goes first in create, so whoever waited longer is player 0 and moves first.
+Both outcomes go to every tab of both players through the user room:
+the tab that is searching opens the match, and an open lobby can show Resume.
+A tab that isn't searching should ignore a queue.rejected, since only failures during pairing reach it.
+The finally releases the waiter, who takeFor marked busy.
+
 ## `apps/api/src/match/match.queue.ts`
 
 ### Line 4 · `export interface Waiting`

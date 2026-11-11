@@ -114,14 +114,21 @@ describe('MatchQueueHandlers', () => {
 			await handlers.join(asSocket(alice), joinEvent());
 			await handlers.join(asSocket(bob), joinEvent());
 
-			expect(service.create).toHaveBeenCalledWith('gomoku', 'alice', 'bob');
+			expect(service.create).toHaveBeenCalledWith(
+				'gomoku',
+				'alice',
+				'bob',
+			);
 		});
 
 		it('tells every tab of both players about the new match', async () => {
 			await handlers.join(asSocket(alice), joinEvent());
 			await handlers.join(asSocket(bob), joinEvent());
 
-			const matched = { type: 'queue.matched', payload: { matchId: MATCH_ID } };
+			const matched = {
+				type: 'queue.matched',
+				payload: { matchId: MATCH_ID },
+			};
 			expect(sender.sendToUser.mock.calls).toEqual([
 				['alice', matched],
 				['bob', matched],
@@ -232,7 +239,10 @@ describe('MatchQueueHandlers', () => {
 			await handlers.join(asSocket(alice), joinEvent());
 			await handlers.join(asSocket(bob), joinEvent());
 
-			const failed = { type: 'queue.rejected', payload: { code: 'queue.failed' } };
+			const failed = {
+				type: 'queue.rejected',
+				payload: { code: 'queue.failed' },
+			};
 			expect(sender.sendToUser.mock.calls).toEqual([
 				['alice', failed],
 				['bob', failed],
@@ -244,7 +254,10 @@ describe('MatchQueueHandlers', () => {
 
 	describe('closing a tab', () => {
 		function closeTab(client: FakeClient): void {
-			const [event, onClose] = client.once.mock.calls[0] as [string, () => void];
+			const [event, onClose] = client.once.mock.calls[0] as [
+				string,
+				() => void,
+			];
 			expect(event).toBe('disconnect');
 			onClose();
 		}
