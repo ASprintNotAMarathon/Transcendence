@@ -1,9 +1,6 @@
 /*
  * MessagePane shows the messages of ONE conversation, newest at the bottom.
  *
- * It talks to the mock chat client in two directions:
- *   chat.ts ──loadHistory()──▶ MessagePane   (first page on open, older pages on scroll-up)
- *   chat.ts ──subscribe()───▶ MessagePane   (new messages arrive live)
  *
  * The parent (ChatPage) only passes in a conversationId. When that id changes,
  * ChatPage remounts this component (via key=), so state here always belongs to
