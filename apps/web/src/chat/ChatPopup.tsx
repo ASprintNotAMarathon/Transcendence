@@ -4,7 +4,7 @@ import { CURRENT_USER_ID, chatClient } from './chat'
 import ChatPage from '../pages/ChatPage'
 
 function ChatPopup() {
-  // The chat page already IS the chat — a popup over it would be chat-inside-chat.
+  // The chat page already IS the chat - a popup over it would be chat-inside-chat.
   const location = useLocation()
   // Create a state variable called 'open', initially false (the popup is closed).
   // setOpen is the function used to change the value of 'open'.
@@ -41,8 +41,11 @@ function ChatPopup() {
 	window.addEventListener('keydown', onKeyDown)
 	return () => window.removeEventListener('keydown', onKeyDown)
 	}, [open])
-  if (location.pathname === '/chat') 
+
+  if (location.pathname === '/chat') {
     return null
+  }
+
   return (
     // Keep the popup fixed to the bottom-right corner of the browser window by fixed right-4 bottom-4.
     // z-20 places it above lobbypage/homepage, 20 layers above the base layer (z-0).
@@ -52,7 +55,10 @@ function ChatPopup() {
     // gap-2 adds space between them.
     <div className="fixed right-4 bottom-4 z-20 flex flex-col items-end gap-2">
 
-	  {/* The chat window itself. */}
+	  {/* The chat window itself. Mounted ONLY while open ({open && ...}),
+	      so closing throws its state away and every opening starts
+	      fresh at the conversation list. */}
+      {open && (
       <div
         // These classes style the chat window:
         // w-[min(42rem,calc(100vw-2rem))] limits its width to the smaller of
@@ -62,17 +68,16 @@ function ChatPopup() {
         // border-(--color-primary) uses the primary theme color for the border.
         // bg-(--color-base-100) sets the background color.
         // p-3 adds padding inside the container.
-        //
-        // The template literal lets us combine fixed classes with a condition:
-        // if open is true, add no extra class and show the popup.
-        // if open is false, add 'hidden' and hide the popup.
-        className={`w-[min(42rem,calc(100vw-2rem))] rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-3 max-sm:fixed max-sm:inset-0 max-sm:w-auto max-sm:rounded-none max-sm:border-0 ${open ? '' : 'hidden'}`}
+        // max-sm: on phone widths the window covers the whole screen instead.
+        className="w-[min(42rem,calc(100vw-2rem))] rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-3 max-sm:fixed max-sm:inset-0 max-sm:w-auto max-sm:rounded-none max-sm:border-0"
       >
         {/* Render the chat interface inside the popup.
-            className="h-96" keeps it at 24 rem inside desktop view 
-			on phones, it takes the full viewport height minus 5rem */}
-          <ChatPage className="h-96 max-sm:h-[calc(100dvh-3rem)] max-sm:pt-9" />
+            h-96 keeps it at 24rem in the desktop corner box; on phones it
+            takes the dynamic viewport height minus 3rem, plus top padding
+            so the list starts below the relocated Close button. */}
+        <ChatPage className="h-96 max-sm:h-[calc(100dvh-3rem)] max-sm:pt-9" />
       </div>
+      )}
 
       {/* Button used to open and close the popup. */}
       <button
@@ -93,6 +98,8 @@ function ChatPopup() {
         // btn and btn-sm define its button appearance and size.
         // tracking-wide adds letter spacing.
         // btn-outline-accent gives it an outlined accent style.
+        // While open on a phone, the button pins to the top-right so it
+        // never covers the composer.
         className={`btn btn-sm tracking-wide border-2 btn-outline-accent relative ${open ? 'max-sm:fixed max-sm:top-2 max-sm:right-2' : ''}`}
       >
         {/* Display different button text depending on the state.
