@@ -11,6 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import LoadingState from '../components/states/LoadingState'
@@ -18,6 +19,8 @@ import MessageComposer from './MessageComposer'
 
 type MessagePaneProps = {
 	conversationId: string
+	otherUserId: string
+	otherUserName: string
 }
 
 /**
@@ -42,7 +45,7 @@ function formatTime(isoDate: string): string {
 	})
 }
 
-function MessagePane({ conversationId }: MessagePaneProps) {
+function MessagePane({ conversationId, otherUserId, otherUserName }: MessagePaneProps) {
 	/*
 	 * useState returns TWO things:
 	 *
@@ -143,6 +146,15 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 		// Column: the scrollable message list on top, the composer pinned below.
 		// min-h-0 on the list lets it shrink and scroll instead of pushing the composer off-screen.
 		<div className="flex h-full flex-col">
+				{/* The other person's name — links to their profile (issue #60). */}
+				{otherUserId !== '' && (
+					<Link
+						to={`/profile/${otherUserId}`}
+						className="border-b border-(--color-base-200) px-2 pb-2 font-semibold hover:underline"
+			>
+						{otherUserName}
+					</Link>
+				)}
 			<div
 				ref={scrollRef}
 				onScroll={() => void handleScroll()}

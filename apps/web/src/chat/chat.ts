@@ -47,6 +47,7 @@ export interface ChatClient {
 /** Data returned by listConversations() to display conversations in the frontend sidebar. */
 export interface ConversationSummary {
 	conversationId: string
+	otherUserId: string
 	name: string
 	lastMessage: string
 }
@@ -126,6 +127,7 @@ function handleServerEvent(event: ServerEvent): void {
 		// Replace local conversation list with the latest server data.
 		conversations = event.payload.conversations.map((row) => ({
 			conversationId: row.conversationId,
+			otherUserId: row.otherUserId,
 			name: row.otherUserName,
 			lastMessage: row.lastMessageBody,
 		}))
