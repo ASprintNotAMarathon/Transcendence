@@ -599,7 +599,7 @@ async function seedChat(prisma: PrismaClient): Promise<void> {
 			},
 		},
 	});
-	console.log('seeded 2 conversation with 3 messages (alice ↔ bob, alice ↔ charlie)');
+	console.log('seeded 2 conversation with 5 messages (alice ↔ bob, alice ↔ charlie)');
 }
 
 // Unusual and deliberately broken matches for testing the match page.
