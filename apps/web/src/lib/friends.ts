@@ -1,5 +1,4 @@
 import { ApiError, request, usersApi } from './api'
-import { mockFriendsApi } from './mockFriends'
 
 /*
   Friends (issue #59). The shapes follow the agreement with Kimia:
@@ -33,7 +32,7 @@ export type FriendsApiBase = {
   statusWith(userId: string): Promise<Friendship>
 }
 
-const realFriendsApi: FriendsApiBase = {
+const baseFriendsApi: FriendsApiBase = {
   list() {
     return request<Friend[]>('/friends')
   },
@@ -64,12 +63,6 @@ const realFriendsApi: FriendsApiBase = {
     return profile.friendship ?? 'none'
   },
 }
-
-// TEMPORARY: true uses the fake data in mockFriends.ts.
-// Set to false when Kimia's endpoints are ready, then delete mockFriends.ts.
-const USE_MOCK_FRIENDS = true
-
-const baseFriendsApi: FriendsApiBase = USE_MOCK_FRIENDS ? mockFriendsApi : realFriendsApi
 
 // Accepting needs the request id, and a profile only tells us "incoming".
 // So we look the id up in the list of requests first.
