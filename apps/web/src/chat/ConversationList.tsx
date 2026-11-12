@@ -70,9 +70,9 @@ function ConversationList({
 									</span>
 								)}
 							</span>
-							{/* Preview of the newest message — hidden for the open
-							    conversation, since the pane already shows it.
-							    The span stays so every row keeps the same height. */}
+								{/* Preview of the newest message — hidden for the open
+							    conversation, since the pane already shows it.
+							    The span stays so every row keeps the same height. */}
 							<span className="w-full truncate text-sm text-muted">
 								{selected ? '' : conversation.lastMessage}
 							</span>

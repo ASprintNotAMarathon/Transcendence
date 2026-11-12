@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import ChatPage from '../pages/ChatPage'
 
 function ChatPopup() {
+  // The chat page already IS the chat — a popup over it would be chat-inside-chat.
+  const location = useLocation()
   // Create a state variable called 'open', initially false (the popup is closed).
   // setOpen is the function used to change the value of 'open'.
   const [open, setOpen] = useState(false)
@@ -38,7 +41,8 @@ function ChatPopup() {
 	window.addEventListener('keydown', onKeyDown)
 	return () => window.removeEventListener('keydown', onKeyDown)
 	}, [open])
-
+  if (location.pathname === '/chat') 
+    return null
   return (
     // Keep the popup fixed to the bottom-right corner of the browser window by fixed right-4 bottom-4.
     // z-20 places it above lobbypage/homepage, 20 layers above the base layer (z-0).
@@ -67,7 +71,7 @@ function ChatPopup() {
         {/* Render the chat interface inside the popup.
             className="h-96" keeps it at 24 rem inside desktop view 
 			on phones, it takes the full viewport height minus 5rem */}
-        <ChatPage className="h-96 max-sm:h-[calc(100dvh-5rem)]" />
+          <ChatPage className="h-96 max-sm:h-[calc(100dvh-3rem)] max-sm:pt-9" />
       </div>
 
       {/* Button used to open and close the popup. */}
@@ -89,7 +93,7 @@ function ChatPopup() {
         // btn and btn-sm define its button appearance and size.
         // tracking-wide adds letter spacing.
         // btn-outline-accent gives it an outlined accent style.
-        className="btn btn-sm tracking-wide border-2 btn-outline-accent relative"
+        className={`btn btn-sm tracking-wide border-2 btn-outline-accent relative ${open ? 'max-sm:fixed max-sm:top-2 max-sm:right-2' : ''}`}
       >
         {/* Display different button text depending on the state.
             When open is true, show 'Close chat'.

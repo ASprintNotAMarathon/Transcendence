@@ -122,18 +122,12 @@ function handleServerEvent(event: ServerEvent): void {
 	}
 
 	//Checks whether the backend sent an updated conversation list.
-	if (event.type === 'chat.conversations_result') 
-	{
+	if (event.type === 'chat.conversations_result') {
 		// Replace local conversation list with the latest server data.
 		conversations = event.payload.conversations.map((row) => ({
 			conversationId: row.conversationId,
 			name: row.otherUserName,
-			// Keep the previous message preview if we already know it.
-			// If this is a new conversation, start with an empty preview.
-			lastMessage:
-				conversations.find(
-					(known) => known.conversationId === row.conversationId,
-				)?.lastMessage ?? '',
+			lastMessage: row.lastMessageBody,
 		}))
 	}
 
