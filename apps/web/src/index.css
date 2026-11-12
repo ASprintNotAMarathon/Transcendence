@@ -45,12 +45,8 @@ body {
   background-color: var(--color-primary);
 }
 
-@layer components {
-  .text-muted {
-    font-size: 0.875rem;
-    line-height: 1.25rem;
-    color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
-  }
+.text-muted {
+  color: color-mix(in srgb, var(--color-base-content) 60%, transparent);
 }
 
 body::before {
