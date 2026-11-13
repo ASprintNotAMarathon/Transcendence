@@ -170,6 +170,9 @@ export interface MatchStatePayload {
 
 	/** The number of the last move played. 0 on a fresh board. */
 	readonly moveNumber: number;
+
+	/** Set while a player is gone and the countdown is running, null otherwise. */
+	readonly disconnected: MatchDisconnectedPayload | null;
 }
 
 export type MatchEndReason = "played" | "resigned" | "abandoned";
@@ -200,6 +203,24 @@ export interface MatchEndedPayload {
 	readonly reason: Exclude<MatchEndReason, "played">;
 }
 
+/**
+ * A player's connection dropped.
+ * If the deadline passes, a match.ended with reason "abandoned" says so.
+ */
+export interface MatchDisconnectedPayload {
+	readonly matchId: string;
+	readonly player: PlayerIndex;
+
+	/** When the match is given up on, as an ISO instant (what Date.prototype.toISOString() gives). */
+	readonly deadline: string;
+}
+
+/** A player who had dropped is back, and the countdown is off. */
+export interface MatchReconnectedPayload {
+	readonly matchId: string;
+	readonly player: PlayerIndex;
+}
+
 /** A move the server refused. Sent only to the player who sent it. */
 export interface MatchRejectedPayload {
 	readonly matchId: string;
@@ -218,6 +239,8 @@ export type MatchServerEvent =
 	| Envelope<"match.state", MatchStatePayload>
 	| Envelope<"match.moved", MatchMovedPayload>
 	| Envelope<"match.ended", MatchEndedPayload>
+	| Envelope<"match.disconnected", MatchDisconnectedPayload>
+	| Envelope<"match.reconnected", MatchReconnectedPayload>
 	| Envelope<"match.rejected", MatchRejectedPayload>;
 
 /* ==========================================================================

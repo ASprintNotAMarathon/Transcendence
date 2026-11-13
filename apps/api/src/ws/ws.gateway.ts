@@ -12,6 +12,7 @@ import type { LifecycleServerEvent } from '@transcendence/shared';
 import { parseEnvelope } from './ws.envelope';
 import { EVENT } from './ws.types';
 import type { WsServer, WsSocket } from './ws.types';
+import { WsLifecycle } from './ws.lifecycle';
 import { WsRegistry } from './ws.registry';
 import { userRoom } from './ws.rooms';
 import { WsDispatcher } from './ws.dispatch';
@@ -36,7 +37,11 @@ import { TokenVerifier } from './ws.verifier';
 // @ - a marker, WebSocketGateway - the function, ({ path: '/ws' }) - its argument
 // WebSocketGateway is a factory, calling it returns the decorator(the function that receives my class),
 // and @ is what applies that to WSGateway
-@WebSocketGateway({ path: '/ws' })
+@WebSocketGateway({
+	path: '/ws',
+	pingInterval: 10_000,
+	pingTimeout: 5_000,
+})
 export class WsGateway
 	implements
 		OnGatewayInit<WsServer>,
@@ -50,6 +55,7 @@ export class WsGateway
 		private readonly dispatcher: WsDispatcher,
 		private readonly sender: WsSender,
 		private readonly verifier: TokenVerifier,
+		private readonly lifecycle: WsLifecycle,
 	) {}
 
 	/**
@@ -119,6 +125,10 @@ export class WsGateway
 		const cameOnline = this.registry.add(userId, client.id);
 		void client.join(userRoom(userId));
 
+		if (cameOnline) {
+			this.lifecycle.userOnline(userId);
+		}
+
 		this.logger.log(
 			`connected ${client.id} as ${userId}${cameOnline ? ' (now online)' : ''}` +
 				` - online: ${this.registry.onlineUserIds().join(', ')}`,
@@ -128,6 +138,10 @@ export class WsGateway
 	handleDisconnect(client: WsSocket): void {
 		const { userId } = client.data;
 		const wentOffline = this.registry.remove(userId, client.id);
+
+		if (wentOffline) {
+			this.lifecycle.userOffline(userId);
+		}
 
 		this.logger.log(
 			`disconnected ${client.id} as ${userId}${wentOffline ? ' (now offline)' : ''}` +

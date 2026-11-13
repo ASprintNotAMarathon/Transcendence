@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import type { LiveMatch, MatchPlayer, PlayerIndex } from '@transcendence/shared'
 import { stoneFill } from './stones'
+import Card from '../components/Card'
 
 type LiveMatchRowProps = {
   match: LiveMatch
@@ -37,11 +38,7 @@ function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)
   const seat = index === -1 ? null : (index as PlayerIndex)
 
   return (
-    <div
-      className={`flex items-center justify-between gap-4 rounded-box border-2 px-4 py-3 ${
-        highlighted ? 'border-(--color-primary) bg-(--color-base-100)' : 'border-(--color-board-line)'
-      }`}
-    >
+    <Card size="sm" highlighted={highlighted} className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 flex-col gap-1">
         <p className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-(--color-primary-content)">
           <Player player={match.players[0]} seat={0} />
@@ -55,7 +52,7 @@ function LiveMatchRow({ match, userId, highlighted = false }: LiveMatchRowProps)
       <Link to={`/match/${match.matchId}`} className={`shrink-0 ${buttonClass}`}>
         {seat === null ? 'Watch' : 'Resume'}
       </Link>
-    </div>
+      </Card>
   )
 }
 

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Prisma } from '../generated/prisma/client';
 import { GameName } from '../generated/prisma/enums';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchDisconnects } from './match.disconnects';
 import { MatchError } from './match.error';
 import { MatchService } from './match.service';
 
@@ -67,6 +68,7 @@ function matchRow(overrides: Record<string, unknown> = {}) {
 describe('MatchService.join', () => {
 	let service: MatchService;
 	let findUnique: ReturnType<typeof vi.fn>;
+	let disconnects: MatchDisconnects;
 
 	beforeEach(async () => {
 		findUnique = vi.fn();
@@ -74,6 +76,7 @@ describe('MatchService.join', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: { match: { findUnique } },
@@ -82,6 +85,7 @@ describe('MatchService.join', () => {
 		}).compile();
 
 		service = moduleRef.get(MatchService);
+		disconnects = moduleRef.get(MatchDisconnects);
 	});
 
 	it('gives an empty board and player 0 to move for a match with no moves', async () => {
@@ -277,6 +281,41 @@ describe('MatchService.join', () => {
 			service.join(PLAYER_0.id, MATCH_ID),
 		).rejects.not.toBeInstanceOf(MatchError);
 	});
+
+	it('says nobody is missing while both players are connected', async () => {
+		findUnique.mockResolvedValue(matchRow());
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.disconnected).toBeNull();
+	});
+
+	it('carries a running countdown, so a reload does not lose it', async () => {
+		findUnique.mockResolvedValue(matchRow());
+		const pending = disconnects.start(
+			PLAYER_1.id,
+			MATCH_ID,
+			1,
+			() => undefined,
+		);
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.disconnected).toEqual(pending);
+		disconnects.cancel(PLAYER_1.id);
+	});
+
+	it('leaves a finished match alone even if a timer is somehow still armed', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({ status: 'finished', winnerId: PLAYER_0.id }),
+		);
+		disconnects.start(PLAYER_1.id, MATCH_ID, 1, () => undefined);
+
+		const state = await service.join(PLAYER_0.id, MATCH_ID);
+
+		expect(state.disconnected).toBeNull();
+		disconnects.cancel(PLAYER_1.id);
+	});
 });
 
 /** The winning game one move short, and the move that finishes it. */
@@ -319,6 +358,7 @@ describe('MatchService.move', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: {
@@ -566,6 +606,7 @@ describe('MatchService.resign', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: { match: { findUnique, updateMany } },
@@ -664,6 +705,105 @@ describe('MatchService.resign', () => {
 	});
 });
 
+describe('MatchService.abandon', () => {
+	let service: MatchService;
+	let findUnique: ReturnType<typeof vi.fn>;
+	let updateMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findUnique = vi.fn();
+		updateMany = vi.fn().mockResolvedValue({ count: 1 });
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				MatchDisconnects,
+				{
+					provide: PrismaService,
+					useValue: { match: { findUnique, updateMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('ends the match as a win for the opponent and stores why', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const ended = await service.abandon(PLAYER_0.id, MATCH_ID);
+
+		expect(ended).toEqual({
+			matchId: MATCH_ID,
+			outcome: { kind: 'win', player: 1 },
+			reason: 'abandoned',
+		});
+		expect(updateMany).toHaveBeenCalledWith({
+			where: { id: MATCH_ID, status: 'active' },
+			data: {
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+				endReason: 'abandoned',
+			},
+		});
+	});
+
+	it('gives the win to player 0 when player 1 stays away', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		const ended = await service.abandon(PLAYER_1.id, MATCH_ID);
+
+		expect(ended?.outcome).toEqual({ kind: 'win', player: 0 });
+	});
+
+	// Nothing below is a rejection: a timer fired these, and there is no client
+	// waiting to be told the firing was pointless.
+
+	it('answers null for a match that finished while the timer ran', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({
+				moves: rowsFor(quietMoves),
+				status: 'finished',
+				winnerId: PLAYER_1.id,
+			}),
+		);
+
+		await expect(
+			service.abandon(PLAYER_0.id, MATCH_ID),
+		).resolves.toBeNull();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it('answers null for a match won on the board while the timer ran', async () => {
+		findUnique.mockResolvedValue(
+			matchRow({ moves: rowsFor(winningMoves) }),
+		);
+
+		await expect(
+			service.abandon(PLAYER_1.id, MATCH_ID),
+		).resolves.toBeNull();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it('answers null when the row was taken between the read and the write', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+		updateMany.mockResolvedValue({ count: 0 });
+
+		await expect(
+			service.abandon(PLAYER_0.id, MATCH_ID),
+		).resolves.toBeNull();
+	});
+
+	it('answers null for someone who is not a player', async () => {
+		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
+
+		await expect(
+			service.abandon(SPECTATOR_ID, MATCH_ID),
+		).resolves.toBeNull();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+});
+
 const STARTED_AT = new Date('2026-10-17T10:00:00.000Z');
 const OTHER_MATCH_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 
@@ -689,6 +829,7 @@ describe('MatchService.live', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: { match: { findMany } },
@@ -790,6 +931,7 @@ describe('MatchService.current', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: { match: { findMany } },
@@ -858,6 +1000,7 @@ describe('MatchService.create', () => {
 		const moduleRef = await Test.createTestingModule({
 			providers: [
 				MatchService,
+				MatchDisconnects,
 				{
 					provide: PrismaService,
 					useValue: { match: { create } },

@@ -1,18 +1,24 @@
+import { Logger } from '@nestjs/common';
 import type {
+	LiveMatch,
 	MatchEndedPayload,
 	MatchMovePayload,
 	MatchMovedPayload,
 	MatchStatePayload,
 } from '@transcendence/shared';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WsDispatcher } from '../ws/ws.dispatch';
+import type { WsLifecycle } from '../ws/ws.lifecycle';
+import { WsRegistry } from '../ws/ws.registry';
 import type { WsSender } from '../ws/ws.sender';
 import type { WsSocket } from '../ws/ws.types';
+import { GRACE_MS, MatchDisconnects } from './match.disconnects';
 import { MatchError } from './match.error';
 import { MatchHandlers } from './match.handlers';
 import type { MatchService } from './match.service';
 
 const USER_ID = 'socket-user-uuid';
+const OPPONENT_ID = 'opponent-uuid';
 const MATCH_ID = 'match-uuid';
 const ROOM = `match:${MATCH_ID}`;
 const CID = 'request-7';
@@ -36,24 +42,53 @@ const ended: MatchEndedPayload = {
 	reason: 'resigned',
 };
 
+const live: LiveMatch = {
+	matchId: MATCH_ID,
+	game: 'gomoku',
+	players: [
+		{ userId: USER_ID, displayName: 'alice' },
+		{ userId: OPPONENT_ID, displayName: 'bob' },
+	],
+	turn: 0,
+	moveNumber: 0,
+	startedAt: '2026-11-09T00:00:00.000Z',
+};
+
 describe('MatchHandlers', () => {
 	let service: {
 		join: ReturnType<typeof vi.fn>;
 		move: ReturnType<typeof vi.fn>;
 		resign: ReturnType<typeof vi.fn>;
+		abandon: ReturnType<typeof vi.fn>;
+		current: ReturnType<typeof vi.fn>;
 	};
 	let sender: {
 		broadcast: ReturnType<typeof vi.fn>;
 		sendToSocket: ReturnType<typeof vi.fn>;
 	};
+	let disconnects: MatchDisconnects;
+	let lifecycle: {
+		onUserOnline: ReturnType<typeof vi.fn>;
+		onUserOffline: ReturnType<typeof vi.fn>;
+	};
+	let registry: WsRegistry;
 	let joinRoom: ReturnType<typeof vi.fn>;
 	let leaveRoom: ReturnType<typeof vi.fn>;
 	let client: WsSocket;
 	let handlers: MatchHandlers;
 
 	beforeEach(() => {
-		service = { join: vi.fn(), move: vi.fn(), resign: vi.fn() };
+		service = {
+			join: vi.fn(),
+			move: vi.fn(),
+			resign: vi.fn(),
+			abandon: vi.fn(),
+			current: vi.fn(),
+		};
 		sender = { broadcast: vi.fn(), sendToSocket: vi.fn() };
+		disconnects = new MatchDisconnects();
+		lifecycle = { onUserOnline: vi.fn(), onUserOffline: vi.fn() };
+		registry = new WsRegistry();
 		joinRoom = vi.fn();
 		leaveRoom = vi.fn();
 		client = {
@@ -66,6 +101,9 @@ describe('MatchHandlers', () => {
 			service as unknown as MatchService,
 			{ register: vi.fn() } as unknown as WsDispatcher,
 			sender as unknown as WsSender,
+			disconnects,
+			lifecycle as unknown as WsLifecycle,
+			registry,
 		);
 	});
 
@@ -75,6 +113,9 @@ describe('MatchHandlers', () => {
 			service as unknown as MatchService,
 			{ register } as unknown as WsDispatcher,
 			sender as unknown as WsSender,
+			disconnects,
+			lifecycle as unknown as WsLifecycle,
+			registry,
 		);
 
 		withSpy.onModuleInit();
@@ -85,6 +126,12 @@ describe('MatchHandlers', () => {
 			['match.resign', withSpy.resign],
 			['match.leave', withSpy.leave],
 		]);
+		expect(lifecycle.onUserOffline).toHaveBeenCalledWith(
+			withSpy.userWentOffline,
+		);
+		expect(lifecycle.onUserOnline).toHaveBeenCalledWith(
+			withSpy.userCameOnline,
+		);
 	});
 
 	describe('match.move', () => {
@@ -277,6 +324,140 @@ describe('MatchHandlers', () => {
 			expect(service.move).not.toHaveBeenCalled();
 			expect(sender.sendToSocket).not.toHaveBeenCalled();
 			expect(sender.broadcast).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('presence', () => {
+		const abandoned: MatchEndedPayload = {
+			matchId: MATCH_ID,
+			outcome: { kind: 'win', player: 1 },
+			reason: 'abandoned',
+		};
+
+		beforeEach(() => {
+			vi.useFakeTimers();
+			service.current.mockResolvedValue(live);
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('tells the room when a player drops, with the deadline', async () => {
+			await handlers.userWentOffline(USER_ID);
+
+			expect(sender.broadcast).toHaveBeenCalledOnce();
+			expect(sender.broadcast).toHaveBeenCalledWith(ROOM, {
+				type: 'match.disconnected',
+				payload: {
+					matchId: MATCH_ID,
+					player: 0,
+					deadline: new Date(Date.now() + GRACE_MS).toISOString(),
+				},
+			});
+		});
+
+		it('works out the seat of the second player', async () => {
+			await handlers.userWentOffline(OPPONENT_ID);
+
+			expect(sender.broadcast).toHaveBeenCalledWith(ROOM, {
+				type: 'match.disconnected',
+				payload: {
+					matchId: MATCH_ID,
+					player: 1,
+					deadline: new Date(Date.now() + GRACE_MS).toISOString(),
+				},
+			});
+		});
+
+		it('does nothing when the user has no live match', async () => {
+			service.current.mockResolvedValue(null);
+
+			await handlers.userWentOffline(USER_ID);
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(sender.broadcast).not.toHaveBeenCalled();
+			expect(service.abandon).not.toHaveBeenCalled();
+		});
+
+		it('starts no timer when the user came back during the lookup', async () => {
+			let finishLookup: (match: LiveMatch) => void = () => undefined;
+			service.current.mockReturnValue(
+				new Promise<LiveMatch>((resolve) => {
+					finishLookup = resolve;
+				}),
+			);
+
+			const dropping = handlers.userWentOffline(USER_ID);
+			registry.add(USER_ID, 'new-socket');
+			finishLookup(live);
+			await dropping;
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(sender.broadcast).not.toHaveBeenCalled();
+			expect(service.abandon).not.toHaveBeenCalled();
+		});
+
+		it('cancels the timer and tells the room when the player returns', async () => {
+			await handlers.userWentOffline(USER_ID);
+			sender.broadcast.mockClear();
+
+			handlers.userCameOnline(USER_ID);
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(sender.broadcast).toHaveBeenCalledOnce();
+			expect(sender.broadcast).toHaveBeenCalledWith(ROOM, {
+				type: 'match.reconnected',
+				payload: { matchId: MATCH_ID, player: 0 },
+			});
+			expect(service.abandon).not.toHaveBeenCalled();
+		});
+
+		it('says nothing when a user with no timer comes online', () => {
+			handlers.userCameOnline(USER_ID);
+
+			expect(sender.broadcast).not.toHaveBeenCalled();
+		});
+
+		it('abandons the match and tells the room when the time runs out', async () => {
+			service.abandon.mockResolvedValue(abandoned);
+			await handlers.userWentOffline(USER_ID);
+			sender.broadcast.mockClear();
+
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(service.abandon).toHaveBeenCalledWith(USER_ID, MATCH_ID);
+			expect(sender.broadcast).toHaveBeenCalledOnce();
+			expect(sender.broadcast).toHaveBeenCalledWith(ROOM, {
+				type: 'match.ended',
+				payload: abandoned,
+			});
+		});
+
+		it('stays quiet when the match was already over at expiry', async () => {
+			service.abandon.mockResolvedValue(null);
+			await handlers.userWentOffline(USER_ID);
+			sender.broadcast.mockClear();
+
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(service.abandon).toHaveBeenCalledOnce();
+			expect(sender.broadcast).not.toHaveBeenCalled();
+		});
+
+		it('logs a failed abandon instead of letting it escape the timer', async () => {
+			const logged = vi
+				.spyOn(Logger.prototype, 'error')
+				.mockImplementation(() => undefined);
+			service.abandon.mockRejectedValue(new Error('db is down'));
+			await handlers.userWentOffline(USER_ID);
+			sender.broadcast.mockClear();
+
+			await vi.advanceTimersByTimeAsync(GRACE_MS);
+
+			expect(logged).toHaveBeenCalledOnce();
+			expect(sender.broadcast).not.toHaveBeenCalled();
+			logged.mockRestore();
 		});
 	});
 });

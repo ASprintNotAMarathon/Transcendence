@@ -2,6 +2,7 @@
 import 'reflect-metadata';
 import { WsDispatcher } from './ws.dispatch';
 import { WsGateway } from './ws.gateway';
+import { WsLifecycle } from './ws.lifecycle';
 import { WsRegistry } from './ws.registry';
 import { WsSender } from './ws.sender';
 import type { WsServer, WsSocket } from './ws.types';
@@ -38,6 +39,7 @@ function handshakeOf(verifier: TokenVerifier): Middleware {
 		new WsDispatcher(),
 		new WsSender(),
 		verifier,
+		new WsLifecycle(),
 	);
 
 	let captured: Middleware | undefined;
@@ -64,6 +66,67 @@ function fakeSocket(cookie?: string): WsSocket {
 		data: {},
 	} as unknown as WsSocket;
 }
+
+/** A socket that is already past the handshake, as the two handlers below see it. */
+function connectedSocket(id: string, userId: string): WsSocket {
+	return {
+		id,
+		data: { userId },
+		join: vi.fn(),
+	} as unknown as WsSocket;
+}
+
+describe('connection lifecycle', () => {
+	function gatewayWith(lifecycle: WsLifecycle): WsGateway {
+		return new WsGateway(
+			new WsRegistry(),
+			new WsDispatcher(),
+			new WsSender(),
+			new StubVerifier('good.jwt', 'u42'),
+			lifecycle,
+		);
+	}
+
+	it('announces a user on their first socket', () => {
+		const lifecycle = new WsLifecycle();
+		const online = vi.fn();
+		lifecycle.onUserOnline(online);
+
+		gatewayWith(lifecycle).handleConnection(connectedSocket('s1', 'u42'));
+
+		expect(online).toHaveBeenCalledWith('u42');
+	});
+
+	it('stays quiet when the same user opens a second tab', () => {
+		const lifecycle = new WsLifecycle();
+		const online = vi.fn();
+		lifecycle.onUserOnline(online);
+		const gateway = gatewayWith(lifecycle);
+
+		gateway.handleConnection(connectedSocket('s1', 'u42'));
+		gateway.handleConnection(connectedSocket('s2', 'u42'));
+
+		expect(online).toHaveBeenCalledOnce();
+	});
+
+	it('announces a departure only when the last socket closes', () => {
+		const lifecycle = new WsLifecycle();
+		const offline = vi.fn();
+		lifecycle.onUserOffline(offline);
+		const gateway = gatewayWith(lifecycle);
+
+		const first = connectedSocket('s1', 'u42');
+		const second = connectedSocket('s2', 'u42');
+		gateway.handleConnection(first);
+		gateway.handleConnection(second);
+
+		gateway.handleDisconnect(first);
+		expect(offline).not.toHaveBeenCalled();
+
+		gateway.handleDisconnect(second);
+		expect(offline).toHaveBeenCalledWith('u42');
+	});
+});
 
 describe('handshake', () => {
 	const verifier = new StubVerifier('good.jwt', 'u42');

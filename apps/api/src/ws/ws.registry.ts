@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 const NO_SOCKETS: ReadonlySet<string> = new Set();
 
+/** Told when a user comes online (true) or goes offline (false). */
+export type PresenceListener = (userId: string, online: boolean) => void;
+
 /**
  * Which socket belongs to which user.
  *
@@ -12,6 +15,16 @@ const NO_SOCKETS: ReadonlySet<string> = new Set();
 @Injectable()
 export class WsRegistry {
 	private readonly byUser = new Map<string, Set<string>>(); //keys are user IDs, and values are sets of socket IDs
+	private readonly listeners: PresenceListener[] = [];
+
+	/**
+	 * Be told when a user's first socket opens or their last one closes.
+	 * Same idea as WsDispatcher.register: the ws slice never needs to know
+	 * who cares (friends, today), so it never imports them.
+	 */
+	onChange(listener: PresenceListener): void {
+		this.listeners.push(listener);
+	}
 
 	/**
 	 * Record a socket. Returns true if it is the user's first: they just came online,
@@ -24,6 +37,7 @@ export class WsRegistry {
 			return false;
 		}
 		this.byUser.set(userId, new Set([socketId]));
+		this.notify(userId, true);
 		return true;
 	}
 
@@ -44,6 +58,7 @@ export class WsRegistry {
 		}
 
 		this.byUser.delete(userId);
+		this.notify(userId, false);
 		return true;
 	}
 
@@ -57,5 +72,11 @@ export class WsRegistry {
 
 	onlineUserIds(): readonly string[] {
 		return [...this.byUser.keys()];
+	}
+
+	private notify(userId: string, online: boolean): void {
+		for (const listener of this.listeners) {
+			listener(userId, online);
+		}
 	}
 }
