@@ -112,6 +112,56 @@ Inside `async current(…)`
 
 Sets the code and returns nothing. A 204 carries no body, so there is nothing else to send.
 
+## `apps/api/src/match/match.disconnects.ts`
+
+### Line 7 · `export const GRACE_MS = 30_000;`
+
+How long a dropped player keeps their match, from #57. It stays on this side of the wire:
+the client is told a deadline rather than a duration, so nothing in the web app needs
+the number and changing it breaks nothing there.
+
+### Line 19 · `private readonly byUser = new Map<string, Pending>();`
+
+Inside `export class MatchDisconnects`
+
+Keyed by user rather than by match, because both players can be gone at once and a
+match-keyed entry would have the second drop overwrite the first.
+A user is in at most one active match — MatchService.current returns a single row —
+so a user key is unique without a compound one.
+
+In memory on purpose, and the trade is explicit: a restart forgets every timer and leaves
+those matches active rather than abandoned, which is recoverable by playing or resigning.
+A `graceUntil` column would survive the restart and cost a migration plus a sweep on boot,
+which is not worth it while the api is one container.
+
+### Line 29 · `const deadline = new Date(Date.now() + GRACE_MS).toISOString();`
+
+Inside `start(…)`
+
+Stored as the string that goes on the wire, so the value the opponent counts down to is
+the same one every later join reports. Recomputing it per send would hand two clients
+two different deadlines for one drop. ISO strings in this format also sort
+lexicographically, which is what lets forMatch compare them with `<`.
+
+### Line 31 · `this.byUser.delete(userId);`
+
+Inside `start(…)`
+
+The entry goes before the callback runs, not after. The callback ends the match, and
+anything it triggers — a match.state built on the way out, say — must not still see
+a countdown that has already fired.
+
+### Line 53 · `forMatch(matchId: string)`
+
+A match has one `disconnected` field on the wire but can have two players missing,
+so the soonest deadline wins: that is the one that decides when the match actually ends.
+
+### Line 72 · `onModuleDestroy(): void`
+
+A pending timer holds a reference to the callback, which holds the service graph.
+Clearing them on shutdown keeps a restart in watch mode from firing an abandon
+against the previous process's state.
+
 ## `apps/api/src/match/match.error.ts`
 
 ### Line 3 · `export class MatchError extends Error`
@@ -131,7 +181,7 @@ borrowing HTTP semantics here would only have to be unpicked in the gateway.
 
 ## `apps/api/src/match/match.handlers.ts`
 
-### Line 10 · `@Injectable() export class MatchHandlers implements OnModuleInit`
+### Line 13 · `@Injectable() export class MatchHandlers implements OnModuleInit`
 
 Where match messages leave the socket layer and reach MatchService.
 
@@ -143,7 +193,7 @@ and who should hear the answer.
 The user id is always `client.data.userId`, set by the handshake.
 The payload is never read for it, even if a client puts one there.
 
-### Line 24 · `join: WsHandler<'match.join'> = async (client, event) =>`
+### Line 35 · `join: WsHandler<'match.join'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
@@ -155,14 +205,14 @@ neither: too late for the snapshot, too early for the room. This order
 can at worst deliver a match.moved the snapshot already contains, which
 the client drops by its moveNumber.
 
-### Line 37 · `await client.leave(room);`
+### Line 48 · `await client.leave(room);`
 
 Inside `join: WsHandler<'match.join'> = async (client, event) =>`
 
 A refused join must not leave the socket in the room, or a
 mistyped id would keep a subscription to a match nobody sees.
 
-### Line 42 · `move: WsHandler<'match.move'> = async (client, event) =>`
+### Line 53 · `move: WsHandler<'match.move'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
@@ -173,13 +223,66 @@ broadcast can never announce a move the database does not have.
 No cid on the broadcast: it answers nobody in particular, and the sender
 recognises its own move by `by` and `moveNumber` like everyone else.
 
-### Line 62 · `leave: WsHandler<'match.leave'> = async (client, event) =>`
+### Line 93 · `leave: WsHandler<'match.leave'> = async (client, event) =>`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
 Stop receiving updates. Not a resignation, and nothing to reply.
 
-### Line 66 · `private rejectOrRethrow( client: WsSocket, cid: string | undefined, matchId: string, error: unknown, ): void`
+### Line 31 · `this.lifecycle.onUserOffline(this.userWentOffline);`
+
+Inside `onModuleInit(): void`
+
+The listeners live here rather than in MatchDisconnects so that class can stay a plain
+book of timers. This class already has the sender and knows which room a match lives in,
+which is everything a drop needs beyond the timer itself.
+
+### Line 97 · `userWentOffline = async (userId: string): Promise<void> =>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+The last socket of a user closed. If they are playing, give them the grace window and tell the room.
+
+No seat is ever looked up for a spectator: `service.current` only finds matches the user
+plays in, so someone watching can drop without anything happening.
+
+### Line 99 · `if (match === null || this.registry.isOnline(userId)) {`
+
+Inside `userWentOffline`
+
+The online check has to come after the lookup, because the lookup is the only place this
+listener waits. On a page reload the old socket closes and the new one connects within
+milliseconds, so the user can be back before `current` answers. userCameOnline has already
+run by then and found no timer to cancel, and nothing else would ever cancel this one:
+the match would be abandoned 30 seconds later with the player sitting in it.
+
+### Line 109 · `() => void this.abandon(userId, matchId),`
+
+Inside `userWentOffline`
+
+`void` because MatchDisconnects calls this and ignores what comes back.
+That is safe only because `abandon` below never rejects.
+
+### Line 117 · `userCameOnline = (userId: string): void =>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+`cancel` answering null means there was no timer, so most connections end here without a broadcast.
+The client gets the board back through its own `match.join` replay; this event is for the
+opponent, who needs to know the countdown stopped.
+
+### Line 129 · `private async abandon(userId: string, matchId: string): Promise<void>`
+
+Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
+
+Runs from a timer, so no dispatcher is above it to catch a failure and it logs its own.
+A failure leaves the match active, the same recoverable state a restart leaves it in.
+
+A null from the service means there is nothing to announce: the match was won or resigned
+during the window, or the other player's timer got there first. That is why a normal ending
+does not bother cancelling the timer, and why with both players gone the first deadline decides.
+
+### Line 146 · `private rejectOrRethrow( client: WsSocket, cid: string | undefined, matchId: string, error: unknown, ): void`
 
 Inside `@Injectable() export class MatchHandlers implements OnModuleInit`
 
@@ -259,6 +362,14 @@ Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
 Matches that finished before the endReason column existed have it null.
 Back then a game could only end on the board, so that is what null on a finished match means.
 
+### Line 73 · `disconnected: match.status === 'finished' ? null : this.disconnects.forMatch(match.id)`
+
+Inside `async join(userId: string, matchId: string): Promise<MatchStatePayload>`
+
+The one piece of this payload that is not in the database. A finished match reports nobody
+missing whatever the book says: a win on the board can land while a timer is still armed,
+and a result screen with a countdown under it would be nonsense.
+
 ### Line 72 · `async move( userId: string, payload: MatchMovePayload, ): Promise<MatchMovedPayload>`
 
 Inside `@Injectable() export class MatchService`
@@ -332,6 +443,19 @@ Inside `async resign(userId: string, matchId: string): Promise<MatchEndedPayload
 
 The checks above read the match a moment before this write.
 In between, the other player can resign or play a winning move.
+
+### Line 222 · `async abandon(userId: string, matchId: string): Promise<MatchEndedPayload | null>`
+
+Inside `@Injectable() export class MatchService`
+
+The same ending as a resignation, from the other direction: the player who left loses,
+and #57's timer is what calls it rather than a player.
+
+Which is why it answers null where resign throws. A MatchError exists to be turned into a
+match.rejected for whoever sent the message, and nobody sent this one — the four ways it can
+be moot (not a player, already finished, already won on the board, the row taken between the
+read and the write) are all ordinary races against a timer, not faults to report.
+Null means there is nothing to announce.
 Writing only where the status is still active lets the database decide which one counts;
 count 0 means this resignation lost and the game had already ended.
 
@@ -428,6 +552,116 @@ A miss here is a server fault, not a rejection:
 the game column is an enum this server wrote itself,
 so an unknown or unimplemented value means a match was created that nothing can run.
 getEngine throws.
+
+## `apps/api/src/ws/ws.gateway.ts`
+
+### Line 42 · `pingInterval: 10_000,`
+
+Not a default worth keeping. A connection that dies without a close frame — a laptop losing
+wifi — is only noticed when a ping goes unanswered, and Socket.IO's defaults
+(25s between pings, 20s to answer) can take 45s to do it.
+That is longer than the 30s grace period a dropped player gets in #57,
+so the match would be abandoned before anything had noticed the player left.
+At 10s and 5s the drop surfaces within 15s, for one extra ping every 15s per socket.
+
+### Line 128 · `if (cameOnline) {`
+
+Inside `handleConnection(client: WsSocket): void`
+
+`registry.add` returns true only for a user's first socket, so the hook fires on arrival
+and not on a second tab. Without that, a player with two tabs open who closes one
+would be announced as gone while still sitting in front of the board.
+
+### Line 142 · `if (wentOffline) {`
+
+Inside `handleDisconnect(client: WsSocket): void`
+
+The other half of the same rule: `registry.remove` returns true only on the last socket,
+so a departure means every tab is closed rather than one of them.
+
+## `apps/api/src/ws/ws.lifecycle.ts`
+
+### Line 3 · `export type WsPresenceListener`
+
+A function type, not a data shape: it describes the callback another slice hands us
+to be called later. Nothing here knows what a listener does — in #57 the match slice
+registers one that looks up the player's active match and starts a timer.
+
+Returns `void | Promise<void>` because a listener may need the database, and that union
+is what lets one be either a plain function (which returns `undefined`, i.e. `void`)
+or an `async` one (which returns a promise). `fire` handles the promise,
+so a listener never has to catch on its own behalf.
+
+### Line 6 · `@Injectable() export class WsLifecycle`
+
+The counterpart to WsDispatcher: that one routes messages, this one routes the connection itself.
+The transport still knows nothing about matches or chat — it knows only that somebody
+asked to hear about arrivals and departures, which is what keeps the grace timer for #57
+out of the gateway.
+
+### Line 8 · `private readonly logger = new Logger(WsLifecycle.name);`
+
+Inside `export class WsLifecycle`
+
+Nest's logger rather than console.log: it carries a severity, a timestamp and a context tag,
+so a line comes out as `ERROR [WsLifecycle] …` and you can tell which class wrote it.
+`WsLifecycle.name` is the static `.name` every JS class has, holding its own name as a string,
+so renaming the class renames the tag. One logger per class as a private field,
+the same as ws.dispatch.ts and ws.gateway.ts.
+
+### Line 10 · `private readonly online = new Set<WsPresenceListener>();`
+
+Inside `export class WsLifecycle`
+
+Two collections rather than one tagged collection, because a listener registered for arrivals
+must never be called on a departure. Keeping them apart makes that structural:
+`fire` is handed one of them and cannot reach the other.
+
+A Set rather than an array because removal is by value — `delete(listener)` drops that exact
+function, where an array needs indexOf then splice — and because registering the same function
+twice stores it once. That last part deduplicates by reference identity, not by what the
+function does, so two separately written arrows with identical source are two entries.
+In practice listeners register once in onModuleInit, so it rarely comes up.
+
+### Line 13 · `onUserOnline(listener: WsPresenceListener): () => void`
+
+The return type is itself a function type: this returns an unsubscribe function.
+It is a closure over `listener`, so the caller does not have to keep the reference around
+to deregister, and over `this` — an arrow takes `this` lexically from where it was written,
+so it still works when called much later from a teardown that knows nothing about this object.
+
+Returning the unsubscriber rather than offering an `offUserOnline(listener)` method is what
+lets a subscription and its cancellation travel as one value. It is also React's cleanup
+convention, which is why SocketProvider.tsx can write
+`useEffect(() => clientSocket.onStatus(setStatus), [])` and nothing else.
+
+`Set.delete` returns a boolean while the declared type says void. That compiles because
+TypeScript allows a value-returning function where a void-returning one is expected:
+the declaration says callers should ignore the result, not that there is none.
+
+### Line 31 · `private fire(`
+
+One listener failing must not stop the rest and must not take the gateway's
+connection handling down with it, so the `try` sits inside the loop and each listener
+gets its own attempt. Wrapping the loop instead would let the first throw skip the others.
+
+`listeners` is typed ReadonlySet, which a real Set satisfies structurally, because this
+iterates a collection while calling arbitrary third-party code and mutating a Set mid-iteration
+is a real hazard. The type makes it unwritable. `what` is only a label for the log line,
+and it is the reason one implementation serves both events and still says which failed.
+
+`Promise.resolve(listener(userId))` normalises the two kinds of listener: given a promise it
+returns it unchanged, given `undefined` it wraps it, so there is one code path instead of a
+branch on what came back. Both a synchronous throw and a rejected promise are caught, because
+the listener type allows either: a plain function that throws does so while `listener(userId)`
+is still being evaluated, before any promise exists for `.catch` to attach to, while an async
+failure arrives as a rejection that `try` would never see. An unhandled rejection takes the
+process down by default, so neither can be left out. `error: unknown` rather than `any` is
+useUnknownInCatchVariables — a thrown value is not guaranteed to be an Error.
+
+The promise is deliberately not awaited. `fire` returns before an async listener has finished,
+which is what keeps the gateway's synchronous connection hooks from waiting on database work,
+and means the #57 grace timer starts a moment after handleDisconnect has already returned.
 
 ## `apps/web/src/index.css`
 
@@ -534,6 +768,28 @@ Inside `export const matchApi = {`
 
 The api answers 204 with no body when you have no live match, and request() turns a 204 into undefined.
 `?? null` makes that null, so callers check one thing, the same null MatchService.current returns.
+
+## `apps/web/src/match/DisconnectNotice.tsx`
+
+### Line 8 · `const TICK_MS = 250`
+
+Faster than the one second the display changes by, so a tick that lands late
+doesn't leave a number on screen for two seconds.
+
+### Line 11 · `const seconds = Math.max(0, Math.ceil((Date.parse(deadline) - now) / 1000))`
+
+Inside `function timeLeft(deadline: string, now: number): string`
+
+Rounded up so the first thing shown is 0:30 and 0:00 only appears once the time is really gone.
+Held at zero because this is only a display: the server's timer ends the match,
+and match.ended is what removes this line, so it can sit at 0:00 for a moment first.
+
+### Line 26 · `<span aria-hidden="true"> · {timeLeft(deadline, now)}</span>`
+
+Inside `function DisconnectNotice({ name, deadline }: DisconnectNoticeProps)`
+
+The live region around this announces "bob lost connection" once.
+Without aria-hidden a screen reader would read out every second of the countdown.
 
 ## `apps/web/src/match/GomokuBoard.tsx`
 
@@ -868,13 +1124,15 @@ and this page renders whatever those return.
   click ─────────────► match.move    an offer, drawn only once it comes back
   resign ────────────► match.resign  answered with match.ended, like a move with match.moved
                        match.rejected  a join or a move the server refused
+                       match.disconnected  a player dropped, and the countdown starts
+                       match.reconnected   they came back, and the countdown stops
 
 A gap in moveNumber means this tab missed a move. The cure is to rejoin,
 which answers with a fresh board, so the view is marked stale
 and the page sends match.join again.
 ```
 
-### Line 26 · `interface MatchView`
+### Line 29 · `interface MatchView`
 
 What this page is showing right now.
 
@@ -884,20 +1142,20 @@ match.state replaces the whole view,
 while match.moved carries one move rather than a board
 and needs this to apply that move onto.
 
-### Line 31 · `readonly endReason: MatchEndReason | null`
+### Line 34 · `readonly endReason: MatchEndReason | null`
 
 Inside `interface MatchView`
 
 How the match ended, so the player panel can say "dana resigned"
 and not just who won. null while the match is still running.
 
-### Line 33 · `readonly board: GomokuState | null`
+### Line 36 · `readonly board: GomokuState | null`
 
 Inside `interface MatchView`
 
 null when the server sent a board this client cannot read. See readBoard.
 
-### Line 34 · `readonly stale: boolean`
+### Line 37 · `readonly stale: boolean`
 
 Inside `interface MatchView`
 
@@ -905,7 +1163,14 @@ This board has fallen behind the server's:
 a move was missed, or one would not play on it.
 Moves are ignored until a fresh match.state replaces the whole view.
 
-### Line 37 · `const NOTICE_MS`
+### Line 38 · `readonly deadlines: SeatDeadlines`
+
+Inside `interface MatchView`
+
+When each seat runs out of time, or null for a seat that's connected.
+One per seat because both players can be gone at once, and a spectator should see both.
+
+### Line 43 · `const NOTICE_MS`
 
 The server sends a code and never prose, so the wording lives here.
 A Record rather than a switch so a code added to the protocol
@@ -913,23 +1178,29 @@ fails the build until it has a sentence.
 A refused join shows one as the whole page; a refused move, under the board.
 How long a refused move stays under the board.
 
-### Line 48 · `function readBoard(game: string, state: unknown): GomokuState | null`
+### Line 54 · `function readBoard(game: string, state: unknown): GomokuState | null`
 
 A deserialize failure means the server sent a board this client cannot read.
 That is a bug to report, not something to draw around,
 so it gets an error screen rather than an empty board.
 
-### Line 57 · `function viewFromState(payload: MatchStatePayload): MatchView`
+### Line 63 · `function deadlinesFrom(disconnected: MatchDisconnectedPayload | null): SeatDeadlines`
+
+A snapshot reports one missing player at most, the one whose deadline comes first,
+because that is the deadline that decides the match. A tab that joins while both are gone
+shows only that one until the live events tell it more.
+
+### Line 68 · `function viewFromState(payload: MatchStatePayload): MatchView`
 
 A snapshot arrives whole, so it is read once, here,
 rather than on every render.
 The page never touches payload.state itself.
 
-### Line 70 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
+### Line 82 · `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 The same match, one move later.
 
-### Line 73 · `if (payload.moveNumber <= view.moveNumber) return view`
+### Line 85 · `if (payload.moveNumber <= view.moveNumber) return view`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -938,14 +1209,14 @@ Joining the room before reading the snapshot can deliver a move the snapshot
 already holds (see match.handlers.ts), so a number we have passed is dropped
 rather than played twice.
 
-### Line 75 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
+### Line 87 · `if (payload.moveNumber !== view.moveNumber + 1) return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 A number further ahead means a move in between never arrived.
 Playing this one on top would draw a board nobody has.
 
-### Line 81 · `return { ...view, stale: true }`
+### Line 93 · `return { ...view, stale: true }`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -953,7 +1224,7 @@ The server accepted this move against its own board,
 so a throw here means the two boards have drifted apart.
 Drawing it anyway would only widen the difference.
 
-### Line 84 · `return {`
+### Line 96 · `return {`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
@@ -961,19 +1232,19 @@ turn and outcome come from the payload, not from what apply worked out.
 The server decides both, and a client that computes its own
 would be the first thing to disagree.
 
-### Line 89 · `endReason: payload.outcome === null ? null : 'played',`
+### Line 101 · `endReason: payload.outcome === null ? null : 'played',`
 
 Inside `function applyMoved(view: MatchView, payload: MatchMovedPayload): MatchView`
 
 A move only ever ends a match on the board.
 Resigning and abandoning arrive as match.ended instead.
 
-### Line 94 · `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
+### Line 106 · `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
 
 The same match, over. The board stays as it was:
 nothing was played, somebody stopped playing.
 
-### Line 95 · `if (view.outcome !== null) return view`
+### Line 107 · `if (view.outcome !== null) return view`
 
 Inside `function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView`
 
@@ -981,7 +1252,15 @@ The server writes an ending only while the match is still active,
 so a second one cannot be real. Kept out anyway,
 so whatever ended the match first is what the page keeps saying.
 
-### Line 108 · `const view`
+### Line 112 · `function withDeadline(view: MatchView, player: PlayerIndex, deadline: string | null): MatchView`
+
+Both presence events are the same change to the view: match.disconnected sets one seat's
+deadline, match.reconnected sets it back to null. The other seat is left alone.
+
+Nothing clears the deadlines when a match ends. The page simply stops drawing them,
+which also covers a match.reconnected from a timer left running after a normal ending.
+
+### Line 126 · `const view`
 
 Inside `function MatchPage()`
 
@@ -991,14 +1270,14 @@ on screen until the new snapshot arrived.
 Derived rather than reset in the effect below,
 which would cost a second render every time.
 
-### Line 116 · `const unsubscribe = subscribe(…)`
+### Line 134 · `const unsubscribe = subscribe(…)`
 
 Inside `function MatchPage()`
 
 One socket serves the whole tab, so every event arrives here,
 including events about other matches and other features.
 
-### Line 126 · `setReceived((current) =>`
+### Line 144 · `setReceived((current) =>`
 
 Inside `function MatchPage()`
 
@@ -1008,21 +1287,38 @@ rather than from anything captured here.
 A move that arrives before the first snapshot has nothing to land on
 and is dropped: the snapshot is on its way and will already contain it.
 
-### Line 132 · `setRefused(null)`
+### Line 150 · `setRefused(null)`
 
 Inside `function MatchPage()`
 
 The board has moved on, so "it's not your turn" from before
 no longer describes it.
 
-### Line 136 · `if (event.type === 'match.ended') {`
+### Line 154 · `if (event.type === 'match.ended') {`
 
 Inside `function MatchPage()`
 
 Handled like match.moved: applied onto the view React holds,
 and any refusal still showing is cleared, since the match it refused a move in is over.
 
-### Line 149 · `if (event.type === 'match.rejected') {`
+### Line 167 · `if (event.type === 'match.disconnected') {`
+
+Inside `function MatchPage()`
+
+`setBack(null)` so "bob is back" can't sit next to "bob lost connection" when the
+connection flaps inside those three seconds.
+
+If this tab's own socket was down, it never heard these events. It doesn't need to:
+the socket rejoins when it comes back, and that match.state carries the current picture.
+
+### Line 180 · `if (event.type === 'match.reconnected') {`
+
+Inside `function MatchPage()`
+
+A player never receives this about themselves. The server sends it as their new socket
+connects, before that socket has rejoined the match room.
+
+### Line 193 · `if (event.type === 'match.rejected') {`
 
 Inside `function MatchPage()`
 
@@ -1030,7 +1326,7 @@ Kept whatever it refused. Only the render below decides it matters:
 before a board arrives it can only be the join,
 and after one it is a refused move, which leaves the board as it was.
 
-### Line 161 · `const stale`
+### Line 205 · `const stale`
 
 Inside `function MatchPage()`
 
@@ -1039,7 +1335,7 @@ with a fresh match.state, and viewFromState clears the flag. Sent with
 send, not join, because the standing join registered above already covers
 reconnects; this only asks for one more snapshot.
 
-### Line 166 · `const refusedMove`
+### Line 210 · `const refusedMove`
 
 Inside `function MatchPage()`
 
@@ -1047,7 +1343,15 @@ A refused move is a passing remark, so it goes after three seconds.
 A refused join is not: with no board it is the whole page, and it stays.
 Keyed on the refusal itself, so a new one starts the three seconds again.
 
-### Line 189 · `const seat = index === -1 ? null : (index as PlayerIndex)`
+### Line 217 · `const playerBack`
+
+Inside `function MatchPage()`
+
+The same three seconds and the same reset as refusedMove.
+It shares the line under the board with refusals, and a refusal wins if both are showing,
+because that one is about the move the player just tried.
+
+### Line 240 · `const seat = index === -1 ? null : (index as PlayerIndex)`
 
 Inside `function MatchPage()`
 
@@ -1057,14 +1361,14 @@ so the player panel can take it as a PlayerIndex.
 The logged-in user is the same identity the socket authenticated with,
 so this agrees with the seat the server checks every move against.
 
-### Line 191 · `const playing = seat !== null && view.outcome === null`
+### Line 242 · `const playing = seat !== null && view.outcome === null`
 
 Inside `function MatchPage()`
 
 You hold a seat and the match is still going:
 the only time there is anything to play, or to resign.
 
-### Line 192 · `const myTurn`
+### Line 243 · `const myTurn`
 
 Inside `function MatchPage()`
 
@@ -1072,7 +1376,7 @@ Only the player to move sees the stone a click would place.
 Everyone else can still click while the match runs, and the server says why it will not count:
 it's not your turn, that point is taken, or you are only watching.
 
-### Line 193 · `const backToLobby = view.outcome !== null || seat === null`
+### Line 244 · `const backToLobby = view.outcome !== null || seat === null`
 
 Inside `function MatchPage()`
 
@@ -1080,7 +1384,7 @@ When to offer the way back: once the match is over, for everyone,
 and at any time for a spectator, who has no Resign button and nothing else to do here.
 A player in a running game doesn't see it; the logo still leads to the lobby.
 
-### Line 195 · `const play = (move: GomokuMove) =>`
+### Line 246 · `const play = (move: GomokuMove) =>`
 
 Inside `function MatchPage()`
 
@@ -1093,14 +1397,14 @@ so inside one it counts as possibly undefined again.
 The last refusal is cleared on every click, so the same refusal twice
 in a row still reads as a new answer rather than a leftover.
 
-### Line 203 · `<div className="match-layout">`
+### Line 258 · `<div className="match-layout">`
 
 Inside `function MatchPage()`
 
 Four areas, laid out by .match-layout in index.css: the result above the board on a phone,
 the board centred with a column on its right on desktop.
 
-### Line 204 · `<div className="match-status flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-start">`
+### Line 259 · `<div className="match-status flex flex-wrap items-end justify-between gap-3 xl:flex-col xl:items-start">`
 
 Inside `function MatchPage()`
 
@@ -1109,7 +1413,7 @@ Stacked, the WATCHING pill, the headline and the link took three rows and pushed
 flex-wrap lets a long reason push the link to its own line rather than squeezing the text.
 On desktop the right column is too narrow to share, so it goes back to one under the other.
 
-### Line 212 · `{backToLobby && (`
+### Line 267 · `{backToLobby && (`
 
 Inside `function MatchPage()`
 
@@ -1117,7 +1421,7 @@ Next to the result, because that is the moment you want to leave.
 A plain link: there is nothing to clean up, the page's own effect leaves the match room on the way out.
 shrink-0 keeps it whole when the row is tight; the text beside it wraps instead.
 
-### Line 221 · `onPlay={view.outcome === null ? play : undefined}`
+### Line 276 · `onPlay={view.outcome === null ? play : undefined}`
 
 Inside `function MatchPage()`
 
@@ -1126,7 +1430,7 @@ so nothing is sent and nothing comes back refused.
 "This match is already over" still exists for a click that crosses the ending on the wire:
 sent before this page heard the match was over, refused once it was.
 
-### Line 225 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
+### Line 280 · `<p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">`
 
 Inside `function MatchPage()`
 
@@ -1134,7 +1438,15 @@ Always in the page, empty when there is nothing to say:
 a screen reader only announces a live region it was already watching,
 and a reserved line keeps the board from jumping when one appears.
 
-### Line 232 · `{playing && (`
+### Line 283 · `<div aria-live="polite" className="flex flex-col items-center">`
+
+Inside `function MatchPage()`
+
+Always in the page for the same reason as the line above it.
+Under the board rather than in the status area because on a phone the status area
+is above the board, and a line appearing there would move the board mid-game.
+
+### Line 296 · `{playing && (`
 
 Inside `function MatchPage()`
 
@@ -1210,3 +1522,38 @@ Inside `export interface LiveMatch`
 When the match was created, as an ISO string: JSON has no dates,
 so a Date on the server arrives as a string anyway. Saying so in the type
 keeps anyone from calling Date methods on it without parsing it first.
+
+## `shared/src/ws.ts`
+
+### Line 168 · `readonly disconnected: MatchDisconnectedPayload | null;`
+
+Inside `export interface MatchStatePayload`
+
+The same payload the event carries, repeated on the snapshot because match.state is
+everything about a match. Someone who reloads halfway through a countdown has missed
+the event, and without this they would see a match that merely looks idle,
+with no sign anyone is waiting for a player to come back.
+
+### Line 203 · `export interface MatchDisconnectedPayload`
+
+Not an ending, and it never becomes one on its own: if the deadline passes,
+a match.ended with reason "abandoned" says so. A client therefore never decides a match
+is over by watching a clock it owns, which is what keeps two tabs — or a spectator whose
+clock is a minute out — from disagreeing about whether the game is still running.
+
+### Line 208 · `readonly deadline: string;`
+
+Inside `export interface MatchDisconnectedPayload`
+
+An instant rather than a number of seconds left, because it is the simpler of the two.
+The server works it out once and sends the same string in match.disconnected and in match.state,
+and the client ticks with `Date.parse(deadline) - Date.now()`. A count of seconds left would
+have to be recomputed for every match.state, and turned into a local end time the moment it arrived.
+
+The cost is that the countdown is off by however far the browser's clock and the server's disagree.
+That is normally under a second. If it ever looks wrong, check the API container's clock first:
+Docker on WSL2 is known to drift after the laptop sleeps.
+
+Either way, one message covers the whole window instead of a broadcast per second,
+and the server's timer stays the authority on when the match actually ends;
+the countdown is only a display.

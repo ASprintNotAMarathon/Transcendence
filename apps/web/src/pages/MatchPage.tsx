@@ -5,11 +5,13 @@ import type {
   GameOutcome,
   GomokuMove,
   GomokuState,
+  MatchDisconnectedPayload,
   MatchEndedPayload,
   MatchEndReason,
   MatchMovedPayload,
   MatchErrorCode,
   MatchPlayer,
+  MatchReconnectedPayload,
   MatchRejectedPayload,
   MatchStatePayload,
   PlayerIndex,
@@ -18,6 +20,7 @@ import { useAuth } from '../auth/AuthContext'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import { joinMatch, leaveMatch, resign, sendMove } from '../lib/protocol'
+import DisconnectNotice from '../match/DisconnectNotice'
 import GomokuBoard from '../match/GomokuBoard'
 import MatchPlayers from '../match/MatchPlayers'
 import MatchStatus from '../match/MatchStatus'
@@ -32,7 +35,10 @@ interface MatchView {
   readonly moveNumber: number
   readonly board: GomokuState | null
   readonly stale: boolean
+  readonly deadlines: SeatDeadlines
 }
+
+type SeatDeadlines = readonly [string | null, string | null]
 
 const NOTICE_MS = 3000
 
@@ -54,6 +60,11 @@ function readBoard(game: string, state: unknown): GomokuState | null {
   }
 }
 
+function deadlinesFrom(disconnected: MatchDisconnectedPayload | null): SeatDeadlines {
+  if (disconnected === null) return [null, null]
+  return disconnected.player === 0 ? [disconnected.deadline, null] : [null, disconnected.deadline]
+}
+
 function viewFromState(payload: MatchStatePayload): MatchView {
   return {
     matchId: payload.matchId,
@@ -64,6 +75,7 @@ function viewFromState(payload: MatchStatePayload): MatchView {
     moveNumber: payload.moveNumber,
     board: readBoard(payload.game, payload.state),
     stale: false,
+    deadlines: deadlinesFrom(payload.disconnected),
   }
 }
 
@@ -97,6 +109,11 @@ function applyEnded(view: MatchView, payload: MatchEndedPayload): MatchView {
   return { ...view, outcome: payload.outcome, endReason: payload.reason }
 }
 
+function withDeadline(view: MatchView, player: PlayerIndex, deadline: string | null): MatchView {
+  const [first, second] = view.deadlines
+  return { ...view, deadlines: player === 0 ? [deadline, second] : [first, deadline] }
+}
+
 function MatchPage() {
   const { matchId } = useParams()
   const { user } = useAuth()
@@ -104,6 +121,7 @@ function MatchPage() {
   const { join, leave, send, subscribe } = useSocket()
   const [received, setReceived] = useState<MatchView | null>(null)
   const [refused, setRefused] = useState<MatchRejectedPayload | null>(null)
+  const [back, setBack] = useState<MatchReconnectedPayload | null>(null)
 
   const view = received !== null && received.matchId === matchId ? received : null
 
@@ -146,6 +164,32 @@ function MatchPage() {
         return
       }
 
+      if (event.type === 'match.disconnected') {
+        if (event.payload.matchId !== matchId) return
+
+        setReceived((current) =>
+          current === null || current.matchId !== matchId
+            ? current
+            : withDeadline(current, event.payload.player, event.payload.deadline),
+        )
+
+        setBack(null)
+        return
+      }
+
+      if (event.type === 'match.reconnected') {
+        if (event.payload.matchId !== matchId) return
+
+        setReceived((current) =>
+          current === null || current.matchId !== matchId
+            ? current
+            : withDeadline(current, event.payload.player, null),
+        )
+
+        setBack(event.payload)
+        return
+      }
+
       if (event.type === 'match.rejected') {
         if (event.payload.matchId !== matchId) return
         setRefused(event.payload)
@@ -169,6 +213,13 @@ function MatchPage() {
     const timer = setTimeout(() => setRefused(null), NOTICE_MS)
     return () => clearTimeout(timer)
   }, [refused, refusedMove])
+
+  const playerBack = view !== null && view.outcome === null && back !== null && back.matchId === matchId
+  useEffect(() => {
+    if (!playerBack) return
+    const timer = setTimeout(() => setBack(null), NOTICE_MS)
+    return () => clearTimeout(timer)
+  }, [back, playerBack])
 
   if (matchId === undefined) {
     return <ErrorState message="This match could not be displayed." />
@@ -197,7 +248,11 @@ function MatchPage() {
     send(sendMove(matchId, move))
   }
 
-  const notice = refusedMove ? REJECTION_MESSAGES[refused.code] : null
+  const notice = refusedMove
+    ? REJECTION_MESSAGES[refused.code]
+    : playerBack
+      ? `${view.players[back.player].displayName} is back`
+      : null
 
   return (
     <div className="match-layout">
@@ -225,6 +280,15 @@ function MatchPage() {
         <p aria-live="polite" className="min-h-5 text-center text-sm text-(--color-primary)">
           {notice}
         </p>
+        <div aria-live="polite" className="flex flex-col items-center">
+          {view.outcome === null &&
+            view.deadlines.map(
+              (deadline, player) =>
+                deadline !== null && (
+                  <DisconnectNotice key={player} name={view.players[player].displayName} deadline={deadline} />
+                ),
+            )}
+        </div>
       </div>
       <div className="match-players">
         <MatchPlayers players={view.players} turn={view.turn} outcome={view.outcome} />

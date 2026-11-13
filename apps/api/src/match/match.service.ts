@@ -18,6 +18,7 @@ import type {
 import { isUUID } from 'class-validator';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { MatchDisconnects } from './match.disconnects';
 import { MatchError } from './match.error';
 
 function isMoveNumberTaken(error: unknown): boolean {
@@ -37,7 +38,10 @@ function replayOrNull(game: string, moves: readonly MoveRow[]) {
 
 @Injectable()
 export class MatchService {
-	constructor(private readonly prisma: PrismaService) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly disconnects: MatchDisconnects,
+	) {}
 
 	async join(userId: string, matchId: string): Promise<MatchStatePayload> {
 		const { match, engine, position } = await this.rebuild(matchId);
@@ -66,6 +70,10 @@ export class MatchService {
 					? (match.endReason ?? 'played')
 					: null,
 			moveNumber: position.moveNumber,
+			disconnected:
+				match.status === 'finished'
+					? null
+					: this.disconnects.forMatch(match.id),
 		};
 	}
 
@@ -205,6 +213,45 @@ export class MatchService {
 		}
 
 		return { matchId: match.id, outcome, reason: 'resigned' };
+	}
+
+	/**
+	 * Give the match away because a player never came back. A timer calls this,
+	 * so there is nobody to reject: anything that makes it moot answers null.
+	 */
+	async abandon(
+		userId: string,
+		matchId: string,
+	): Promise<MatchEndedPayload | null> {
+		const { match, position } = await this.rebuild(matchId);
+
+		const seat = seatOf(userId, match);
+		if (seat === null) {
+			return null;
+		}
+
+		if (match.status === 'finished' || position.outcome !== null) {
+			return null;
+		}
+
+		const outcome: GameOutcome = {
+			kind: 'win',
+			player: seat === 0 ? 1 : 0,
+		};
+
+		const { count } = await this.prisma.match.updateMany({
+			where: { id: match.id, status: 'active' },
+			data: {
+				status: 'finished',
+				winnerId: winnerIdOf(outcome, match),
+				endReason: 'abandoned',
+			},
+		});
+		if (count === 0) {
+			return null;
+		}
+
+		return { matchId: match.id, outcome, reason: 'abandoned' };
 	}
 
 	live(): Promise<LiveMatch[]> {
