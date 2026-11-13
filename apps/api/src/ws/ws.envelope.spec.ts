@@ -29,6 +29,21 @@ describe('accepts', () => {
 		};
 		expect(parseEnvelope(event)).toEqual({ ok: true, event });
 	});
+
+	it('queue.join with a game', () => {
+		const event = { type: 'queue.join', payload: { game: 'gomoku' } };
+		expect(parseEnvelope(event)).toEqual({ ok: true, event });
+	});
+
+	it('queue.join for a game that is not implemented, since the handler refuses it', () => {
+		const event = { type: 'queue.join', payload: { game: 'reversi' } };
+		expect(parseEnvelope(event)).toEqual({ ok: true, event });
+	});
+
+	it('queue.leave with an empty payload', () => {
+		const event = { type: 'queue.leave', payload: {} };
+		expect(parseEnvelope(event)).toEqual({ ok: true, event });
+	});
 });
 
 describe('malformed', () => {
@@ -130,6 +145,25 @@ describe('invalid payload', () => {
 	it('rejects presence.list carrying anything', () => {
 		expect(
 			parseEnvelope({ type: 'presence.list', payload: { foo: 1 } }),
+		).toEqual({ ok: false, code: 'transport.invalid_payload' });
+	});
+
+	it('rejects queue.join without a game', () => {
+		expect(parseEnvelope({ type: 'queue.join', payload: {} })).toEqual({
+			ok: false,
+			code: 'transport.invalid_payload',
+		});
+	});
+
+	it('rejects queue.join with a game that is not a string', () => {
+		expect(
+			parseEnvelope({ type: 'queue.join', payload: { game: 1 } }),
+		).toEqual({ ok: false, code: 'transport.invalid_payload' });
+	});
+
+	it('rejects queue.leave carrying anything', () => {
+		expect(
+			parseEnvelope({ type: 'queue.leave', payload: { game: 'gomoku' } }),
 		).toEqual({ ok: false, code: 'transport.invalid_payload' });
 	});
 });
