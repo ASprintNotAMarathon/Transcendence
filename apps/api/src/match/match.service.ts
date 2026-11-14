@@ -7,6 +7,7 @@ import {
 	winnerIdOf,
 } from '@transcendence/shared';
 import type {
+	GameName,
 	GameOutcome,
 	LiveMatch,
 	MatchEndedPayload,
@@ -263,6 +264,18 @@ export class MatchService {
 			OR: [{ player0Id: userId }, { player1Id: userId }],
 		});
 		return match ?? null;
+	}
+
+	async create(
+		game: GameName,
+		player0Id: string,
+		player1Id: string,
+	): Promise<string> {
+		const { id } = await this.prisma.match.create({
+			data: { game, player0Id, player1Id },
+			select: { id: true },
+		});
+		return id;
 	}
 
 	private async liveMatches(

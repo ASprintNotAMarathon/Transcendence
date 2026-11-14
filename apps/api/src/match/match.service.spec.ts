@@ -990,6 +990,51 @@ describe('MatchService.current', () => {
 	});
 });
 
+describe('MatchService.create', () => {
+	let service: MatchService;
+	let create: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		create = vi.fn().mockResolvedValue({ id: MATCH_ID });
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				MatchDisconnects,
+				{
+					provide: PrismaService,
+					useValue: { match: { create } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('stores the game and both players in seat order, and gives the new id', async () => {
+		const id = await service.create('gomoku', PLAYER_0.id, PLAYER_1.id);
+
+		expect(id).toBe(MATCH_ID);
+		expect(create).toHaveBeenCalledWith({
+			data: {
+				game: 'gomoku',
+				player0Id: PLAYER_0.id,
+				player1Id: PLAYER_1.id,
+			},
+			select: { id: true },
+		});
+	});
+
+	it('lets a database failure through', async () => {
+		const failure = new Error('connection lost');
+		create.mockRejectedValue(failure);
+
+		await expect(
+			service.create('gomoku', PLAYER_0.id, PLAYER_1.id),
+		).rejects.toBe(failure);
+	});
+});
+
 describe('the game names', () => {
 	it('agree with the GameName enum in schema.prisma', () => {
 		// shared/ declares its own union because it must stay free of Prisma, so

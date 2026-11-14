@@ -10,6 +10,7 @@
  * Like the game engines, this file is pure types: no I/O, no Socket.IO import, no Node APIs.
  */
 
+import type { GameName } from "./registry.js";
 import type { GameOutcome, PlayerIndex } from "./types.js";
 
 /* ==========================================================================
@@ -59,7 +60,7 @@ export interface Envelope<TType extends string, TPayload> {
  * The ErrorCode union isn't used yet, it exists so a single error-display component can look up
  * wording for any code without knowing which family it came from.
  */
-export type ErrorCode = TransportErrorCode | MatchErrorCode | ChatErrorCode | PresenceErrorCode;
+export type ErrorCode = TransportErrorCode | MatchErrorCode | QueueErrorCode | ChatErrorCode | PresenceErrorCode;
 
 /** Failures below the game and chat layers */
 export type TransportErrorCode =
@@ -86,6 +87,12 @@ export type MatchErrorCode =
 	| "match.illegal_move"
 	/** The game already ended. */
 	| "match.already_over";
+
+export type QueueErrorCode =
+	| "queue.unknown_game"
+	| "queue.already_queued"
+	| "queue.in_match"
+	| "queue.failed";
 
 /** Failures in chat and presence. */
 export type ChatErrorCode =
@@ -235,6 +242,32 @@ export type MatchServerEvent =
 	| Envelope<"match.disconnected", MatchDisconnectedPayload>
 	| Envelope<"match.reconnected", MatchReconnectedPayload>
 	| Envelope<"match.rejected", MatchRejectedPayload>;
+
+/* ==========================================================================
+ * Queue events
+ * ========================================================================== */
+
+export interface QueueJoinPayload {
+	readonly game: GameName;
+}
+
+export type QueueLeavePayload = Record<string, never>;
+
+export interface QueueMatchedPayload {
+	readonly matchId: string;
+}
+
+export interface QueueRejectedPayload {
+	readonly code: QueueErrorCode;
+}
+
+export type QueueClientEvent =
+	| Envelope<"queue.join", QueueJoinPayload>
+	| Envelope<"queue.leave", QueueLeavePayload>;
+
+export type QueueServerEvent =
+	| Envelope<"queue.matched", QueueMatchedPayload>
+	| Envelope<"queue.rejected", QueueRejectedPayload>;
 
 /* ==========================================================================
  * Chat events
@@ -395,6 +428,7 @@ export type WsMessageEvent = 'msg';
 export type ClientEvent =
 	| LifecycleClientEvent
 	| MatchClientEvent
+	| QueueClientEvent
 	| ChatClientEvent
 	| PresenceClientEvent;
 
@@ -402,5 +436,6 @@ export type ClientEvent =
 export type ServerEvent =
 	| LifecycleServerEvent
 	| MatchServerEvent
+	| QueueServerEvent
 	| ChatServerEvent
 	| PresenceServerEvent;
