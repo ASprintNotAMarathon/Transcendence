@@ -1,8 +1,9 @@
-import { StrictMode, type ReactNode } from 'react'
+import { StrictMode, type ReactNode , useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router'
 import './index.css'
 import { AuthProvider, useAuth } from './auth/AuthContext.tsx'
+import { setCurrentUserId } from './chat/chat.ts'
 import GuestOnlyRoute from './auth/GuestOnlyRoute.tsx'
 import ProtectedRoute from './auth/ProtectedRoute.tsx'
 import PublicLayout from './layouts/PublicLayout.tsx'
@@ -22,7 +23,13 @@ import { SocketProvider } from './socket/SocketProvider.tsx'
 
 
 function AppSocketProvider({ children }: { children: ReactNode }) {
-  const { status } = useAuth()
+  const { status, user } = useAuth()
+  // Keep chatClient informed about which "user" is logged in.
+  // This allows it to recognise messages when they arrive from the server.
+  // When the user logs out, reset the ID to an empty string.
+  useEffect(() => {
+    setCurrentUserId(user?.id ?? '')
+  }, [user])
   return (
     <SocketProvider enabled={status === 'authenticated'}>
       {children}

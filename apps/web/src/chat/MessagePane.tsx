@@ -1,9 +1,6 @@
 /*
  * MessagePane shows the messages of ONE conversation, newest at the bottom.
  *
- * It talks to the mock chat client in two directions:
- *   chat.ts ──loadHistory()──▶ MessagePane   (first page on open, older pages on scroll-up)
- *   chat.ts ──subscribe()───▶ MessagePane   (new messages arrive live)
  *
  * The parent (ChatPage) only passes in a conversationId. When that id changes,
  * ChatPage remounts this component (via key=), so state here always belongs to
@@ -11,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router'
 import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import LoadingState from '../components/states/LoadingState'
@@ -18,6 +16,8 @@ import MessageComposer from './MessageComposer'
 
 type MessagePaneProps = {
 	conversationId: string
+	otherUserId: string
+	otherUserName: string
 }
 
 /**
@@ -42,7 +42,7 @@ function formatTime(isoDate: string): string {
 	})
 }
 
-function MessagePane({ conversationId }: MessagePaneProps) {
+function MessagePane({ conversationId, otherUserId, otherUserName }: MessagePaneProps) {
 	/*
 	 * useState returns TWO things:
 	 *
@@ -143,6 +143,15 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 		// Column: the scrollable message list on top, the composer pinned below.
 		// min-h-0 on the list lets it shrink and scroll instead of pushing the composer off-screen.
 		<div className="flex h-full flex-col">
+				{/* The other person's name — links to their profile (issue #60). */}
+				{otherUserId !== '' && (
+					<Link
+						to={`/profile/${otherUserId}`}
+						className="border-b border-(--color-base-200) px-2 pb-2 font-semibold hover:underline"
+			>
+						{otherUserName}
+					</Link>
+				)}
 			<div
 				ref={scrollRef}
 				onScroll={() => void handleScroll()}
@@ -173,7 +182,7 @@ function MessagePane({ conversationId }: MessagePaneProps) {
 							{/* max-w + break-words: a long message wraps instead of widening the layout.
 							    whitespace-pre-wrap keeps the newlines from Shift+Enter and pasted text. */}
 							<div
-								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words whitespace-pre-wrap ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-100)'}`}
+								className={`max-w-[75%] rounded-2xl px-4 py-2 break-words whitespace-pre-wrap ${mine ? 'bg-(--color-primary) text-(--color-primary-content)' : 'bg-(--color-base-200)'}`}
 							>
 								<p>{message.body}</p>
 								{/* dateTime keeps the exact timestamp; the visible text is just hh:mm */}

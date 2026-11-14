@@ -1,10 +1,50 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useLocation } from 'react-router'
+import { CURRENT_USER_ID, chatClient } from './chat'
 import ChatPage from '../pages/ChatPage'
 
 function ChatPopup() {
+  // The chat page already IS the chat - a popup over it would be chat-inside-chat.
+  const location = useLocation()
   // Create a state variable called 'open', initially false (the popup is closed).
   // setOpen is the function used to change the value of 'open'.
   const [open, setOpen] = useState(false)
+
+  // Messages from other people that arrived while the popup was closed.
+	const [unread, setUnread] = useState(0)
+
+	// Count incoming messages only while closed. The cleanup unsubscribes
+	// when 'open' flips, so the counter never runs while you are looking.
+	useEffect(() => {
+	if (open) {
+		return
+}
+	return chatClient.subscribe((event) => {
+	if (event.type === 'chat.message' &&
+		event.payload.senderId !== CURRENT_USER_ID) 
+	{
+		setUnread((current) => current + 1)
+	}
+	})
+	}, [open])
+
+	// Esc closes the popup, like any overlay. Listener exists only while open.
+	useEffect(() => {
+	if (!open) {
+	return
+}
+	function onKeyDown(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		setOpen(false)
+	}
+	}
+	window.addEventListener('keydown', onKeyDown)
+	return () => window.removeEventListener('keydown', onKeyDown)
+	}, [open])
+
+  if (location.pathname === '/chat') {
+    return null
+  }
 
   return (
     // Keep the popup fixed to the bottom-right corner of the browser window by fixed right-4 bottom-4.
@@ -15,7 +55,10 @@ function ChatPopup() {
     // gap-2 adds space between them.
     <div className="fixed right-4 bottom-4 z-20 flex flex-col items-end gap-2">
 
-	  {/* The chat window itself. */}
+	  {/* The chat window itself. Mounted ONLY while open ({open && ...}),
+	      so closing throws its state away and every opening starts
+	      fresh at the conversation list. */}
+      {open && (
       <div
         // These classes style the chat window:
         // w-[min(42rem,calc(100vw-2rem))] limits its width to the smaller of
@@ -25,16 +68,16 @@ function ChatPopup() {
         // border-(--color-primary) uses the primary theme color for the border.
         // bg-(--color-base-100) sets the background color.
         // p-3 adds padding inside the container.
-        //
-        // The template literal lets us combine fixed classes with a condition:
-        // if open is true, add no extra class and show the popup.
-        // if open is false, add 'hidden' and hide the popup.
-        className={`w-[min(42rem,calc(100vw-2rem))] rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-3 ${open ? '' : 'hidden'}`}
+        // max-sm: on phone widths the window covers the whole screen instead.
+        className="w-[min(42rem,calc(100vw-2rem))] rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-3 max-sm:fixed max-sm:inset-0 max-sm:w-auto max-sm:rounded-none max-sm:border-0"
       >
         {/* Render the chat interface inside the popup.
-            className="h-96" gives ChatPage a height of 24rem (96 * 0.25rem) so it fits inside the popup */}
-        <ChatPage className="h-96" />
+            h-96 keeps it at 24rem in the desktop corner box; on phones it
+            takes the dynamic viewport height minus 3rem, plus top padding
+            so the list starts below the relocated Close button. */}
+        <ChatPage className="h-96 max-sm:h-[calc(100dvh-3rem)] max-sm:pt-9" />
       </div>
+      )}
 
       {/* Button used to open and close the popup. */}
       <button
@@ -44,18 +87,25 @@ function ChatPopup() {
         // When clicked, change open to its opposite value:
         // false becomes true (open the chat).
         // true becomes false (close the chat).
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+			if (!open) {
+				setUnread(0) // Reset unread count when opening the chat.
+			}
+			setOpen(!open)
+		}}
 
         // Style the button using the project's button classes.
         // btn and btn-sm define its button appearance and size.
         // tracking-wide adds letter spacing.
         // btn-outline-accent gives it an outlined accent style.
-        className="btn btn-sm tracking-wide border-2 btn-outline-accent"
+        // While open on a phone, the button pins to the top-right so it
+        // never covers the composer.
+        className={`btn btn-sm tracking-wide border-2 btn-outline-accent relative ${open ? 'max-sm:fixed max-sm:top-2 max-sm:right-2' : ''}`}
       >
         {/* Display different button text depending on the state.
             When open is true, show 'Close chat'.
             When open is false, show 'Chat'. */}
-        {open ? 'Close chat' : 'Chat'}
+            {open ? 'Close chat' : unread > 0 ? `Chat (${unread})` : 'Chat'}
       </button>
     </div>
   )

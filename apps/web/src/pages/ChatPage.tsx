@@ -77,7 +77,10 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 			/>
 		)
 	}
-
+	// The selected conversation's summary — the pane needs the other person.
+	const selected = conversations.find(
+		(conversation) => conversation.conversationId === selectedId,
+	)
 	return (
 		// grid -cols-1 means One column on phones, list + pane side by side from md (768px) up.
 		// minmax(0,1fr) lets the pane shrink instead of pushing the page wider for long messages.
@@ -105,7 +108,12 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 				 * when the user switches to another conversation.
 				 */}
 				{selectedId ? (
-					<MessagePane key={selectedId} conversationId={selectedId} />
+					<MessagePane
+						key={selectedId}
+						conversationId={selectedId}
+						otherUserId={selected?.otherUserId ?? ''}
+						otherUserName={selected?.name ?? ''}
+					/>
 				) : (
 					<EmptyState title="Chat" message="Pick a conversation." />
 				)}
