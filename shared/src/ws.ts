@@ -408,6 +408,13 @@ export interface PresenceOfflinePayload {
 /** Request the current list of online users. */
 export type PresenceListRequestPayload = Record<string, never>;
 
+/**
+ * A friendship involving you changed: a request was sent, accepted, declined
+ * or cancelled, or a friend was removed. Carries nothing; reload whatever
+ * friend data you show.
+ */
+export type FriendsChangedPayload = Record<string, never>;
+
 /** Client to server. */
 export type PresenceClientEvent =
 	| Envelope<"presence.list", PresenceListRequestPayload>;
@@ -416,7 +423,8 @@ export type PresenceClientEvent =
 export type PresenceServerEvent =
 	| Envelope<"presence.state", PresenceListPayload>
 	| Envelope<"presence.online", PresenceOnlinePayload>
-	| Envelope<"presence.offline", PresenceOfflinePayload>;
+	| Envelope<"presence.offline", PresenceOfflinePayload>
+	| Envelope<"friends.changed", FriendsChangedPayload>;
 
 /* ==========================================================================
  * Connection lifecycle events
