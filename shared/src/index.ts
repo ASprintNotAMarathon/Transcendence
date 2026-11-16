@@ -31,6 +31,8 @@ export type {
 	ChatRejectedPayload,
 	ChatSendPayload,
 	ChatServerEvent,
+	ChatStartedPayload,
+	ChatStartPayload,
 	ClientEvent,
 	Envelope,
 	ErrorCode,

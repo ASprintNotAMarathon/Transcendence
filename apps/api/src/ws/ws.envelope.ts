@@ -52,6 +52,7 @@ const PAYLOAD_CHECKS: Record<
 	// object.keys(p).length === 0 checks that the payload has no own enumerable string-keyed properties.
 	// For example, {} passes, while { userId: '123' } fails.
 	'chat.conversations': (p) => Object.keys(p).length === 0,
+	'chat.start': (p) => isNonEmptyString(p.otherUserId),
 	'presence.list': (p) => Object.keys(p).length === 0,
 };
 
