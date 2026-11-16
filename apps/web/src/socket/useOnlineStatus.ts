@@ -42,7 +42,7 @@ export function useOnlinePlayers(): PresenceUser[] | null {
 
 	return useMemo(() => {
 		if (players === null) return null
-		return [...players.values()].sort((a, b) => a.displayName.localeCompare(b.displayName))
+		return Array.from(players.values()).sort((a, b) => a.displayName.localeCompare(b.displayName))
 	}, [players])
 }
 
