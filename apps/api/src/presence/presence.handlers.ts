@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { WsDispatcher, type WsHandler } from '../ws/ws.dispatch';
 import { WsRegistry } from '../ws/ws.registry';
 import { WsSender } from '../ws/ws.sender';
-import { FriendsService } from './friends.service';
+import { PresenceService } from './presence.service';
 
 /**
  * Presence on the socket.
@@ -16,7 +16,7 @@ export class PresenceHandlers implements OnModuleInit {
 	private readonly logger = new Logger(PresenceHandlers.name);
 
 	constructor(
-		private readonly friends: FriendsService,
+		private readonly presence: PresenceService,
 		private readonly dispatcher: WsDispatcher,
 		private readonly registry: WsRegistry,
 		private readonly sender: WsSender,
@@ -43,13 +43,13 @@ export class PresenceHandlers implements OnModuleInit {
 		this.sender.sendToSocket(client, {
 			type: 'presence.state',
 			cid: event.cid,
-			payload: { users: await this.friends.presenceUsers(others) },
+			payload: { users: await this.presence.presenceUsers(others) },
 		});
 	};
 
 	/** Tells every other player, on every tab they have open. */
 	async announce(userId: string, online: boolean): Promise<void> {
-		const user = online ? await this.friends.presenceUser(userId) : null;
+		const user = online ? await this.presence.presenceUser(userId) : null;
 
 		// The query took a moment. If they came back online or left again
 		// in between, a newer announcement is on its way: this one is stale.

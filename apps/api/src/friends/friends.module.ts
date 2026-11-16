@@ -3,7 +3,6 @@ import { AuthModule } from '../auth';
 import { WsModule } from '../ws/ws.module';
 import { FriendsController } from './friends.controller';
 import { FriendsService } from './friends.service';
-import { PresenceHandlers } from './presence.handlers';
 
 /**
  * Same shape as UsersModule: PrismaModule is global, and AuthModule is
@@ -13,7 +12,7 @@ import { PresenceHandlers } from './presence.handlers';
 	// WsModule for WsRegistry: who has a socket open right now.
 	imports: [AuthModule, WsModule],
 	controllers: [FriendsController],
-	providers: [FriendsService, PresenceHandlers],
+	providers: [FriendsService],
 	// UsersModule uses it for the friendship field on a profile.
 	exports: [FriendsService],
 })

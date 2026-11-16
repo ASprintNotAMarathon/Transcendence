@@ -96,67 +96,6 @@ describe('FriendsService.listFriends', () => {
 	});
 });
 
-describe('FriendsService.isOnline', () => {
-	it('is what the socket registry says, friend or not', () => {
-		registry.isOnline.mockReturnValue(true);
-		expect(service.isOnline(OTHER)).toBe(true);
-
-		registry.isOnline.mockReturnValue(false);
-		expect(service.isOnline(OTHER)).toBe(false);
-
-		expect(registry.isOnline).toHaveBeenCalledWith(OTHER);
-	});
-});
-
-describe('FriendsService.presenceUser', () => {
-	it('names the user and turns their avatar file into a URL', async () => {
-		prisma.user.findUnique.mockResolvedValue({
-			displayName: 'zed',
-			avatarPath: 'zed.png',
-		});
-
-		await expect(service.presenceUser(OTHER)).resolves.toEqual({
-			userId: OTHER,
-			displayName: 'zed',
-			avatarUrl: '/api/avatars/zed.png',
-		});
-	});
-
-	it('is null for a user nobody has', async () => {
-		prisma.user.findUnique.mockResolvedValue(null);
-
-		await expect(service.presenceUser(OTHER)).resolves.toBeNull();
-	});
-});
-
-describe('FriendsService.presenceUsers', () => {
-	it('loads those ids in one query, sorted by name, with avatar URLs', async () => {
-		prisma.user.findMany.mockResolvedValue([
-			{ id: ALICE, displayName: 'alice', avatarPath: null },
-			{ id: OTHER, displayName: 'zed', avatarPath: 'zed.png' },
-		]);
-
-		await expect(service.presenceUsers([OTHER, ALICE])).resolves.toEqual([
-			{ userId: ALICE, displayName: 'alice', avatarUrl: null },
-			{
-				userId: OTHER,
-				displayName: 'zed',
-				avatarUrl: '/api/avatars/zed.png',
-			},
-		]);
-		expect(prisma.user.findMany).toHaveBeenCalledWith({
-			where: { id: { in: [OTHER, ALICE] } },
-			select: { id: true, displayName: true, avatarPath: true },
-			orderBy: { displayName: 'asc' },
-		});
-	});
-
-	it('is empty without asking the database when nobody is online', async () => {
-		await expect(service.presenceUsers([])).resolves.toEqual([]);
-		expect(prisma.user.findMany).not.toHaveBeenCalled();
-	});
-});
-
 describe('FriendsService.listRequests', () => {
 	it('splits requests by who sent them', async () => {
 		prisma.friendship.findMany.mockResolvedValue([
