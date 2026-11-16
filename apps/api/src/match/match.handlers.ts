@@ -8,6 +8,7 @@ import { WsSender } from '../ws/ws.sender';
 import type { WsSocket } from '../ws/ws.types';
 import { MatchDisconnects } from './match.disconnects';
 import { MatchError } from './match.error';
+import { MatchLobby } from './match.lobby';
 import { MatchService } from './match.service';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class MatchHandlers implements OnModuleInit {
 		private readonly disconnects: MatchDisconnects,
 		private readonly lifecycle: WsLifecycle,
 		private readonly registry: WsRegistry,
+		private readonly lobby: MatchLobby,
 	) {}
 
 	onModuleInit(): void {
@@ -60,6 +62,7 @@ export class MatchHandlers implements OnModuleInit {
 				type: 'match.moved',
 				payload: moved,
 			});
+			this.lobby.moved(moved);
 		} catch (error) {
 			this.rejectOrRethrow(
 				client,
@@ -80,6 +83,7 @@ export class MatchHandlers implements OnModuleInit {
 				type: 'match.ended',
 				payload: ended,
 			});
+			this.lobby.ended(ended.matchId);
 		} catch (error) {
 			this.rejectOrRethrow(
 				client,
@@ -134,6 +138,7 @@ export class MatchHandlers implements OnModuleInit {
 					type: 'match.ended',
 					payload: ended,
 				});
+				this.lobby.ended(ended.matchId);
 			}
 		} catch (error) {
 			this.logger.error(

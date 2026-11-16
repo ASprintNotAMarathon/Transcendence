@@ -990,6 +990,54 @@ describe('MatchService.current', () => {
 	});
 });
 
+describe('MatchService.liveMatch', () => {
+	let service: MatchService;
+	let findMany: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		findMany = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				MatchService,
+				MatchDisconnects,
+				{
+					provide: PrismaService,
+					useValue: { match: { findMany } },
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(MatchService);
+	});
+
+	it('only asks for that match while it is active', async () => {
+		findMany.mockResolvedValue([]);
+
+		await service.liveMatch(MATCH_ID);
+
+		expect(findMany).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: { id: MATCH_ID, status: 'active' },
+			}),
+		);
+	});
+
+	it('gives the match as the lobby lists it', async () => {
+		findMany.mockResolvedValue([liveRow({ id: MATCH_ID })]);
+
+		const match = await service.liveMatch(MATCH_ID);
+
+		expect(match?.matchId).toBe(MATCH_ID);
+	});
+
+	it('is null when the match is not live', async () => {
+		findMany.mockResolvedValue([]);
+
+		expect(await service.liveMatch(MATCH_ID)).toBeNull();
+	});
+});
+
 describe('MatchService.create', () => {
 	let service: MatchService;
 	let create: ReturnType<typeof vi.fn>;

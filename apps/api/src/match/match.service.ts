@@ -266,6 +266,11 @@ export class MatchService {
 		return match ?? null;
 	}
 
+	async liveMatch(matchId: string): Promise<LiveMatch | null> {
+		const [match] = await this.liveMatches({ id: matchId });
+		return match ?? null;
+	}
+
 	async create(
 		game: GameName,
 		player0Id: string,

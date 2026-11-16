@@ -22,6 +22,13 @@ describe('accepts', () => {
 		expect(parseEnvelope(event)).toEqual({ ok: true, event });
 	});
 
+	it('lobby.join and lobby.leave with an empty payload', () => {
+		for (const type of ['lobby.join', 'lobby.leave']) {
+			const event = { type, payload: {} };
+			expect(parseEnvelope(event)).toEqual({ ok: true, event });
+		}
+	});
+
 	it('match.move with any move value, since the engine parses it', () => {
 		const event = {
 			type: 'match.move',
@@ -145,6 +152,12 @@ describe('invalid payload', () => {
 	it('rejects presence.list carrying anything', () => {
 		expect(
 			parseEnvelope({ type: 'presence.list', payload: { foo: 1 } }),
+		).toEqual({ ok: false, code: 'transport.invalid_payload' });
+	});
+
+	it('rejects lobby.join carrying anything', () => {
+		expect(
+			parseEnvelope({ type: 'lobby.join', payload: { matchId: 'm1' } }),
 		).toEqual({ ok: false, code: 'transport.invalid_payload' });
 	});
 
