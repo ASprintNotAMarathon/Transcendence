@@ -30,6 +30,14 @@ export class WsSender {
 		this.broadcast(userRoom(userId), event);
 	}
 
+	/**
+	 * Every connected socket except one user's own tabs. For news about that
+	 * user, which they do not need to hear about themselves.
+	 */
+	sendToAllExcept(userId: string, event: ServerEvent): void {
+		this.requireServer().except(userRoom(userId)).emit(EVENT, event);
+	}
+
 	/** This one connection only. For a reply nobody else should see */
 	sendToSocket(client: WsSocket, event: ServerEvent): void {
 		client.emit(EVENT, event);

@@ -1,5 +1,6 @@
 import type { GameOutcome, MatchStatePayload, PlayerIndex } from '@transcendence/shared'
 import { stoneFill } from './stones'
+import { Link } from 'react-router'
 
 type MatchPlayersProps = {
   players: MatchStatePayload['players']
@@ -27,7 +28,12 @@ function MatchPlayers({ players, turn, outcome }: MatchPlayersProps) {
             <svg viewBox="-8 -8 16 16" className="size-4 shrink-0 xl:size-5" aria-hidden="true">
               <circle r={7} style={{ fill: stoneFill(seat) }} />
             </svg>
-            <span className="truncate">{player.displayName}</span>
+            <Link
+              to={`/profile/${encodeURIComponent(player.userId)}`}
+              className="truncate underline-offset-4 hover:underline"
+            >
+              {player.displayName}
+            </Link>
           </li>
         )
       })}

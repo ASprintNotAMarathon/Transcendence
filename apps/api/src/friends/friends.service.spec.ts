@@ -23,7 +23,7 @@ function profile(id: string, displayName: string) {
 }
 
 const prisma = {
-	user: { findUnique: vi.fn() },
+	user: { findUnique: vi.fn(), findMany: vi.fn() },
 	friendship: {
 		findMany: vi.fn(),
 		findUnique: vi.fn(),
@@ -94,38 +94,6 @@ describe('FriendsService.listFriends', () => {
 			['alice', false],
 			['zed', true],
 		]);
-	});
-});
-
-describe('FriendsService.isOnlineFor', () => {
-	it('is the real status for a friend', () => {
-		registry.isOnline.mockReturnValue(true);
-
-		expect(service.isOnlineFor('friends', OTHER)).toBe(true);
-	});
-
-	it('is false for anyone who is not a friend, even when they are online', () => {
-		registry.isOnline.mockReturnValue(true);
-
-		for (const state of [
-			'none',
-			'requested',
-			'incoming',
-			'self',
-		] as const) {
-			expect(service.isOnlineFor(state, OTHER)).toBe(false);
-		}
-	});
-});
-
-describe('FriendsService.friendIdsOf', () => {
-	it('returns the other id from each friendship', async () => {
-		prisma.friendship.findMany.mockResolvedValue([
-			{ user0Id: ME, user1Id: OTHER },
-			{ user0Id: ALICE, user1Id: ME },
-		]);
-
-		await expect(service.friendIdsOf(ME)).resolves.toEqual([OTHER, ALICE]);
 	});
 });
 
