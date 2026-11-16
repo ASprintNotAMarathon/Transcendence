@@ -26,7 +26,7 @@ http {
 		}
 
 		location /api/ {
-			proxy_pass http://api:3000;
+			proxy_pass http://api:${API_PORT};
 
 			# The api accepts avatars up to 5 MB; nginx stops at 1 MB unless
 			# told otherwise. The extra megabyte is for the form around the file.
@@ -39,7 +39,7 @@ http {
 		}
 
 		location /ws/ {
-			proxy_pass http://api:3000;
+			proxy_pass http://api:${API_PORT};
 
 			# The upgrade only exists in HTTP/1.1, and nginx drops these two
 			# headers unless told to pass them on.
@@ -77,6 +77,8 @@ http {
 	server {
 		listen 80;
 		server_name localhost;
-		return 301 https://$host$request_uri;
+		# $host has no port in it, and nginx cannot know which port compose
+		# published https on, so compose passes it in.
+		return 301 https://$host:${HTTPS_PORT}$request_uri;
 	}
 }

@@ -24,7 +24,11 @@ RUN npm run build --workspace @transcendence/web
 # Only the built files are copied over; node and node_modules stay behind.
 FROM nginx:alpine
 
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
+# The image fills in ${VARS} in *.template files when the container starts.
+# By default it writes the result into conf.d/; this makes it write
+# /etc/nginx/nginx.conf, the main config.
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+COPY nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
 
 RUN apk add --no-cache openssl \
