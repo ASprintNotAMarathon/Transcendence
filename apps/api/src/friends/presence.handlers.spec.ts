@@ -12,7 +12,6 @@ const ALICE = 'alice-id';
 
 describe('PresenceHandlers', () => {
 	let friends: {
-		friendIdsOf: ReturnType<typeof vi.fn>;
 		presenceUser: ReturnType<typeof vi.fn>;
 		presenceUsers: ReturnType<typeof vi.fn>;
 	};
@@ -23,7 +22,7 @@ describe('PresenceHandlers', () => {
 	};
 	let dispatcher: { register: ReturnType<typeof vi.fn> };
 	let sender: {
-		sendToUser: ReturnType<typeof vi.fn>;
+		sendToAllExcept: ReturnType<typeof vi.fn>;
 		sendToSocket: ReturnType<typeof vi.fn>;
 	};
 	let handlers: PresenceHandlers;
@@ -32,7 +31,6 @@ describe('PresenceHandlers', () => {
 		// Fakes for everything around the handlers, as in chat.handlers.spec:
 		// the service (the brain), the registry, and the sender (the wire).
 		friends = {
-			friendIdsOf: vi.fn(),
 			presenceUser: vi.fn(),
 			presenceUsers: vi.fn(),
 		};
@@ -42,7 +40,7 @@ describe('PresenceHandlers', () => {
 			onlineUserIds: vi.fn(),
 		};
 		dispatcher = { register: vi.fn() };
-		sender = { sendToUser: vi.fn(), sendToSocket: vi.fn() };
+		sender = { sendToAllExcept: vi.fn(), sendToSocket: vi.fn() };
 		handlers = new PresenceHandlers(
 			friends as unknown as FriendsService,
 			dispatcher as unknown as WsDispatcher,
@@ -98,43 +96,31 @@ describe('PresenceHandlers', () => {
 		});
 	});
 
-	it('tells each friend when someone comes online', async () => {
-		friends.friendIdsOf.mockResolvedValue([CHARLIE, ALICE]);
-		friends.presenceUser.mockResolvedValue({
-			userId: DANA,
-			displayName: 'dana',
-			avatarUrl: null,
-		});
+	it('tells every other player when someone comes online', async () => {
+		const dana = { userId: DANA, displayName: 'dana', avatarUrl: null };
+		friends.presenceUser.mockResolvedValue(dana);
 		registry.isOnline.mockReturnValue(true);
 
 		await handlers.announce(DANA, true);
 
-		const event = {
+		expect(sender.sendToAllExcept).toHaveBeenCalledWith(DANA, {
 			type: 'presence.online',
-			payload: {
-				user: { userId: DANA, displayName: 'dana', avatarUrl: null },
-			},
-		};
-		expect(sender.sendToUser.mock.calls).toEqual([
-			[CHARLIE, event],
-			[ALICE, event],
-		]);
+			payload: { user: dana },
+		});
 	});
 
-	it('tells each friend when someone goes offline', async () => {
-		friends.friendIdsOf.mockResolvedValue([CHARLIE]);
+	it('tells every other player when someone goes offline', async () => {
 		registry.isOnline.mockReturnValue(false);
 
 		await handlers.announce(DANA, false);
 
-		expect(sender.sendToUser).toHaveBeenCalledWith(CHARLIE, {
+		expect(sender.sendToAllExcept).toHaveBeenCalledWith(DANA, {
 			type: 'presence.offline',
 			payload: { userId: DANA },
 		});
 	});
 
 	it('drops stale news: online, but they already left again', async () => {
-		friends.friendIdsOf.mockResolvedValue([CHARLIE]);
 		friends.presenceUser.mockResolvedValue({
 			userId: DANA,
 			displayName: 'dana',
@@ -144,14 +130,15 @@ describe('PresenceHandlers', () => {
 
 		await handlers.announce(DANA, true);
 
-		expect(sender.sendToUser).not.toHaveBeenCalled();
+		expect(sender.sendToAllExcept).not.toHaveBeenCalled();
 	});
 
-	it('sends nothing for someone with no friends', async () => {
-		friends.friendIdsOf.mockResolvedValue([]);
+	it('sends nothing for a user who no longer exists', async () => {
+		friends.presenceUser.mockResolvedValue(null);
+		registry.isOnline.mockReturnValue(true);
 
 		await handlers.announce(DANA, true);
 
-		expect(sender.sendToUser).not.toHaveBeenCalled();
+		expect(sender.sendToAllExcept).not.toHaveBeenCalled();
 	});
 });

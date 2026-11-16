@@ -8,8 +8,8 @@ import { FriendsService } from './friends.service';
  * Presence on the socket.
  *
  * - presence.list: the asking tab gets presence.state, everyone else online.
- * - A user's first socket opens: each friend gets presence.online.
- * - Their last socket closes: each friend gets presence.offline.
+ * - A user's first socket opens: every other player gets presence.online.
+ * - Their last socket closes: every other player gets presence.offline.
  */
 @Injectable()
 export class PresenceHandlers implements OnModuleInit {
@@ -47,33 +47,26 @@ export class PresenceHandlers implements OnModuleInit {
 		});
 	};
 
-	/** Tells every friend, on every tab they have open. */
+	/** Tells every other player, on every tab they have open. */
 	async announce(userId: string, online: boolean): Promise<void> {
-		const friendIds = await this.friends.friendIdsOf(userId);
-		if (friendIds.length === 0) {
-			return;
-		}
-
 		const user = online ? await this.friends.presenceUser(userId) : null;
 
-		// The queries took a moment. If they came back online or left again
+		// The query took a moment. If they came back online or left again
 		// in between, a newer announcement is on its way: this one is stale.
 		if (this.registry.isOnline(userId) !== online) {
 			return;
 		}
 
-		for (const friendId of friendIds) {
-			if (user) {
-				this.sender.sendToUser(friendId, {
-					type: 'presence.online',
-					payload: { user },
-				});
-			} else if (!online) {
-				this.sender.sendToUser(friendId, {
-					type: 'presence.offline',
-					payload: { userId },
-				});
-			}
+		if (user) {
+			this.sender.sendToAllExcept(userId, {
+				type: 'presence.online',
+				payload: { user },
+			});
+		} else if (!online) {
+			this.sender.sendToAllExcept(userId, {
+				type: 'presence.offline',
+				payload: { userId },
+			});
 		}
 	}
 }

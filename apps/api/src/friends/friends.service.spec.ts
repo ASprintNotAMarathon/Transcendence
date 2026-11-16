@@ -117,17 +117,6 @@ describe('FriendsService.isOnlineFor', () => {
 	});
 });
 
-describe('FriendsService.friendIdsOf', () => {
-	it('returns the other id from each friendship', async () => {
-		prisma.friendship.findMany.mockResolvedValue([
-			{ user0Id: ME, user1Id: OTHER },
-			{ user0Id: ALICE, user1Id: ME },
-		]);
-
-		await expect(service.friendIdsOf(ME)).resolves.toEqual([OTHER, ALICE]);
-	});
-});
-
 describe('FriendsService.presenceUser', () => {
 	it('names the user and turns their avatar file into a URL', async () => {
 		prisma.user.findUnique.mockResolvedValue({
