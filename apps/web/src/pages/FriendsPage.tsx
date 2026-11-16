@@ -4,6 +4,7 @@ import Avatar from '../components/Avatar'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import { friendsApi, type Friend, type FriendRequests, type Person } from '../lib/friends'
+import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from '../components/Card'
 
@@ -69,6 +70,7 @@ function FriendsPage() {
     const [busyId, setBusyId] = useState<string | null>(null)
     const [actionError, setActionError] = useState<string | null>(null)
     const onlineIds = useOnlineStatus()
+    const friendsChanged = useFriendsChanged()
 
     useEffect(() => {
         // If you leave the page before the answer arrives, ignore the answer.
@@ -83,7 +85,7 @@ function FriendsPage() {
         return () => {
             ignore = true
         }
-    }, [attempt])
+    }, [attempt, friendsChanged])
 
     function handleRetry() {
         setState({ status: 'loading' })

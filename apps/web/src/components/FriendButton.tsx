@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ApiError } from '../lib/api'
 import { friendsApi, type Friendship } from '../lib/friends'
+import { useFriendsChanged } from '../socket/useFriendsChanged'
 
 /*
   FriendButton. The friend button on someone else's profile.
@@ -27,6 +28,7 @@ function FriendButton({ userId }: FriendButtonProps) {
   const [friendship, setFriendship] = useState<Friendship | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const friendsChanged = useFriendsChanged()
 
   useEffect(() => {
     // If you leave the page before the answer arrives, ignore the answer.
@@ -45,6 +47,20 @@ function FriendButton({ userId }: FriendButtonProps) {
       ignore = true
     }
   }, [userId])
+
+  useEffect(() => {
+    if (friendsChanged === 0) return
+    let ignore = false
+    friendsApi
+      .statusWith(userId)
+      .then((value) => {
+        if (!ignore) setFriendship(value)
+      })
+      .catch(() => undefined)
+    return () => {
+      ignore = true
+    }
+  }, [userId, friendsChanged])
 
   // Runs one action. If it works, the button changes to the next state.
   // next = null means: ask the server what the status is now.

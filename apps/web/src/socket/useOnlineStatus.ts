@@ -21,6 +21,9 @@ export function useOnlineStatus(): ReadonlySet<string> | null {
         setOnline(new Set(event.payload.users.map((user) => user.userId)))
       } else if (event.type === 'presence.online') {
         setOnline((current) => new Set(current).add(event.payload.user.userId))
+      } else if (event.type === 'friends.changed') {
+        // A new friend's dot is unknown until we ask again.
+        send({ type: 'presence.list', payload: {} })
       } else if (event.type === 'presence.offline') {
         setOnline((current) => {
           const next = new Set(current)
@@ -29,7 +32,7 @@ export function useOnlineStatus(): ReadonlySet<string> | null {
         })
       }
     })
-  }, [subscribe])
+  }, [subscribe, send])
 
   useEffect(() => {
     if (status === 'connected') send({ type: 'presence.list', payload: {} })
