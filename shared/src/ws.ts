@@ -10,6 +10,7 @@
  * Like the game engines, this file is pure types: no I/O, no Socket.IO import, no Node APIs.
  */
 
+import type { LiveMatch } from "./lobby.js";
 import type { GameName } from "./registry.js";
 import type { GameOutcome, PlayerIndex } from "./types.js";
 
@@ -270,6 +271,39 @@ export type QueueServerEvent =
 	| Envelope<"queue.rejected", QueueRejectedPayload>;
 
 /* ==========================================================================
+ * Lobby events
+ * ========================================================================== */
+
+/** Ask to receive lobby.* updates while the lobby is open. */
+export type LobbyJoinPayload = Record<string, never>;
+
+export type LobbyLeavePayload = Record<string, never>;
+
+/** A match that just started. Same shape as GET /match/live returns. */
+export type LobbyStartedPayload = LiveMatch;
+
+/** A move in a running match. A move that ends the match sends lobby.ended instead. */
+export interface LobbyMovedPayload {
+	readonly matchId: string;
+	readonly moveNumber: number;
+	readonly turn: PlayerIndex;
+}
+
+/** A match is over, however it ended. Drop it from the list. */
+export interface LobbyEndedPayload {
+	readonly matchId: string;
+}
+
+export type LobbyClientEvent =
+	| Envelope<"lobby.join", LobbyJoinPayload>
+	| Envelope<"lobby.leave", LobbyLeavePayload>;
+
+export type LobbyServerEvent =
+	| Envelope<"lobby.started", LobbyStartedPayload>
+	| Envelope<"lobby.moved", LobbyMovedPayload>
+	| Envelope<"lobby.ended", LobbyEndedPayload>;
+
+/* ==========================================================================
  * Chat events
  * ========================================================================== */
 
@@ -429,6 +463,7 @@ export type ClientEvent =
 	| LifecycleClientEvent
 	| MatchClientEvent
 	| QueueClientEvent
+	| LobbyClientEvent
 	| ChatClientEvent
 	| PresenceClientEvent;
 
@@ -437,5 +472,6 @@ export type ServerEvent =
 	| LifecycleServerEvent
 	| MatchServerEvent
 	| QueueServerEvent
+	| LobbyServerEvent
 	| ChatServerEvent
 	| PresenceServerEvent;
