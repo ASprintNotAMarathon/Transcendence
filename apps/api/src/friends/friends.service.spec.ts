@@ -23,7 +23,7 @@ function profile(id: string, displayName: string) {
 }
 
 const prisma = {
-	user: { findUnique: vi.fn() },
+	user: { findUnique: vi.fn(), findMany: vi.fn() },
 	friendship: {
 		findMany: vi.fn(),
 		findUnique: vi.fn(),
@@ -146,6 +146,34 @@ describe('FriendsService.presenceUser', () => {
 		prisma.user.findUnique.mockResolvedValue(null);
 
 		await expect(service.presenceUser(OTHER)).resolves.toBeNull();
+	});
+});
+
+describe('FriendsService.presenceUsers', () => {
+	it('loads those ids in one query, sorted by name, with avatar URLs', async () => {
+		prisma.user.findMany.mockResolvedValue([
+			{ id: ALICE, displayName: 'alice', avatarPath: null },
+			{ id: OTHER, displayName: 'zed', avatarPath: 'zed.png' },
+		]);
+
+		await expect(service.presenceUsers([OTHER, ALICE])).resolves.toEqual([
+			{ userId: ALICE, displayName: 'alice', avatarUrl: null },
+			{
+				userId: OTHER,
+				displayName: 'zed',
+				avatarUrl: '/api/avatars/zed.png',
+			},
+		]);
+		expect(prisma.user.findMany).toHaveBeenCalledWith({
+			where: { id: { in: [OTHER, ALICE] } },
+			select: { id: true, displayName: true, avatarPath: true },
+			orderBy: { displayName: 'asc' },
+		});
+	});
+
+	it('is empty without asking the database when nobody is online', async () => {
+		await expect(service.presenceUsers([])).resolves.toEqual([]);
+		expect(prisma.user.findMany).not.toHaveBeenCalled();
 	});
 });
 

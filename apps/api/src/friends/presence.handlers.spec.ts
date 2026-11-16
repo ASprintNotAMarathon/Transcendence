@@ -12,13 +12,14 @@ const ALICE = 'alice-id';
 
 describe('PresenceHandlers', () => {
 	let friends: {
-		listFriends: ReturnType<typeof vi.fn>;
 		friendIdsOf: ReturnType<typeof vi.fn>;
 		presenceUser: ReturnType<typeof vi.fn>;
+		presenceUsers: ReturnType<typeof vi.fn>;
 	};
 	let registry: {
 		onChange: ReturnType<typeof vi.fn>;
 		isOnline: ReturnType<typeof vi.fn>;
+		onlineUserIds: ReturnType<typeof vi.fn>;
 	};
 	let dispatcher: { register: ReturnType<typeof vi.fn> };
 	let sender: {
@@ -31,11 +32,15 @@ describe('PresenceHandlers', () => {
 		// Fakes for everything around the handlers, as in chat.handlers.spec:
 		// the service (the brain), the registry, and the sender (the wire).
 		friends = {
-			listFriends: vi.fn(),
 			friendIdsOf: vi.fn(),
 			presenceUser: vi.fn(),
+			presenceUsers: vi.fn(),
 		};
-		registry = { onChange: vi.fn(), isOnline: vi.fn() };
+		registry = {
+			onChange: vi.fn(),
+			isOnline: vi.fn(),
+			onlineUserIds: vi.fn(),
+		};
 		dispatcher = { register: vi.fn() };
 		sender = { sendToUser: vi.fn(), sendToSocket: vi.fn() };
 		handlers = new PresenceHandlers(
@@ -56,16 +61,28 @@ describe('PresenceHandlers', () => {
 		expect(registry.onChange).toHaveBeenCalledTimes(1);
 	});
 
-	it('presence.list answers the asking tab with only the online friends', async () => {
-		friends.listFriends.mockResolvedValue([
-			{ id: ALICE, displayName: 'alice', avatarUrl: null, online: false },
-			{
-				id: DANA,
-				displayName: 'dana',
-				avatarUrl: '/api/avatars/dana.png',
-				online: true,
-			},
-		]);
+	it('presence.list asks for everyone online except the asker', async () => {
+		registry.onlineUserIds.mockReturnValue([CHARLIE, DANA, ALICE]);
+		friends.presenceUsers.mockResolvedValue([]);
+		const client = { data: { userId: CHARLIE } } as unknown as WsSocket;
+
+		await handlers.list(client, {
+			type: 'presence.list',
+			cid: 'c1',
+			payload: {},
+		});
+
+		expect(friends.presenceUsers).toHaveBeenCalledWith([DANA, ALICE]);
+	});
+
+	it('presence.list answers the asking tab, with its cid', async () => {
+		const dana = {
+			userId: DANA,
+			displayName: 'dana',
+			avatarUrl: '/api/avatars/dana.png',
+		};
+		registry.onlineUserIds.mockReturnValue([CHARLIE, DANA]);
+		friends.presenceUsers.mockResolvedValue([dana]);
 		const client = { data: { userId: CHARLIE } } as unknown as WsSocket;
 
 		await handlers.list(client, {
@@ -77,15 +94,7 @@ describe('PresenceHandlers', () => {
 		expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
 			type: 'presence.state',
 			cid: 'c1',
-			payload: {
-				users: [
-					{
-						userId: DANA,
-						displayName: 'dana',
-						avatarUrl: '/api/avatars/dana.png',
-					},
-				],
-			},
+			payload: { users: [dana] },
 		});
 	});
 

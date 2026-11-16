@@ -5,9 +5,9 @@ import { WsSender } from '../ws/ws.sender';
 import { FriendsService } from './friends.service';
 
 /**
- * Presence on the socket, for friends only.
+ * Presence on the socket.
  *
- * - presence.list: the asking tab gets presence.state, its online friends.
+ * - presence.list: the asking tab gets presence.state, everyone else online.
  * - A user's first socket opens: each friend gets presence.online.
  * - Their last socket closes: each friend gets presence.offline.
  */
@@ -33,21 +33,17 @@ export class PresenceHandlers implements OnModuleInit {
 		});
 	}
 
-	/** A direct reply to the asking tab, stamped with its cid. */
+	/**
+	 * Everyone online except the asker, for the lobby. A direct reply to
+	 * the asking tab, stamped with its cid.
+	 */
 	readonly list: WsHandler<'presence.list'> = async (client, event) => {
-		const friends = await this.friends.listFriends(client.data.userId);
+		const me = client.data.userId;
+		const others = this.registry.onlineUserIds().filter((id) => id !== me);
 		this.sender.sendToSocket(client, {
 			type: 'presence.state',
 			cid: event.cid,
-			payload: {
-				users: friends
-					.filter((friend) => friend.online)
-					.map((friend) => ({
-						userId: friend.id,
-						displayName: friend.displayName,
-						avatarUrl: friend.avatarUrl,
-					})),
-			},
+			payload: { users: await this.friends.presenceUsers(others) },
 		});
 	};
 

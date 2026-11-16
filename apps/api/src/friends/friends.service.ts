@@ -101,6 +101,23 @@ export class FriendsService {
 			: null;
 	}
 
+	/** Several users at once, sorted by name. Ids that no longer exist are skipped. */
+	async presenceUsers(ids: readonly string[]): Promise<PresenceUser[]> {
+		if (ids.length === 0) {
+			return [];
+		}
+		const users = await this.prisma.user.findMany({
+			where: { id: { in: [...ids] } },
+			select: { id: true, displayName: true, avatarPath: true },
+			orderBy: { displayName: 'asc' },
+		});
+		return users.map((user) => ({
+			userId: user.id,
+			displayName: user.displayName,
+			avatarUrl: avatarUrl(user.avatarPath),
+		}));
+	}
+
 	/**
 	 * Only friends see whether you are online. Anyone else, and you on
 	 * your own profile, gets false.
