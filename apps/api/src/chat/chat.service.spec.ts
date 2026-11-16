@@ -239,6 +239,7 @@ describe('ChatService.conversations', () => {
 				updatedAt: new Date('2026-10-23T12:00:00Z'),
 				user0: USER_0,
 				user1: USER_1,
+				messages: [{ body: 'rematch after lunch?' }],
 			},
 			{
 				id: 'conversation-b',
@@ -247,6 +248,7 @@ describe('ChatService.conversations', () => {
 				updatedAt: new Date('2026-10-23T11:00:00Z'),
 				user0: USER_1,
 				user1: USER_0,
+				messages: [],
 			},
 		]);
 
@@ -257,12 +259,14 @@ describe('ChatService.conversations', () => {
 				conversationId: 'conversation-a',
 				otherUserId: USER_1.id,
 				otherUserName: 'bob',
+				lastMessageBody: 'rematch after lunch?',
 				lastActivityAt: '2026-10-23T12:00:00.000Z',
 			},
 			{
 				conversationId: 'conversation-b',
 				otherUserId: USER_1.id,
 				otherUserName: 'bob',
+				lastMessageBody: '',
 				lastActivityAt: '2026-10-23T11:00:00.000Z',
 			},
 		]);
