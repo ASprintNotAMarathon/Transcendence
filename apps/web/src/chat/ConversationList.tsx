@@ -70,10 +70,11 @@ function ConversationList({
 									</span>
 								)}
 							</span>
-							{/* Display the last message as a preview. */}
-							{/* truncate cuts a long last message to one line with "…" */}
+								{/* Preview of the newest message — hidden for the open
+							    conversation, since the pane already shows it.
+							    The span stays so every row keeps the same height. */}
 							<span className="w-full truncate text-sm text-muted">
-								{conversation.lastMessage}
+								{selected ? '' : conversation.lastMessage}
 							</span>
 						</button>
 					</li>

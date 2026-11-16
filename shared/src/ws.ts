@@ -307,6 +307,8 @@ export interface ChatConversationPayload {
 	readonly conversationId: string;
 	readonly otherUserId: string;
 	readonly otherUserName: string;
+	/** The newest message's text, for the sidebar preview. Empty when none. */
+	readonly lastMessageBody: string;
 	/** When something last happened here. The list is sorted by this. */
 	readonly lastActivityAt: string;
 }
