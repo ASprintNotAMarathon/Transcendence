@@ -91,11 +91,12 @@ export class MatchQueueHandlers implements OnModuleInit {
 	): Promise<void> {
 		try {
 			const matchId = await this.service.create(game, waiterId, joinerId);
+			// Before the players hear about it, so no move or end can reach the lobby first.
+			await this.lobby.started(matchId);
 			this.tellBoth(waiterId, joinerId, {
 				type: 'queue.matched',
 				payload: { matchId },
 			});
-			void this.lobby.started(matchId);
 		} catch (error) {
 			this.logger.error(
 				`could not create a ${game} match for ${waiterId} and ${joinerId}`,

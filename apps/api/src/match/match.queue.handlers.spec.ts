@@ -147,6 +147,24 @@ describe('MatchQueueHandlers', () => {
 			expect(lobby.started).toHaveBeenCalledExactlyOnceWith(MATCH_ID);
 		});
 
+		it('announces the match to the lobby before telling the players', async () => {
+			let finishAnnouncing: () => void = () => undefined;
+			lobby.started.mockReturnValue(
+				new Promise<void>((resolve) => {
+					finishAnnouncing = resolve;
+				}),
+			);
+			await handlers.join(asSocket(alice), joinEvent());
+
+			const joining = handlers.join(asSocket(bob), joinEvent());
+			await vi.waitFor(() => expect(lobby.started).toHaveBeenCalled());
+			expect(sender.sendToUser).not.toHaveBeenCalled();
+
+			finishAnnouncing();
+			await joining;
+			expect(sender.sendToUser).toHaveBeenCalledTimes(2);
+		});
+
 		it('leaves both players free to queue again once paired', async () => {
 			await handlers.join(asSocket(alice), joinEvent());
 			await handlers.join(asSocket(bob), joinEvent());
