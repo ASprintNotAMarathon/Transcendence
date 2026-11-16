@@ -1,8 +1,31 @@
-# nginx with a self-signed certificate for https://localhost
+# Stage 1: build the web app. Same steps and order as apps/web/Dockerfile,
+# so Docker reuses the cached `npm ci` from there.
+FROM node:24-slim AS web-build
 
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+COPY shared/package.json shared/
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+
+COPY shared/tsconfig.json shared/tsconfig.build.json shared/
+COPY shared/src shared/src
+
+COPY apps/api/prisma.config.ts apps/api/
+COPY apps/api/prisma apps/api/prisma
+
+RUN npm ci
+
+COPY apps/web apps/web
+RUN npm run build --workspace @transcendence/web
+
+# Stage 2: nginx with a self-signed certificate for https://localhost.
+# Only the built files are copied over; node and node_modules stay behind.
 FROM nginx:alpine
 
 COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
 
 RUN apk add --no-cache openssl \
 	&& mkdir -p /etc/nginx/certs \

@@ -7,8 +7,6 @@ services:
       dockerfile: nginx/Dockerfile
     init: true
     depends_on:
-      web:
-        condition: service_healthy
       api:
         condition: service_healthy
     ports:
