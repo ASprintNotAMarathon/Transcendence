@@ -27,6 +27,7 @@ const prisma = {
 	friendship: {
 		findMany: vi.fn(),
 		findUnique: vi.fn(),
+		findFirst: vi.fn(),
 		create: vi.fn(),
 		update: vi.fn(),
 		updateMany: vi.fn(),
@@ -247,23 +248,54 @@ describe('FriendsService.sendRequest', () => {
 });
 
 describe('FriendsService.accept and decline', () => {
+	const incoming = {
+		id: REQUEST_ID,
+		status: 'pending',
+		requesterId: { not: ME },
+		OR: [{ user0Id: ME }, { user1Id: ME }],
+	};
+
+	beforeEach(() => {
+		prisma.friendship.findFirst.mockResolvedValue({ requesterId: OTHER });
+	});
+
 	it('only touches a pending request someone else sent to me', async () => {
 		prisma.friendship.updateMany.mockResolvedValue({ count: 1 });
 
 		await service.accept(ME, REQUEST_ID);
 
+		expect(prisma.friendship.findFirst).toHaveBeenCalledWith({
+			where: incoming,
+			select: { requesterId: true },
+		});
 		expect(prisma.friendship.updateMany).toHaveBeenCalledWith({
-			where: {
-				id: REQUEST_ID,
-				status: 'pending',
-				requesterId: { not: ME },
-				OR: [{ user0Id: ME }, { user1Id: ME }],
-			},
+			where: incoming,
 			data: { status: 'accepted' },
 		});
 	});
 
-	it('accept answers 404 when nothing matched', async () => {
+	it('accept and decline answer with who sent the request', async () => {
+		prisma.friendship.updateMany.mockResolvedValue({ count: 1 });
+		prisma.friendship.deleteMany.mockResolvedValue({ count: 1 });
+
+		expect(await service.accept(ME, REQUEST_ID)).toBe(OTHER);
+		expect(await service.decline(ME, REQUEST_ID)).toBe(OTHER);
+	});
+
+	it('answer 404 without writing when there is no such request', async () => {
+		prisma.friendship.findFirst.mockResolvedValue(null);
+
+		await expect(service.accept(ME, REQUEST_ID)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		await expect(service.decline(ME, REQUEST_ID)).rejects.toBeInstanceOf(
+			NotFoundException,
+		);
+		expect(prisma.friendship.updateMany).not.toHaveBeenCalled();
+		expect(prisma.friendship.deleteMany).not.toHaveBeenCalled();
+	});
+
+	it('accept answers 404 when the request went away in between', async () => {
 		prisma.friendship.updateMany.mockResolvedValue({ count: 0 });
 
 		await expect(service.accept(ME, REQUEST_ID)).rejects.toBeInstanceOf(
@@ -271,7 +303,7 @@ describe('FriendsService.accept and decline', () => {
 		);
 	});
 
-	it('decline answers 404 when nothing matched', async () => {
+	it('decline answers 404 when the request went away in between', async () => {
 		prisma.friendship.deleteMany.mockResolvedValue({ count: 0 });
 
 		await expect(service.decline(ME, REQUEST_ID)).rejects.toBeInstanceOf(
