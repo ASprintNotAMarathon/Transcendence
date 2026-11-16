@@ -15,6 +15,7 @@ import type { WsSocket } from '../ws/ws.types';
 import { GRACE_MS, MatchDisconnects } from './match.disconnects';
 import { MatchError } from './match.error';
 import { MatchHandlers } from './match.handlers';
+import type { MatchLobby } from './match.lobby';
 import type { MatchService } from './match.service';
 
 const USER_ID = 'socket-user-uuid';
@@ -72,6 +73,10 @@ describe('MatchHandlers', () => {
 		onUserOffline: ReturnType<typeof vi.fn>;
 	};
 	let registry: WsRegistry;
+	let lobby: {
+		moved: ReturnType<typeof vi.fn>;
+		ended: ReturnType<typeof vi.fn>;
+	};
 	let joinRoom: ReturnType<typeof vi.fn>;
 	let leaveRoom: ReturnType<typeof vi.fn>;
 	let client: WsSocket;
@@ -89,6 +94,7 @@ describe('MatchHandlers', () => {
 		disconnects = new MatchDisconnects();
 		lifecycle = { onUserOnline: vi.fn(), onUserOffline: vi.fn() };
 		registry = new WsRegistry();
+		lobby = { moved: vi.fn(), ended: vi.fn() };
 		joinRoom = vi.fn();
 		leaveRoom = vi.fn();
 		client = {
@@ -104,6 +110,7 @@ describe('MatchHandlers', () => {
 			disconnects,
 			lifecycle as unknown as WsLifecycle,
 			registry,
+			lobby as unknown as MatchLobby,
 		);
 	});
 
@@ -116,6 +123,7 @@ describe('MatchHandlers', () => {
 			disconnects,
 			lifecycle as unknown as WsLifecycle,
 			registry,
+			lobby as unknown as MatchLobby,
 		);
 
 		withSpy.onModuleInit();
@@ -155,6 +163,17 @@ describe('MatchHandlers', () => {
 			expect(sender.sendToSocket).not.toHaveBeenCalled();
 		});
 
+		it('tells the lobby about an accepted move', async () => {
+			service.move.mockResolvedValue(moved);
+
+			await handlers.move(
+				client,
+				moveEvent({ matchId: MATCH_ID, move: moved.move }),
+			);
+
+			expect(lobby.moved).toHaveBeenCalledExactlyOnceWith(moved);
+		});
+
 		it('plays as the socket user even when the payload names someone else', async () => {
 			service.move.mockResolvedValue(moved);
 			const payload = {
@@ -185,6 +204,7 @@ describe('MatchHandlers', () => {
 				payload: { matchId: MATCH_ID, code: 'match.not_your_turn' },
 			});
 			expect(sender.broadcast).not.toHaveBeenCalled();
+			expect(lobby.moved).not.toHaveBeenCalled();
 		});
 
 		it('rethrows a server fault and tells nobody', async () => {
@@ -225,6 +245,14 @@ describe('MatchHandlers', () => {
 			expect(sender.sendToSocket).not.toHaveBeenCalled();
 		});
 
+		it('tells the lobby the match is over', async () => {
+			service.resign.mockResolvedValue(ended);
+
+			await handlers.resign(client, resignEvent());
+
+			expect(lobby.ended).toHaveBeenCalledExactlyOnceWith(MATCH_ID);
+		});
+
 		it('resigns as the socket user', async () => {
 			service.resign.mockResolvedValue(ended);
 
@@ -246,6 +274,7 @@ describe('MatchHandlers', () => {
 				payload: { matchId: MATCH_ID, code: 'match.already_over' },
 			});
 			expect(sender.broadcast).not.toHaveBeenCalled();
+			expect(lobby.ended).not.toHaveBeenCalled();
 		});
 
 		it('rethrows a server fault and tells nobody', async () => {
@@ -432,6 +461,7 @@ describe('MatchHandlers', () => {
 				type: 'match.ended',
 				payload: abandoned,
 			});
+			expect(lobby.ended).toHaveBeenCalledExactlyOnceWith(MATCH_ID);
 		});
 
 		it('stays quiet when the match was already over at expiry', async () => {
@@ -443,6 +473,7 @@ describe('MatchHandlers', () => {
 
 			expect(service.abandon).toHaveBeenCalledOnce();
 			expect(sender.broadcast).not.toHaveBeenCalled();
+			expect(lobby.ended).not.toHaveBeenCalled();
 		});
 
 		it('logs a failed abandon instead of letting it escape the timer', async () => {

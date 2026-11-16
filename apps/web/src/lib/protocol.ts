@@ -22,7 +22,31 @@ export function sendMove(matchId: string, move: unknown, cid?: string): ClientEv
   return { type: 'match.move', cid, payload: { matchId, move } }
 }
 
+/** Start receiving lobby updates: matches starting, moving and ending. */
+export function joinLobby(): ClientEvent {
+  return { type: 'lobby.join', payload: {} }
+}
+
+export function leaveLobby(): ClientEvent {
+  return { type: 'lobby.leave', payload: {} }
+}
+
 /** Concede the match. */
 export function resign(matchId: string, cid?: string): ClientEvent {
   return { type: 'match.resign', cid, payload: { matchId } }
+}
+
+/** Send a new chat message to a conversation. */
+export function sendChatMessage(conversationId: string, body: string, cid?: string): ClientEvent {
+  return { type: 'chat.send', cid, payload: { conversationId, body } }
+}
+
+/** Ask for one page of a conversation's history; `before` pages further back. */
+export function chatHistory(conversationId: string, before?: string, cid?: string): ClientEvent {
+  return { type: 'chat.history', cid, payload: { conversationId, before } }
+}
+
+/** Ask for your own conversation list. */
+export function chatConversations(cid?: string): ClientEvent {
+  return { type: 'chat.conversations', cid, payload: {} }
 }

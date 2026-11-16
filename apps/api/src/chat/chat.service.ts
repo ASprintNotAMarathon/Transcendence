@@ -132,7 +132,11 @@ export class ChatService {
 		const rows = await this.prisma.conversation.findMany({
 			where: { OR: [{ user0Id: userId }, { user1Id: userId }] },
 			orderBy: { updatedAt: 'desc' },
-			include: { user0: true, user1: true },
+			include: {
+				user0: true,
+				user1: true,
+				messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+			},
 		});
 
 		return {
@@ -143,6 +147,7 @@ export class ChatService {
 					conversationId: row.id,
 					otherUserId: other.id,
 					otherUserName: other.displayName,
+					lastMessageBody: row.messages[0]?.body ?? '',
 					lastActivityAt: row.updatedAt.toISOString(),
 				};
 			}),

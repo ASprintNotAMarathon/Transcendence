@@ -9,6 +9,7 @@ import { WsDispatcher } from '../ws/ws.dispatch';
 import type { WsHandler } from '../ws/ws.dispatch';
 import { WsSender } from '../ws/ws.sender';
 import type { WsSocket } from '../ws/ws.types';
+import { MatchLobby } from './match.lobby';
 import { MatchQueue } from './match.queue';
 import { MatchService } from './match.service';
 
@@ -22,6 +23,7 @@ export class MatchQueueHandlers implements OnModuleInit {
 		private readonly queue: MatchQueue,
 		private readonly dispatcher: WsDispatcher,
 		private readonly sender: WsSender,
+		private readonly lobby: MatchLobby,
 	) {}
 
 	onModuleInit(): void {
@@ -89,6 +91,8 @@ export class MatchQueueHandlers implements OnModuleInit {
 	): Promise<void> {
 		try {
 			const matchId = await this.service.create(game, waiterId, joinerId);
+			// Before the players hear about it, so no move or end can reach the lobby first.
+			await this.lobby.started(matchId);
 			this.tellBoth(waiterId, joinerId, {
 				type: 'queue.matched',
 				payload: { matchId },

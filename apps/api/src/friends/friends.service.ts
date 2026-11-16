@@ -171,7 +171,9 @@ export class FriendsService {
 		return 'requested';
 	}
 
-	async accept(me: string, requestId: string): Promise<void> {
+	/** Answers with the id of whoever sent the request. */
+	async accept(me: string, requestId: string): Promise<string> {
+		const requesterId = await this.requesterOf(me, requestId);
 		const { count } = await this.prisma.friendship.updateMany({
 			where: incomingRequest(me, requestId),
 			data: { status: 'accepted' },
@@ -179,15 +181,30 @@ export class FriendsService {
 		if (count === 0) {
 			throw new NotFoundException();
 		}
+		return requesterId;
 	}
 
-	async decline(me: string, requestId: string): Promise<void> {
+	/** Answers with the id of whoever sent the request. */
+	async decline(me: string, requestId: string): Promise<string> {
+		const requesterId = await this.requesterOf(me, requestId);
 		const { count } = await this.prisma.friendship.deleteMany({
 			where: incomingRequest(me, requestId),
 		});
 		if (count === 0) {
 			throw new NotFoundException();
 		}
+		return requesterId;
+	}
+
+	private async requesterOf(me: string, requestId: string): Promise<string> {
+		const row = await this.prisma.friendship.findFirst({
+			where: incomingRequest(me, requestId),
+			select: { requesterId: true },
+		});
+		if (!row) {
+			throw new NotFoundException();
+		}
+		return row.requesterId;
 	}
 
 	/**
