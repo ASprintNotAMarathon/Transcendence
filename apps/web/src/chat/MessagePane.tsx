@@ -13,11 +13,14 @@ import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import LoadingState from '../components/states/LoadingState'
 import MessageComposer from './MessageComposer'
+import { CloseCross } from '../components/ChatButton'
 
 type MessagePaneProps = {
 	conversationId: string
 	otherUserId: string
 	otherUserName: string
+	onBack: () => void
+	onClose: () => void
 }
 
 /**
@@ -42,7 +45,7 @@ function formatTime(isoDate: string): string {
 	})
 }
 
-function MessagePane({ conversationId, otherUserId, otherUserName }: MessagePaneProps) {
+function MessagePane({ conversationId, otherUserId, otherUserName, onBack, onClose }: MessagePaneProps) {
 	/*
 	 * useState returns TWO things:
 	 *
@@ -113,7 +116,7 @@ function MessagePane({ conversationId, otherUserId, otherUserName }: MessagePane
 			plan.to === 'bottom'
 				? element.scrollHeight
 				: // new height minus old height = how much was inserted above
-					element.scrollHeight - plan.previousHeight
+				element.scrollHeight - plan.previousHeight
 	}, [messages])
 
 	// Scrolling to the very top asks the mock for the page before the oldest message shown
@@ -143,15 +146,25 @@ function MessagePane({ conversationId, otherUserId, otherUserName }: MessagePane
 		// Column: the scrollable message list on top, the composer pinned below.
 		// min-h-0 on the list lets it shrink and scroll instead of pushing the composer off-screen.
 		<div className="flex h-full flex-col">
-				{/* The other person's name — links to their profile (issue #60). */}
+			{/* One bar: back to the list (phone only), the other person's name, and close. */}
+			<div className="flex items-center gap-2 border-b border-(--color-base-200) px-2 pb-2">
+				<button
+					type="button"
+					onClick={onBack}
+					aria-label="Back to conversations"
+					className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-3xl leading-none md:hidden"
+				>
+					‹
+				</button>
 				{otherUserId !== '' && (
-					<Link
-						to={`/profile/${otherUserId}`}
-						className="border-b border-(--color-base-200) px-2 pb-2 font-semibold hover:underline"
-			>
+					<Link to={`/profile/${otherUserId}`} className="font-semibold hover:underline">
 						{otherUserName}
 					</Link>
 				)}
+				<div className="ml-auto md:hidden">
+					<CloseCross onClick={onClose} />
+				</div>
+			</div>
 			<div
 				ref={scrollRef}
 				onScroll={() => void handleScroll()}

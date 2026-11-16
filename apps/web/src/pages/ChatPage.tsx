@@ -17,10 +17,10 @@ import { CURRENT_USER_ID, chatClient } from '../chat/chat'
 import ConversationList from '../chat/ConversationList'
 import MessagePane from '../chat/MessagePane'
 import EmptyState from '../components/states/EmptyState'
-
+import { CloseCross } from '../components/ChatButton'
 
 // ChatPage() is rendered inside the chat popup.
-function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string }) {
+function ChatPage({ className = 'h-[calc(100vh-10rem)]', onClose }: { className?: string; onClose: () => void }) {
 	// Use the return of listConversations() to create the initial state when the chatPage initializes.
 	// Later, setConversations updates the conversation list when a new chat event arrives.
 	const [conversations, setConversations] = useState(() =>
@@ -70,10 +70,15 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 	// Empty state: nothing to list yet (spec: "no conversations yet")
 	if (conversations.length === 0) {
 		return (
-			<EmptyState
-				title="Chat"
-				message="No conversations yet. Start a match and say hello!"
-			/>
+			<div className={`flex flex-col ${className}`}>
+				<div className="flex justify-end md:hidden">
+					<CloseCross onClick={onClose} />
+				</div>
+				<EmptyState
+					title="Chat"
+					message="No conversations yet. Start a match and say hello!"
+				/>
+			</div>
 		)
 	}
 	// The selected conversation's summary — the pane needs the other person.
@@ -88,7 +93,13 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 		//aside is used for the conversation list, and section is used for the message pane.
 		//overflow-x-hidden prevents horizontal scrolling in the conversation list.
 		<div className={`grid ${className} grid-cols-1 gap-4 md:grid-cols-[16rem_minmax(0,1fr)]`}>
-			<aside className="overflow-y-auto overflow-x-hidden md:border-r md:border-(--color-primary)">
+			<aside
+				className={`overflow-y-auto overflow-x-hidden md:border-r md:border-(--color-primary) ${selectedId ? 'max-md:hidden' : ''}`}
+			>
+				<div className="flex items-center gap-2 px-3 md:hidden">
+					<h2 className="flex-1 font-barrio text-2xl">Chat</h2>
+					<CloseCross onClick={onClose} />
+				</div>
 				<ConversationList
 					conversations={conversations}
 					selectedId={selectedId}
@@ -99,7 +110,7 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 			</aside>
 			{/* Right side: messages for the selected conversation */}
 			{/* min-h-0 lets the pane scroll inside the grid instead of overflowing it */}
-			<section className="min-h-0">
+			<section className={`min-h-0 ${selectedId ? '' : 'max-md:hidden'}`}>
 				{/*
 				 * If a conversation is selected, show its messages.
 				 *
@@ -112,6 +123,8 @@ function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string 
 						conversationId={selectedId}
 						otherUserId={selected?.otherUserId ?? ''}
 						otherUserName={selected?.name ?? ''}
+						onBack={() => setSelectedId(null)}
+						onClose={onClose}
 					/>
 				) : (
 					<EmptyState title="Chat" message="Pick a conversation." />

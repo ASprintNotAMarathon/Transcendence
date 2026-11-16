@@ -76,7 +76,7 @@ function ChatPopup() {
             h-96 keeps it at 24rem in the desktop corner box; on phones it
             takes the dynamic viewport height minus 3rem, plus top padding
             so the list starts below the relocated Close button. */}
-        <ChatPage className="h-96 max-sm:h-[calc(100dvh-3rem)] max-sm:pt-9" />
+        <ChatPage className="h-96 max-sm:h-[calc(100dvh-1.5rem)]" onClose={() => setOpen(false)} />
       </div>
       )}
 
