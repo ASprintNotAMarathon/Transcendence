@@ -52,8 +52,8 @@ export class UsersController {
 	 *
 	 * `friendship` is seen from the caller's side, so the profile page knows
 	 * which button to show. Both lookups run at once; a missing user is
-	 * still the 404 from findProfile. `online` is only true for friends,
-	 * as the issue asks.
+	 * still the 404 from findProfile. `online` is visible to every player,
+	 * as the lobby shows it too (#76).
 	 */
 	@Get(':id')
 	async findOne(
@@ -69,7 +69,7 @@ export class UsersController {
 		return {
 			...profile,
 			friendship,
-			online: this.friends.isOnlineFor(friendship, id),
+			online: this.friends.isOnline(id),
 		};
 	}
 

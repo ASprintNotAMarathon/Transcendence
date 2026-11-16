@@ -96,24 +96,15 @@ describe('FriendsService.listFriends', () => {
 	});
 });
 
-describe('FriendsService.isOnlineFor', () => {
-	it('is the real status for a friend', () => {
+describe('FriendsService.isOnline', () => {
+	it('is what the socket registry says, friend or not', () => {
 		registry.isOnline.mockReturnValue(true);
+		expect(service.isOnline(OTHER)).toBe(true);
 
-		expect(service.isOnlineFor('friends', OTHER)).toBe(true);
-	});
+		registry.isOnline.mockReturnValue(false);
+		expect(service.isOnline(OTHER)).toBe(false);
 
-	it('is false for anyone who is not a friend, even when they are online', () => {
-		registry.isOnline.mockReturnValue(true);
-
-		for (const state of [
-			'none',
-			'requested',
-			'incoming',
-			'self',
-		] as const) {
-			expect(service.isOnlineFor(state, OTHER)).toBe(false);
-		}
+		expect(registry.isOnline).toHaveBeenCalledWith(OTHER);
 	});
 });
 

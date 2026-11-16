@@ -107,12 +107,9 @@ export class FriendsService {
 		}));
 	}
 
-	/**
-	 * Only friends see whether you are online. Anyone else, and you on
-	 * your own profile, gets false.
-	 */
-	isOnlineFor(state: FriendshipState, userId: string): boolean {
-		return state === 'friends' && this.registry.isOnline(userId);
+	/** Whether the user has a socket open right now. Visible to every player. */
+	isOnline(userId: string): boolean {
+		return this.registry.isOnline(userId);
 	}
 
 	/** Pending requests, split by who sent them. Newest first. */
