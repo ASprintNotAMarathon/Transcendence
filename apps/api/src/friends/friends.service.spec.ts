@@ -128,6 +128,27 @@ describe('FriendsService.friendIdsOf', () => {
 	});
 });
 
+describe('FriendsService.presenceUser', () => {
+	it('names the user and turns their avatar file into a URL', async () => {
+		prisma.user.findUnique.mockResolvedValue({
+			displayName: 'zed',
+			avatarPath: 'zed.png',
+		});
+
+		await expect(service.presenceUser(OTHER)).resolves.toEqual({
+			userId: OTHER,
+			displayName: 'zed',
+			avatarUrl: '/api/avatars/zed.png',
+		});
+	});
+
+	it('is null for a user nobody has', async () => {
+		prisma.user.findUnique.mockResolvedValue(null);
+
+		await expect(service.presenceUser(OTHER)).resolves.toBeNull();
+	});
+});
+
 describe('FriendsService.listRequests', () => {
 	it('splits requests by who sent them', async () => {
 		prisma.friendship.findMany.mockResolvedValue([

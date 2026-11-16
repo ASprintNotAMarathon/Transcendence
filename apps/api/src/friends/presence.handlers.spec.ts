@@ -58,8 +58,13 @@ describe('PresenceHandlers', () => {
 
 	it('presence.list answers the asking tab with only the online friends', async () => {
 		friends.listFriends.mockResolvedValue([
-			{ id: ALICE, displayName: 'alice', online: false },
-			{ id: DANA, displayName: 'dana', online: true },
+			{ id: ALICE, displayName: 'alice', avatarUrl: null, online: false },
+			{
+				id: DANA,
+				displayName: 'dana',
+				avatarUrl: '/api/avatars/dana.png',
+				online: true,
+			},
 		]);
 		const client = { data: { userId: CHARLIE } } as unknown as WsSocket;
 
@@ -72,7 +77,15 @@ describe('PresenceHandlers', () => {
 		expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
 			type: 'presence.state',
 			cid: 'c1',
-			payload: { users: [{ userId: DANA, displayName: 'dana' }] },
+			payload: {
+				users: [
+					{
+						userId: DANA,
+						displayName: 'dana',
+						avatarUrl: '/api/avatars/dana.png',
+					},
+				],
+			},
 		});
 	});
 
@@ -81,6 +94,7 @@ describe('PresenceHandlers', () => {
 		friends.presenceUser.mockResolvedValue({
 			userId: DANA,
 			displayName: 'dana',
+			avatarUrl: null,
 		});
 		registry.isOnline.mockReturnValue(true);
 
@@ -88,7 +102,9 @@ describe('PresenceHandlers', () => {
 
 		const event = {
 			type: 'presence.online',
-			payload: { user: { userId: DANA, displayName: 'dana' } },
+			payload: {
+				user: { userId: DANA, displayName: 'dana', avatarUrl: null },
+			},
 		};
 		expect(sender.sendToUser.mock.calls).toEqual([
 			[CHARLIE, event],
@@ -113,6 +129,7 @@ describe('PresenceHandlers', () => {
 		friends.presenceUser.mockResolvedValue({
 			userId: DANA,
 			displayName: 'dana',
+			avatarUrl: null,
 		});
 		registry.isOnline.mockReturnValue(false);
 

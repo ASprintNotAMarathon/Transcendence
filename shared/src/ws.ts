@@ -347,6 +347,7 @@ export type ChatServerEvent =
 export interface PresenceUser {
 	readonly userId: string;
 	readonly displayName: string;
+	readonly avatarUrl: string | null;
 }
 
 /** The list of users currently online. */

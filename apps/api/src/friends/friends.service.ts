@@ -7,6 +7,7 @@ import {
 import type { PresenceUser } from '@transcendence/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { uniqueViolationIndex } from '../prisma/unique-violation';
+import { avatarUrl } from '../users/avatar';
 import { PUBLIC_PROFILE_SELECT, toPublicProfile } from '../users/users.types';
 import { WsRegistry } from '../ws/ws.registry';
 import {
@@ -85,13 +86,19 @@ export class FriendsService {
 		);
 	}
 
-	/** How the presence events name a user. Null if they are gone. */
+	/** How the presence events show a user. Null if they are gone. */
 	async presenceUser(userId: string): Promise<PresenceUser | null> {
 		const user = await this.prisma.user.findUnique({
 			where: { id: userId },
-			select: { displayName: true },
+			select: { displayName: true, avatarPath: true },
 		});
-		return user ? { userId, displayName: user.displayName } : null;
+		return user
+			? {
+					userId,
+					displayName: user.displayName,
+					avatarUrl: avatarUrl(user.avatarPath),
+				}
+			: null;
 	}
 
 	/**

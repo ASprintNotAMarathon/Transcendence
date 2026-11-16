@@ -45,6 +45,7 @@ export class PresenceHandlers implements OnModuleInit {
 					.map((friend) => ({
 						userId: friend.id,
 						displayName: friend.displayName,
+						avatarUrl: friend.avatarUrl,
 					})),
 			},
 		});
