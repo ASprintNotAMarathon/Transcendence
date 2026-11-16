@@ -32,6 +32,7 @@ export class ChatHandlers implements OnModuleInit {
 		this.dispatcher.register('chat.send', this.send);
 		this.dispatcher.register('chat.history', this.history);
 		this.dispatcher.register('chat.conversations', this.conversations);
+		this.dispatcher.register('chat.start', this.start);
 	}
 	// Handles incoming 'chat.send' events from a browser.
 	// WsHandler<'chat.send'> defines the expected event and handler types.
@@ -98,12 +99,31 @@ export class ChatHandlers implements OnModuleInit {
 			payload: result,
 		});
 	};
+
+	readonly start: WsHandler<'chat.start'> = async (client, event) => {
+		try {
+			const result = await this.service.start(
+				client.data.userId,
+				event.payload,
+			);
+			// A direct reply to the asking tab, stamped with its cid. The
+			// other user learns about it when a message arrives or their
+			// list reloads — starting is not an event for everyone.
+			this.sender.sendToSocket(client, {
+				type: 'chat.started',
+				cid: event.cid,
+				payload: result,
+			});
+		} catch (error) {
+			this.rejectOrRethrow(client, event.cid, undefined, error);
+		}
+	};
 	// Sends a rejection to the requesting socket for known chat errors.
 	// Other errors are thrown again so they aren't silently hidden.
 	private rejectOrRethrow(
 		client: WsSocket,
 		cid: string | undefined,
-		conversationId: string,
+		conversationId: string | undefined,
 		error: unknown,
 	): void {
 		if (!(error instanceof ChatError)) {

@@ -24,6 +24,7 @@ const message: ChatMessagePayload = {
 
 describe('ChatHandlers', () => {
 	let service: {
+		start: ReturnType<typeof vi.fn>;
 		send: ReturnType<typeof vi.fn>;
 		history: ReturnType<typeof vi.fn>;
 		conversations: ReturnType<typeof vi.fn>;
@@ -38,7 +39,7 @@ describe('ChatHandlers', () => {
 	beforeEach(() => {
 		// Fakes for everything around the handler: the service (the brain)
 		// and the sender (the wire). The handler is tested as pure traffic.
-		service = { send: vi.fn(), history: vi.fn(), conversations: vi.fn() };
+		service = { send: vi.fn(), history: vi.fn(), conversations: vi.fn(), start: vi.fn() };
 		sender = { sendToUser: vi.fn(), sendToSocket: vi.fn() };
 		client = { data: { userId: USER_ID } } as unknown as WsSocket;
 
@@ -49,7 +50,7 @@ describe('ChatHandlers', () => {
 		);
 	});
 
-	it('claims send, history and conversations, and nothing else', () => {
+	it('claims send, history, conversations and start, and nothing else', () => {
 		const register = vi.fn();
 		const withSpy = new ChatHandlers(
 			service as unknown as ChatService,
@@ -65,6 +66,7 @@ describe('ChatHandlers', () => {
 			['chat.send', withSpy.send],
 			['chat.history', withSpy.history],
 			['chat.conversations', withSpy.conversations],
+			['chat.start', withSpy.start],
 		]);
 	});
 
@@ -160,4 +162,48 @@ describe('ChatHandlers', () => {
 			});
 		});
 	});
+	describe('chat.start', () => {
+		it('answers the asking tab with the conversation', async () => {
+			const started = {
+				conversation: {
+					conversationId: CONVERSATION_ID,
+					otherUserId: OTHER_ID,
+					otherUserName: 'bob',
+					lastMessageBody: '',
+					lastActivityAt: '2026-11-16T12:00:00.000Z',
+				},
+			};
+			service.start.mockResolvedValue(started);
+	
+			await handlers.start(client, {
+				type: 'chat.start',
+				cid: CID,
+				payload: { otherUserId: OTHER_ID },
+			});
+	
+			expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
+				type: 'chat.started',
+				cid: CID,
+				payload: started,
+			});
+			expect(sender.sendToUser).not.toHaveBeenCalled();
+		});
+	
+		it('rejects to the sender only, with no conversation id', async () => {
+			service.start.mockRejectedValue(new ChatError('chat.self'));
+	
+			await handlers.start(client, {
+				type: 'chat.start',
+				cid: CID,
+				payload: { otherUserId: USER_ID },
+			});
+	
+			expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
+				type: 'chat.rejected',
+				cid: CID,
+				payload: { conversationId: undefined, code: 'chat.self' },
+			});
+		});
+	});
+	
 });
