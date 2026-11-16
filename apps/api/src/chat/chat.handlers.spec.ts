@@ -39,7 +39,12 @@ describe('ChatHandlers', () => {
 	beforeEach(() => {
 		// Fakes for everything around the handler: the service (the brain)
 		// and the sender (the wire). The handler is tested as pure traffic.
-		service = { send: vi.fn(), history: vi.fn(), conversations: vi.fn(), start: vi.fn() };
+		service = {
+			send: vi.fn(),
+			history: vi.fn(),
+			conversations: vi.fn(),
+			start: vi.fn(),
+		};
 		sender = { sendToUser: vi.fn(), sendToSocket: vi.fn() };
 		client = { data: { userId: USER_ID } } as unknown as WsSocket;
 
@@ -174,13 +179,13 @@ describe('ChatHandlers', () => {
 				},
 			};
 			service.start.mockResolvedValue(started);
-	
+
 			await handlers.start(client, {
 				type: 'chat.start',
 				cid: CID,
 				payload: { otherUserId: OTHER_ID },
 			});
-	
+
 			expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
 				type: 'chat.started',
 				cid: CID,
@@ -188,16 +193,16 @@ describe('ChatHandlers', () => {
 			});
 			expect(sender.sendToUser).not.toHaveBeenCalled();
 		});
-	
+
 		it('rejects to the sender only, with no conversation id', async () => {
 			service.start.mockRejectedValue(new ChatError('chat.self'));
-	
+
 			await handlers.start(client, {
 				type: 'chat.start',
 				cid: CID,
 				payload: { otherUserId: USER_ID },
 			});
-	
+
 			expect(sender.sendToSocket).toHaveBeenCalledWith(client, {
 				type: 'chat.rejected',
 				cid: CID,
@@ -205,5 +210,4 @@ describe('ChatHandlers', () => {
 			});
 		});
 	});
-	
 });

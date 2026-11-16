@@ -165,60 +165,60 @@ export class ChatService {
 		};
 	}
 
-		/**
+	/**
 	 * Start a conversation with another user, or return the existing one.
 	 * The pair is stored sorted (user0 = smaller id), so (alice, bob) and
 	 * (bob, alice) are the same row — the schema's unique constraint makes
 	 * a duplicate impossible. Reopening bumps updatedAt, so the
 	 * conversation surfaces at the top of the list.
 	 */
-		async start(
-			userId: string,
-			payload: ChatStartPayload,
-		): Promise<ChatStartedPayload> {
-			if (payload.otherUserId === userId) {
-				throw new ChatError('chat.self');
-			}
-	
-			let other;
-			try {
-				other = await this.prisma.user.findUnique({
-					where: { id: payload.otherUserId },
-				});
-			} catch (error) {
-				if (isInvalidUuid(error)) {
-					throw new ChatError('chat.user_not_found');
-				}
-				throw error;
-			}
-			if (other === null) {
+	async start(
+		userId: string,
+		payload: ChatStartPayload,
+	): Promise<ChatStartedPayload> {
+		if (payload.otherUserId === userId) {
+			throw new ChatError('chat.self');
+		}
+
+		let other;
+		try {
+			other = await this.prisma.user.findUnique({
+				where: { id: payload.otherUserId },
+			});
+		} catch (error) {
+			if (isInvalidUuid(error)) {
 				throw new ChatError('chat.user_not_found');
 			}
-	
-			const [user0Id, user1Id] =
-				userId < payload.otherUserId
-					? [userId, payload.otherUserId]
-					: [payload.otherUserId, userId];
-	
-			const conversation = await this.prisma.conversation.upsert({
-				where: { user0Id_user1Id: { user0Id, user1Id } },
-				update: {},
-				create: { user0Id, user1Id },
-				include: {
-					messages: { orderBy: { createdAt: 'desc' }, take: 1 },
-				},
-			});
-	
-			return {
-				conversation: {
-					conversationId: conversation.id,
-					otherUserId: other.id,
-					otherUserName: other.displayName,
-					lastMessageBody: conversation.messages[0]?.body ?? '',
-					lastActivityAt: conversation.updatedAt.toISOString(),
-				},
-			};
+			throw error;
 		}
+		if (other === null) {
+			throw new ChatError('chat.user_not_found');
+		}
+
+		const [user0Id, user1Id] =
+			userId < payload.otherUserId
+				? [userId, payload.otherUserId]
+				: [payload.otherUserId, userId];
+
+		const conversation = await this.prisma.conversation.upsert({
+			where: { user0Id_user1Id: { user0Id, user1Id } },
+			update: {},
+			create: { user0Id, user1Id },
+			include: {
+				messages: { orderBy: { createdAt: 'desc' }, take: 1 },
+			},
+		});
+
+		return {
+			conversation: {
+				conversationId: conversation.id,
+				otherUserId: other.id,
+				otherUserName: other.displayName,
+				lastMessageBody: conversation.messages[0]?.body ?? '',
+				lastActivityAt: conversation.updatedAt.toISOString(),
+			},
+		};
+	}
 
 	/**
 	 * The conversation, but only if the asking user is in it. A conversation
