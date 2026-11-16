@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import ChatPage from '../pages/ChatPage'
+import ChatButton from '../components/ChatButton'
 
 function ChatPopup() {
   // The chat page already IS the chat - a popup over it would be chat-inside-chat.
@@ -80,33 +81,16 @@ function ChatPopup() {
       )}
 
       {/* Button used to open and close the popup. */}
-      <button
-        // Prevent this button from submitting a form if placed inside one.
-        type="button"
-
-        // When clicked, change open to its opposite value:
-        // false becomes true (open the chat).
-        // true becomes false (close the chat).
-        onClick={() => {
-			if (!open) {
-				setUnread(0) // Reset unread count when opening the chat.
-			}
-			setOpen(!open)
-		}}
-
-        // Style the button using the project's button classes.
-        // btn and btn-sm define its button appearance and size.
-        // tracking-wide adds letter spacing.
-        // btn-outline-accent gives it an outlined accent style.
-        // While open on a phone, the button pins to the top-right so it
-        // never covers the composer.
-        className={`btn btn-sm tracking-wide border-2 btn-outline-accent relative ${open ? 'max-sm:fixed max-sm:top-2 max-sm:right-2' : ''}`}
-      >
-        {/* Display different button text depending on the state.
-            When open is true, show 'Close chat'.
-            When open is false, show 'Chat'. */}
-            {open ? 'Close chat' : unread > 0 ? `Chat (${unread})` : 'Chat'}
-      </button>
+      <ChatButton
+        open={open}
+        unread={unread}
+        onToggle={() => {
+          if (!open) {
+            setUnread(0)
+          }
+          setOpen(!open)
+        }}
+      />
     </div>
   )
 }
