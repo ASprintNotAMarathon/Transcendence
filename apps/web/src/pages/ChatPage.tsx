@@ -1,5 +1,5 @@
 /*
- * ChatPage is the screen behind the /chat route (mounted inside AppLayout's <Outlet />).
+ *  ChatPage is the chat itself, shown inside ChatPopup.
  *
  * It connects the conversation list on the left with the message pane
  * on the right.
@@ -19,8 +19,7 @@ import MessagePane from '../chat/MessagePane'
 import EmptyState from '../components/states/EmptyState'
 
 
-//ChatPage() gets rendered by React when the user navigates to /chat.
-
+// ChatPage() is rendered inside the chat popup.
 function ChatPage({ className = 'h-[calc(100vh-10rem)]' }: { className?: string }) {
 	// Use the return of listConversations() to create the initial state when the chatPage initializes.
 	// Later, setConversations updates the conversation list when a new chat event arrives.

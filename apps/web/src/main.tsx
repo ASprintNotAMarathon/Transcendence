@@ -58,7 +58,6 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/profile/:id" element={<ProfilePage />} />
-                <Route path="/chat" element={<ChatPage />} />
                 <Route path="/friends" element={<FriendsPage />} />
                 <Route path="/match/:matchId" element={<MatchPage />} />
               </Route>
