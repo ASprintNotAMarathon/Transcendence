@@ -7,10 +7,10 @@ import { useSocket } from './context'
 /*
   useLiveMatches. Every running match, kept up to date.
 
-  Loads GET /match/live, then follows lobby.started, lobby.moved and
-  lobby.ended. Events that arrive while a load is in flight are held and
-  applied on top of its result, so none fall in the gap. After a reconnect it
-  loads again, since anything sent while the socket was down is gone.
+  Joins the lobby room and loads GET /match/live only once the server confirms
+  the join, so nothing can change between the load and the first event. Events
+  that arrive while a load is in flight are held and applied on top of its
+  result. A reconnect joins again, and so loads again.
 */
 
 type LobbyEvent = Extract<
@@ -50,16 +50,18 @@ function apply(live: LiveMatch[], event: LobbyEvent): LiveMatch[] {
 }
 
 export function useLiveMatches(): { lobby: LiveMatches; retry: () => void } {
-  const { status, join, leave, subscribe } = useSocket()
+  const { join, leave, subscribe } = useSocket()
   const [lobby, setLobby] = useState<LiveMatches>({ status: 'loading' })
   const [load, setLoad] = useState(0)
-  const held = useRef<LobbyEvent[] | null>(null)
-  const previousStatus = useRef(status)
+  const held = useRef<LobbyEvent[] | null>([])
 
   useEffect(() => {
-    join('lobby', joinLobby())
-
     const unsubscribe = subscribe((event) => {
+      if (event.type === 'lobby.joined') {
+        held.current = []
+        setLoad((count) => count + 1)
+        return
+      }
       if (!isLobbyEvent(event)) return
       if (held.current !== null) {
         held.current.push(event)
@@ -69,6 +71,7 @@ export function useLiveMatches(): { lobby: LiveMatches; retry: () => void } {
         current.status === 'loaded' ? { ...current, live: apply(current.live, event) } : current,
       )
     })
+    join('lobby', joinLobby())
 
     return () => {
       unsubscribe()
@@ -77,8 +80,8 @@ export function useLiveMatches(): { lobby: LiveMatches; retry: () => void } {
   }, [join, leave, subscribe])
 
   useEffect(() => {
+    if (load === 0) return
     let cancelled = false
-    held.current = []
 
     matchApi
       .live()
@@ -99,14 +102,8 @@ export function useLiveMatches(): { lobby: LiveMatches; retry: () => void } {
     }
   }, [load])
 
-  useEffect(() => {
-    if (status === 'connected' && previousStatus.current !== 'connected') {
-      setLoad((count) => count + 1)
-    }
-    previousStatus.current = status
-  }, [status])
-
   const retry = useCallback(() => {
+    held.current = []
     setLobby({ status: 'loading' })
     setLoad((count) => count + 1)
   }, [])

@@ -279,6 +279,12 @@ export type LobbyJoinPayload = Record<string, never>;
 
 export type LobbyLeavePayload = Record<string, never>;
 
+/**
+ * You are in the lobby room. Load the list now: anything that changes from
+ * here on reaches you as a lobby event.
+ */
+export type LobbyJoinedPayload = Record<string, never>;
+
 /** A match that just started. Same shape as GET /match/live returns. */
 export type LobbyStartedPayload = LiveMatch;
 
@@ -299,6 +305,7 @@ export type LobbyClientEvent =
 	| Envelope<"lobby.leave", LobbyLeavePayload>;
 
 export type LobbyServerEvent =
+	| Envelope<"lobby.joined", LobbyJoinedPayload>
 	| Envelope<"lobby.started", LobbyStartedPayload>
 	| Envelope<"lobby.moved", LobbyMovedPayload>
 	| Envelope<"lobby.ended", LobbyEndedPayload>;

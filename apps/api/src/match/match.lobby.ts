@@ -21,8 +21,13 @@ export class MatchLobby implements OnModuleInit {
 		this.dispatcher.register('lobby.leave', this.leave);
 	}
 
-	readonly join: WsHandler<'lobby.join'> = async (client) => {
+	readonly join: WsHandler<'lobby.join'> = async (client, event) => {
 		await client.join(lobbyRoom());
+		this.sender.sendToSocket(client, {
+			type: 'lobby.joined',
+			cid: event.cid,
+			payload: {},
+		});
 	};
 
 	readonly leave: WsHandler<'lobby.leave'> = async (client) => {

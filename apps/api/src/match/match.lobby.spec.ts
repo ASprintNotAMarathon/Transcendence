@@ -32,12 +32,15 @@ const moved: MatchMovedPayload = {
 
 describe('MatchLobby', () => {
 	let service: { liveMatch: ReturnType<typeof vi.fn> };
-	let sender: { broadcast: ReturnType<typeof vi.fn> };
+	let sender: {
+		broadcast: ReturnType<typeof vi.fn>;
+		sendToSocket: ReturnType<typeof vi.fn>;
+	};
 	let lobby: MatchLobby;
 
 	beforeEach(() => {
 		service = { liveMatch: vi.fn() };
-		sender = { broadcast: vi.fn() };
+		sender = { broadcast: vi.fn(), sendToSocket: vi.fn() };
 		lobby = new MatchLobby(
 			service as unknown as MatchService,
 			{ register: vi.fn() } as unknown as WsDispatcher,
@@ -74,6 +77,28 @@ describe('MatchLobby', () => {
 
 		expect(client.join).toHaveBeenCalledWith('lobby');
 		expect(client.leave).toHaveBeenCalledWith('lobby');
+	});
+
+	it('confirms the join to that socket only once it is in the room', async () => {
+		const client = {
+			join: vi.fn(() => {
+				expect(sender.sendToSocket).not.toHaveBeenCalled();
+			}),
+		};
+		const socket = client as unknown as WsSocket;
+
+		await lobby.join(socket, {
+			type: 'lobby.join',
+			cid: 'c1',
+			payload: {},
+		});
+
+		expect(sender.sendToSocket).toHaveBeenCalledExactlyOnceWith(socket, {
+			type: 'lobby.joined',
+			cid: 'c1',
+			payload: {},
+		});
+		expect(sender.broadcast).not.toHaveBeenCalled();
 	});
 
 	describe('started', () => {
