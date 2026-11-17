@@ -43,10 +43,10 @@ createRoot(document.getElementById('root')!).render(
         <AppSocketProvider>
           <Routes>
             <Route element={<PublicLayout />}>
-              <Route path="/" element={<LandingPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route element={<GuestOnlyRoute />}>
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
               </Route>

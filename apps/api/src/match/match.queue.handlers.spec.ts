@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WsDispatcher } from '../ws/ws.dispatch';
 import type { WsSender } from '../ws/ws.sender';
 import type { WsSocket } from '../ws/ws.types';
+import type { MatchLobby } from './match.lobby';
 import { MatchQueue } from './match.queue';
 import { MatchQueueHandlers } from './match.queue.handlers';
 import type { MatchService } from './match.service';
@@ -53,6 +54,7 @@ describe('MatchQueueHandlers', () => {
 		sendToUser: ReturnType<typeof vi.fn>;
 		sendToSocket: ReturnType<typeof vi.fn>;
 	};
+	let lobby: { started: ReturnType<typeof vi.fn> };
 	let queue: MatchQueue;
 	let handlers: MatchQueueHandlers;
 	let alice: FakeClient;
@@ -64,12 +66,14 @@ describe('MatchQueueHandlers', () => {
 			create: vi.fn().mockResolvedValue(MATCH_ID),
 		};
 		sender = { sendToUser: vi.fn(), sendToSocket: vi.fn() };
+		lobby = { started: vi.fn() };
 		queue = new MatchQueue();
 		handlers = new MatchQueueHandlers(
 			service as unknown as MatchService,
 			queue,
 			{ register: vi.fn() } as unknown as WsDispatcher,
 			sender as unknown as WsSender,
+			lobby as unknown as MatchLobby,
 		);
 		alice = fakeClient('alice');
 		bob = fakeClient('bob');
@@ -87,6 +91,7 @@ describe('MatchQueueHandlers', () => {
 			queue,
 			{ register } as unknown as WsDispatcher,
 			sender as unknown as WsSender,
+			lobby as unknown as MatchLobby,
 		);
 
 		withSpy.onModuleInit();
@@ -133,6 +138,31 @@ describe('MatchQueueHandlers', () => {
 				['alice', matched],
 				['bob', matched],
 			]);
+		});
+
+		it('announces the new match to the lobby', async () => {
+			await handlers.join(asSocket(alice), joinEvent());
+			await handlers.join(asSocket(bob), joinEvent());
+
+			expect(lobby.started).toHaveBeenCalledExactlyOnceWith(MATCH_ID);
+		});
+
+		it('announces the match to the lobby before telling the players', async () => {
+			let finishAnnouncing: () => void = () => undefined;
+			lobby.started.mockReturnValue(
+				new Promise<void>((resolve) => {
+					finishAnnouncing = resolve;
+				}),
+			);
+			await handlers.join(asSocket(alice), joinEvent());
+
+			const joining = handlers.join(asSocket(bob), joinEvent());
+			await vi.waitFor(() => expect(lobby.started).toHaveBeenCalled());
+			expect(sender.sendToUser).not.toHaveBeenCalled();
+
+			finishAnnouncing();
+			await joining;
+			expect(sender.sendToUser).toHaveBeenCalledTimes(2);
 		});
 
 		it('leaves both players free to queue again once paired', async () => {
@@ -247,6 +277,7 @@ describe('MatchQueueHandlers', () => {
 				['alice', failed],
 				['bob', failed],
 			]);
+			expect(lobby.started).not.toHaveBeenCalled();
 			expect(queue.claim('alice')).toBe(true);
 			expect(queue.claim('bob')).toBe(true);
 		});

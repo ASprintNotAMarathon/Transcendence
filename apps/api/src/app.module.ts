@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { ChatModule } from './chat/chat.module';
 import { UsersModule } from './users/users.module';
 import { FriendsModule } from './friends/friends.module';
+import { PresenceModule } from './presence/presence.module';
 
 // The repo keeps a single .env at its root. Without this, @nestjs/config looks
 // for .env in the current working directory, so `npm start` would read a
@@ -31,6 +32,7 @@ const ROOT_ENV = join(__dirname, '..', '..', '..', '.env');
 		AuthModule,
 		UsersModule,
 		FriendsModule,
+		PresenceModule,
 		WsModule,
 		MatchModule,
 		ChatModule,

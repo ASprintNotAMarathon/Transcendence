@@ -1,43 +1,14 @@
-import { useEffect, useState } from 'react'
-import type { LiveMatch } from '@transcendence/shared'
 import { useAuth } from '../auth/AuthContext'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
-import { matchApi } from '../lib/api'
+import { useLiveMatches } from '../socket/useLiveMatches'
 import LiveMatchRow from './LiveMatchRow'
-
-type Lobby =
-  | { status: 'loading' }
-  | { status: 'failed' }
-  | { status: 'loaded'; current: LiveMatch | null; live: LiveMatch[] }
 
 const headingClass = 'text-xs font-semibold uppercase tracking-widest text-muted'
 
 function LiveMatches() {
   const { user } = useAuth()
-  const [lobby, setLobby] = useState<Lobby>({ status: 'loading' })
-  const [attempt, setAttempt] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-
-    Promise.all([matchApi.current(), matchApi.live()])
-      .then(([current, live]) => {
-        if (!cancelled) setLobby({ status: 'loaded', current, live })
-      })
-      .catch(() => {
-        if (!cancelled) setLobby({ status: 'failed' })
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [attempt])
-
-  const retry = () => {
-    setLobby({ status: 'loading' })
-    setAttempt((count) => count + 1)
-  }
+  const { lobby, retry } = useLiveMatches()
 
   if (lobby.status === 'loading') {
     return <LoadingState message="Loading the lobby…" />
@@ -47,7 +18,9 @@ function LiveMatches() {
     return <ErrorState message="The lobby could not be loaded." onRetry={retry} />
   }
 
-  const { current, live } = lobby
+  const { live } = lobby
+  const current =
+    live.find((match) => match.players.some((player) => player.userId === user?.id)) ?? null
   const others = live.filter((match) => match.matchId !== current?.matchId)
 
   return (

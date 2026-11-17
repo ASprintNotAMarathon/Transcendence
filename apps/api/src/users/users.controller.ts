@@ -21,6 +21,7 @@ import {
 } from '../auth';
 import { FriendsService } from '../friends/friends.service';
 import type { FriendshipState } from '../friends/friends.types';
+import { PresenceService } from '../presence/presence.service';
 import { AVATAR_FIELD, AVATAR_MAX_BYTES } from './avatar';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
@@ -43,6 +44,7 @@ export class UsersController {
 	constructor(
 		private readonly users: UsersService,
 		private readonly friends: FriendsService,
+		private readonly presence: PresenceService,
 	) {}
 
 	/**
@@ -52,8 +54,8 @@ export class UsersController {
 	 *
 	 * `friendship` is seen from the caller's side, so the profile page knows
 	 * which button to show. Both lookups run at once; a missing user is
-	 * still the 404 from findProfile. `online` is only true for friends,
-	 * as the issue asks.
+	 * still the 404 from findProfile. `online` is visible to every player,
+	 * as the lobby shows it too (#76).
 	 */
 	@Get(':id')
 	async findOne(
@@ -69,7 +71,7 @@ export class UsersController {
 		return {
 			...profile,
 			friendship,
-			online: this.friends.isOnlineFor(friendship, id),
+			online: this.presence.isOnline(id),
 		};
 	}
 

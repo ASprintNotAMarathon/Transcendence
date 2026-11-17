@@ -2,6 +2,7 @@ import FriendsStrip from '../components/FriendsStrip'
 import LiveMatches from '../match/LiveMatches'
 import PlayCard from '../components/PlayCard'
 import { useMatchmaking } from '../socket/useMatchmaking'
+import OnlinePlayersCard from '../components/OnlinePlayersCard.tsx'
 
 function HomePage() {
   const { searching, error, connected, resumeMatchId, find, cancel } = useMatchmaking()
@@ -9,8 +10,9 @@ function HomePage() {
   return (
     <div className="mx-auto grid w-full max-w-5xl gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
       {/* On a phone the friends come first, on a wide screen they sit on the right. */}
-      <aside className="order-first lg:order-last">
+      <aside className="order-first flex flex-col gap-8 lg:order-last">
         <FriendsStrip />
+        <OnlinePlayersCard />
       </aside>
 
 

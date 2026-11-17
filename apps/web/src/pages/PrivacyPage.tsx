@@ -5,7 +5,7 @@ const listClass = 'list-disc space-y-2 pl-6'
 
 function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="6 November 2026">
+    <LegalPage title="Privacy Policy" updated="16 November 2026">
       <LegalSection title="Who we are">
         <p>
           Gomoku Friends is a student project, made for the ft_transcendence project at Codam. It is a website
@@ -24,6 +24,7 @@ function PrivacyPage() {
           <li>The games you play: who played, every move and when, the result and how the game ended.</li>
           <li>One cookie that keeps you logged in.</li>
           <li>Your friends list, and the friend requests you send or receive.</li>
+          <li>The messages you send in chat, so you can read them back later.</li>
         </ul>
       </LegalSection>
 
@@ -49,6 +50,10 @@ function PrivacyPage() {
           </li>
           <li>Only your friends can see whether you are online. Other players cannot.</li>
           <li>Friend requests can only be seen by the two players involved.</li>
+          <li>
+            Other players can see when you are online. Your name appears in the list of players
+            online in the lobby while you are logged in.
+          </li>
         </ul>
       </LegalSection>
 

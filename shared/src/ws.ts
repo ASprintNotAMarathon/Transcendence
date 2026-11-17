@@ -10,6 +10,7 @@
  * Like the game engines, this file is pure types: no I/O, no Socket.IO import, no Node APIs.
  */
 
+import type { LiveMatch } from "./lobby.js";
 import type { GameName } from "./registry.js";
 import type { GameOutcome, PlayerIndex } from "./types.js";
 
@@ -272,6 +273,46 @@ export type QueueServerEvent =
 	| Envelope<"queue.rejected", QueueRejectedPayload>;
 
 /* ==========================================================================
+ * Lobby events
+ * ========================================================================== */
+
+/** Ask to receive lobby.* updates while the lobby is open. */
+export type LobbyJoinPayload = Record<string, never>;
+
+export type LobbyLeavePayload = Record<string, never>;
+
+/**
+ * You are in the lobby room. Load the list now: anything that changes from
+ * here on reaches you as a lobby event.
+ */
+export type LobbyJoinedPayload = Record<string, never>;
+
+/** A match that just started. Same shape as GET /match/live returns. */
+export type LobbyStartedPayload = LiveMatch;
+
+/** A move in a running match. A move that ends the match sends lobby.ended instead. */
+export interface LobbyMovedPayload {
+	readonly matchId: string;
+	readonly moveNumber: number;
+	readonly turn: PlayerIndex;
+}
+
+/** A match is over, however it ended. Drop it from the list. */
+export interface LobbyEndedPayload {
+	readonly matchId: string;
+}
+
+export type LobbyClientEvent =
+	| Envelope<"lobby.join", LobbyJoinPayload>
+	| Envelope<"lobby.leave", LobbyLeavePayload>;
+
+export type LobbyServerEvent =
+	| Envelope<"lobby.joined", LobbyJoinedPayload>
+	| Envelope<"lobby.started", LobbyStartedPayload>
+	| Envelope<"lobby.moved", LobbyMovedPayload>
+	| Envelope<"lobby.ended", LobbyEndedPayload>;
+
+/* ==========================================================================
  * Chat events
  * ========================================================================== */
 
@@ -363,6 +404,7 @@ export type ChatServerEvent =
 export interface PresenceUser {
 	readonly userId: string;
 	readonly displayName: string;
+	readonly avatarUrl: string | null;
 }
 
 /** The list of users currently online. */
@@ -383,6 +425,13 @@ export interface PresenceOfflinePayload {
 /** Request the current list of online users. */
 export type PresenceListRequestPayload = Record<string, never>;
 
+/**
+ * A friendship involving you changed: a request was sent, accepted, declined
+ * or cancelled, or a friend was removed. Carries nothing; reload whatever
+ * friend data you show.
+ */
+export type FriendsChangedPayload = Record<string, never>;
+
 /** Client to server. */
 export type PresenceClientEvent =
 	| Envelope<"presence.list", PresenceListRequestPayload>;
@@ -391,7 +440,8 @@ export type PresenceClientEvent =
 export type PresenceServerEvent =
 	| Envelope<"presence.state", PresenceListPayload>
 	| Envelope<"presence.online", PresenceOnlinePayload>
-	| Envelope<"presence.offline", PresenceOfflinePayload>;
+	| Envelope<"presence.offline", PresenceOfflinePayload>
+	| Envelope<"friends.changed", FriendsChangedPayload>;
 
 /* ==========================================================================
  * Connection lifecycle events
@@ -445,6 +495,7 @@ export type ClientEvent =
 	| LifecycleClientEvent
 	| MatchClientEvent
 	| QueueClientEvent
+	| LobbyClientEvent
 	| ChatClientEvent
 	| PresenceClientEvent;
 
@@ -453,5 +504,6 @@ export type ServerEvent =
 	| LifecycleServerEvent
 	| MatchServerEvent
 	| QueueServerEvent
+	| LobbyServerEvent
 	| ChatServerEvent
 	| PresenceServerEvent;

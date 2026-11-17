@@ -41,6 +41,8 @@ const PAYLOAD_CHECKS: Record<
 	'match.move': (p) => isNonEmptyString(p.matchId) && 'move' in p,
 	'queue.join': (p) => isNonEmptyString(p.game),
 	'queue.leave': (p) => Object.keys(p).length === 0,
+	'lobby.join': (p) => Object.keys(p).length === 0,
+	'lobby.leave': (p) => Object.keys(p).length === 0,
 	// A message needs a valid conversation ID and non-empty body.
 	'chat.send': (p) =>
 		isNonEmptyString(p.conversationId) && isNonEmptyString(p.body),

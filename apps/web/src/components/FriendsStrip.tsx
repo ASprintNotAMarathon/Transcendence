@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import Avatar from './Avatar'
 import { friendsApi, type Friend } from '../lib/friends'
+import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from './Card'
 
@@ -26,6 +27,7 @@ type LoadState =
 function FriendsStrip() {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const onlineIds = useOnlineStatus()
+  const friendsChanged = useFriendsChanged()
 
   useEffect(() => {
     // If you leave the page before the answer arrives, ignore the answer.
@@ -42,7 +44,7 @@ function FriendsStrip() {
     return () => {
       ignore = true
     }
-  }, [])
+  }, [friendsChanged])
 
   return (
     <section aria-labelledby="friends-heading" className="flex flex-col gap-3">

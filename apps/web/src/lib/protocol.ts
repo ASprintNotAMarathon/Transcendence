@@ -22,6 +22,15 @@ export function sendMove(matchId: string, move: unknown, cid?: string): ClientEv
   return { type: 'match.move', cid, payload: { matchId, move } }
 }
 
+/** Start receiving lobby updates: matches starting, moving and ending. */
+export function joinLobby(): ClientEvent {
+  return { type: 'lobby.join', payload: {} }
+}
+
+export function leaveLobby(): ClientEvent {
+  return { type: 'lobby.leave', payload: {} }
+}
+
 /** Concede the match. */
 export function resign(matchId: string, cid?: string): ClientEvent {
   return { type: 'match.resign', cid, payload: { matchId } }
