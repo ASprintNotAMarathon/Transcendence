@@ -4,7 +4,7 @@
   2. Page: background, fonts
   3. Small helpers: muted text, the outlined button, the glowing title
   4. Match layout: the grid that puts the board next to the panel
-  5. Stones: the animations on the board
+  5. Animations: stones on the board, the loading dots, the glowing title
   6. Reduced motion: the same screens without movement
   7. Form fields: what a browser paints over our own colours
 */
@@ -80,6 +80,9 @@ body::before {
   z-index: 0;
 }
 
+/* 5. Animations: stones on the board, the loading dots, the glowing title.
+   The match layout below sits in the middle of this section, because moving
+   the blocks around would mean touching code that works. */
 @keyframes stone-pop {
   from {
     opacity: 0;
@@ -230,6 +233,8 @@ body::before {
   animation: title-glow 2.4s ease-in-out infinite;
 }
 
+/* 6. Reduced motion. The same screens for anyone who asked their system to
+   limit animation, so nothing moves but the end result stays visible. */
 @media (prefers-reduced-motion: reduce) {
 
   .stone-pop,
