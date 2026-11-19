@@ -2,21 +2,21 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { WsDispatcher, type WsHandler } from '../ws/ws.dispatch';
 import { WsRegistry } from '../ws/ws.registry';
 import { WsSender } from '../ws/ws.sender';
-import { FriendsService } from './friends.service';
+import { PresenceService } from './presence.service';
 
 /**
- * Presence on the socket, for friends only.
+ * Presence on the socket.
  *
- * - presence.list: the asking tab gets presence.state, its online friends.
- * - A user's first socket opens: each friend gets presence.online.
- * - Their last socket closes: each friend gets presence.offline.
+ * - presence.list: the asking tab gets presence.state, everyone else online.
+ * - A user's first socket opens: every other player gets presence.online.
+ * - Their last socket closes: every other player gets presence.offline.
  */
 @Injectable()
 export class PresenceHandlers implements OnModuleInit {
 	private readonly logger = new Logger(PresenceHandlers.name);
 
 	constructor(
-		private readonly friends: FriendsService,
+		private readonly presence: PresenceService,
 		private readonly dispatcher: WsDispatcher,
 		private readonly registry: WsRegistry,
 		private readonly sender: WsSender,
@@ -33,50 +33,40 @@ export class PresenceHandlers implements OnModuleInit {
 		});
 	}
 
-	/** A direct reply to the asking tab, stamped with its cid. */
+	/**
+	 * Everyone online except the asker, for the lobby. A direct reply to
+	 * the asking tab, stamped with its cid.
+	 */
 	readonly list: WsHandler<'presence.list'> = async (client, event) => {
-		const friends = await this.friends.listFriends(client.data.userId);
+		const me = client.data.userId;
+		const others = this.registry.onlineUserIds().filter((id) => id !== me);
 		this.sender.sendToSocket(client, {
 			type: 'presence.state',
 			cid: event.cid,
-			payload: {
-				users: friends
-					.filter((friend) => friend.online)
-					.map((friend) => ({
-						userId: friend.id,
-						displayName: friend.displayName,
-					})),
-			},
+			payload: { users: await this.presence.presenceUsers(others) },
 		});
 	};
 
-	/** Tells every friend, on every tab they have open. */
+	/** Tells every other player, on every tab they have open. */
 	async announce(userId: string, online: boolean): Promise<void> {
-		const friendIds = await this.friends.friendIdsOf(userId);
-		if (friendIds.length === 0) {
-			return;
-		}
+		const user = online ? await this.presence.presenceUser(userId) : null;
 
-		const user = online ? await this.friends.presenceUser(userId) : null;
-
-		// The queries took a moment. If they came back online or left again
+		// The query took a moment. If they came back online or left again
 		// in between, a newer announcement is on its way: this one is stale.
 		if (this.registry.isOnline(userId) !== online) {
 			return;
 		}
 
-		for (const friendId of friendIds) {
-			if (user) {
-				this.sender.sendToUser(friendId, {
-					type: 'presence.online',
-					payload: { user },
-				});
-			} else if (!online) {
-				this.sender.sendToUser(friendId, {
-					type: 'presence.offline',
-					payload: { userId },
-				});
-			}
+		if (user) {
+			this.sender.sendToAllExcept(userId, {
+				type: 'presence.online',
+				payload: { user },
+			});
+		} else if (!online) {
+			this.sender.sendToAllExcept(userId, {
+				type: 'presence.offline',
+				payload: { userId },
+			});
 		}
 	}
 }
