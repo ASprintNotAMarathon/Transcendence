@@ -1,7 +1,7 @@
 /**
- * Where the browser loads an avatar from. Under /api so the dev proxy already
- * forwards it, and so nginx can later serve the same path straight from disk
- * without the URL, or anything the web app stores, changing.
+ * Where the browser loads an avatar from. Under /api so the Vite dev server
+ * forwards it to the api, and nginx serves the same path straight from disk.
+ * Either way the URL, and anything the web app stores, is the same.
  */
 export const AVATAR_URL_PREFIX = '/api/avatars/';
 

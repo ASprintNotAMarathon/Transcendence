@@ -67,8 +67,8 @@ class ClientSocket {
 		if (this.socket !== null) {
 			return;
 		}
-		// No URL: connects to wherever the page comes from, which is the Vite dev server,
-		// which proxies /ws to the api.
+		// No URL: connects to wherever the page comes from, nginx on 8443 or the
+		// Vite dev server on 5173. Both pass /ws on to the api.
 		const socket = io({
 			path: '/ws',
 		});
