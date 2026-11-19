@@ -34,7 +34,7 @@
 /* 2. Page. The red glow comes from two gradients: one here, one in body::before. */
 body {
   margin: 0;
-  font-family: 'Valley Sans', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background:
     radial-gradient(
       ellipse 900px 600px at 15% 100%,
