@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import Card from './Card'
+import ErrorText from './ErrorText'
 
 type Props = {
   searching: boolean
@@ -43,9 +44,7 @@ function PlayCard({ searching, error, disabled, resumeMatchId, onFind, onCancel 
           </button>
         )}
         {error !== null && (
-          <p role="alert" className="text-sm text-(--color-primary)">
-            {error}
-          </p>
+          <ErrorText live>{error}</ErrorText>
         )}
       </Card>
     </section>

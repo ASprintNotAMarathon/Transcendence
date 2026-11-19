@@ -7,6 +7,7 @@ import { friendsApi, type Friend, type FriendRequests, type Person } from '../li
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from '../components/Card'
+import ErrorText from '../components/ErrorText'
 
 /*
   FriendsPage. /friends
@@ -116,11 +117,7 @@ function FriendsPage() {
 
             {state.status === 'ready' && (
                 <>
-                    {actionError && (
-                        <p role="alert" className="text-sm text-red-400">
-                            {actionError}
-                        </p>
-                    )}
+                    {actionError && <ErrorText live>{actionError}</ErrorText>}
 
                     {state.requests.incoming.length > 0 && (
                         <Section title="Requests for you">

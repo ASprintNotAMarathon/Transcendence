@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ApiError } from '../lib/api'
 import { friendsApi, type Friendship } from '../lib/friends'
 import { useFriendsChanged } from '../socket/useFriendsChanged'
+import ErrorText from './ErrorText'
 
 /*
   FriendButton. The friend button on someone else's profile.
@@ -83,9 +84,7 @@ function FriendButton({ userId }: FriendButtonProps) {
 
   if (friendship === null) {
     return error ? (
-      <p role="alert" className="text-sm text-red-400">
-        {error}
-      </p>
+      <ErrorText live>{error}</ErrorText>
     ) : null
   }
 
@@ -154,9 +153,7 @@ function FriendButton({ userId }: FriendButtonProps) {
       )}
 
       {error && (
-        <p role="alert" className="text-sm text-red-400">
-          {error}
-        </p>
+        <ErrorText live>{error}</ErrorText>
       )}
     </>
   )

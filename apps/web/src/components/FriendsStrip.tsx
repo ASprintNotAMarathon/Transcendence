@@ -5,6 +5,7 @@ import { friendsApi, type Friend } from '../lib/friends'
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from './Card'
+import ErrorText from './ErrorText'
 
 /*
   FriendsStrip. A small card for the home page.
@@ -68,9 +69,7 @@ function FriendsStrip() {
       <Card>
         {state.status === 'loading' && <p className="text-sm text-muted">Loading…</p>}
         {state.status === 'error' && (
-          <p role="alert" className="text-sm text-red-400">
-            We could not load your friends.
-          </p>
+          <ErrorText live>We could not load your friends.</ErrorText>
         )}
 
         {state.status === 'ready' && state.friends.length === 0 && (

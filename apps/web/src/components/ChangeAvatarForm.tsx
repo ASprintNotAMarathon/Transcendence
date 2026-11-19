@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext'
 import { ApiError, usersApi, type AuthUser } from '../lib/api'
 import { AVATAR_HINT, AVATAR_TOO_LARGE, checkAvatarFile } from '../lib/avatarFile'
 import Avatar from './Avatar'
+import ErrorText from './ErrorText'
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
@@ -84,9 +85,9 @@ export default function ChangeAvatarForm({ user, onDone }: Props) {
         className="file-input file-input-sm w-full"
       />
       {error && (
-        <p id="avatar-error" role="alert" className="text-sm text-red-400">
+        <ErrorText id="avatar-error" live>
           {error}
-        </p>
+        </ErrorText>
       )}
       <div className="flex gap-3">
         <button type="submit" disabled={saving} className={buttonClass}>
