@@ -99,7 +99,9 @@ export type QueueErrorCode =
 export type ChatErrorCode =
 	| "chat.not_found"
 	| "chat.empty_message"
-	| "chat.message_too_long";
+	| "chat.message_too_long"
+	| "chat.self"
+	| "chat.user_not_found";
 
 
 /** Failures in presence. */
@@ -354,6 +356,16 @@ export interface ChatConversationPayload {
 	readonly lastActivityAt: string;
 }
 
+/** Start a conversation with another user, or reopen the existing one. */
+export interface ChatStartPayload {
+	readonly otherUserId: string;
+}
+
+/** The conversation that was started — or already existed for this pair. */
+export interface ChatStartedPayload {
+	readonly conversation: ChatConversationPayload;
+}
+
 /** Request your own conversation list. */
 export type ChatConversationsRequestPayload = Record<string, never>;
 
@@ -364,7 +376,8 @@ export interface ChatConversationsPayload {
 
 /** A message the server refused. */
 export interface ChatRejectedPayload {
-	readonly conversationId: string;
+	/** Absent when the refusal is about STARTING a conversation — none exists yet. */
+	readonly conversationId?: string;
 	readonly code: ChatErrorCode;
 }
 
@@ -372,15 +385,16 @@ export interface ChatRejectedPayload {
 export type ChatClientEvent =
 	| Envelope<"chat.send", ChatSendPayload>
 	| Envelope<"chat.history", ChatHistoryRequestPayload>
-	| Envelope<"chat.conversations", ChatConversationsRequestPayload>;
+	| Envelope<"chat.conversations", ChatConversationsRequestPayload>
+	| Envelope<"chat.start", ChatStartPayload>;
 
 /** Server to client. */
 export type ChatServerEvent =
 	| Envelope<"chat.message", ChatMessagePayload>
 	| Envelope<"chat.history_result", ChatHistoryPayload>
 	| Envelope<"chat.rejected", ChatRejectedPayload>
-	| Envelope<"chat.conversations_result", ChatConversationsPayload>;
-
+	| Envelope<"chat.conversations_result", ChatConversationsPayload>
+	| Envelope<"chat.started", ChatStartedPayload>;
 
 /* ==========================================================================
  * Presence events

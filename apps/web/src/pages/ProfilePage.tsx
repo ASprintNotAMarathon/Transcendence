@@ -8,6 +8,7 @@ import ChangeAvatarForm from '../components/ChangeAvatarForm'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import FriendButton from '../components/FriendButton'
+import MessageButton from '../components/MessageButton'
 
 /*
   ProfilePage. /profile is your own profile, /profile/:id is someone else's.
@@ -93,6 +94,7 @@ function OtherProfile({ id }: { id: string }) {
       createdAt={profile.createdAt}
     >
       <FriendButton userId={profile.id} />
+      <MessageButton userId={profile.id} />
     </ProfileCard>
   )
 }

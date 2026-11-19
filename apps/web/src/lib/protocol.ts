@@ -50,3 +50,8 @@ export function chatHistory(conversationId: string, before?: string, cid?: strin
 export function chatConversations(cid?: string): ClientEvent {
   return { type: 'chat.conversations', cid, payload: {} }
 }
+
+/** Start a conversation with another user, or reopen the existing one. */
+export function startChat(otherUserId: string, cid?: string): ClientEvent {
+  return { type: 'chat.start', cid, payload: { otherUserId } }
+}

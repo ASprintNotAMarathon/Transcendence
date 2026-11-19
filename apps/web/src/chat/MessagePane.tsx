@@ -67,12 +67,20 @@ function MessagePane({ conversationId, otherUserId, otherUserName, onBack, onClo
 	// after the user already switched conversation (the pane was unmounted).
 	useEffect(() => {
 		let cancelled = false
-		chatClient.loadHistory(conversationId).then((page) => {
-			if (cancelled) return
-			scrollPlan.current = { to: 'bottom' }
-			setMessages(page)
-			setLoading(false)
-		})
+		chatClient
+			.loadHistory(conversationId)
+			.then((page) => {
+				if (cancelled) return
+				scrollPlan.current = { to: 'bottom' }
+				setMessages(page)
+				setLoading(false)
+			})
+			.catch(() => {
+				// The server refused or timed out: stop the spinner instead
+				// of loading forever. The pane shows an empty conversation.
+				if (cancelled) return
+				setLoading(false)
+			})
 		return () => {
 			cancelled = true
 		}

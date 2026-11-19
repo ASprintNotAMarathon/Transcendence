@@ -24,7 +24,7 @@
  */
 
 import type { ChatMessagePayload, ChatServerEvent, ServerEvent } from '@transcendence/shared'
-import { chatConversations, chatHistory, sendChatMessage } from '../lib/protocol'
+import { chatConversations, chatHistory, sendChatMessage, startChat } from '../lib/protocol'
 import { clientSocket } from '../lib/socket'
 
 /**
@@ -42,6 +42,9 @@ export interface ChatClient {
 	): Promise<ChatMessagePayload[]>
 
 	listConversations(): ConversationSummary[]
+
+	/** Starts (or reopens) the conversation; resolves with its id. */
+	startConversation(otherUserId: string): Promise<string>
 }
 
 /** Data returned by listConversations() to display conversations in the frontend sidebar. */
@@ -61,7 +64,17 @@ export interface ConversationSummary {
 export let CURRENT_USER_ID = ''
 
 export function setCurrentUserId(userId: string): void {
+	if (userId === CURRENT_USER_ID) {
+		return
+	}
 	CURRENT_USER_ID = userId
+	// A different person is at the keyboard: their chat is not our chat.
+	// Empty the cache and ask again on the next subscribe.
+	conversations = []
+	for (const key of Object.keys(unreadCounts)) {
+		delete unreadCounts[key]
+	}
+	listRequested = false
 }
 
 /** How long to wait for the server before a question counts as failed. */
@@ -80,6 +93,9 @@ interface PendingReply<T> {
 /** Stores frontend history requests waiting for chat.history_result from the backend */
 const pendingHistory = new Map<string, PendingReply<ChatMessagePayload[]>>()
 
+/** Start questions by cid: answered by chat.started. */
+const pendingStarts = new Map<string, PendingReply<string>>()
+
 /**
  * Stores frontend message requests waiting for confirmation from the backend.
  * A rejected message is matched by cid; a successful message is confirmed
@@ -92,6 +108,12 @@ const pendingSends = new Map<
 
 /** Stores the latest conversation list received from the backend, returned by listConversations(). */
 let conversations: ConversationSummary[] = []
+
+/**
+ * Unread counts per conversation. Lives OUTSIDE React so the popup can
+ * count while closed, and ChatPage can pick the counts up when it mounts.
+ */
+export const unreadCounts: Record<string, number> = {}
 
 /** Tracks whether the frontend has already requested the conversation list from the backend. */
 let listRequested = false
@@ -162,6 +184,30 @@ function handleServerEvent(event: ServerEvent): void {
 		}
 	}
 
+	if (event.type === 'chat.started') {
+		const summary: ConversationSummary = {
+			conversationId: event.payload.conversation.conversationId,
+			otherUserId: event.payload.conversation.otherUserId,
+			name: event.payload.conversation.otherUserName,
+			lastMessage: event.payload.conversation.lastMessageBody,
+		}
+		// Newest activity on top: replace it if known, else insert first.
+		conversations = [
+			summary,
+			...conversations.filter(
+				(known) => known.conversationId !== summary.conversationId,
+			),
+		]
+		if (event.cid !== undefined) {
+			const pending = pendingStarts.get(event.cid)
+			if (pending !== undefined) {
+				pendingStarts.delete(event.cid)
+				clearTimeout(pending.timer)
+				pending.resolve(summary.conversationId)
+			}
+		}
+	}
+
 	if (event.type === 'chat.rejected' && event.cid !== undefined) {
 		// find the pending send that matches the request ID (cid)
 		const send = pendingSends.get(event.cid)
@@ -178,6 +224,12 @@ function handleServerEvent(event: ServerEvent): void {
 			pendingHistory.delete(event.cid)
 			clearTimeout(history.timer)
 			history.reject(new Error(event.payload.code))
+		}
+		const start = pendingStarts.get(event.cid)
+		if (start !== undefined) {
+			pendingStarts.delete(event.cid)
+			clearTimeout(start.timer)
+			start.reject(new Error(event.payload.code))
 		}
 	}
 
@@ -262,6 +314,18 @@ function loadHistory(
 	})
 }
 
+function startConversation(otherUserId: string): Promise<string> {
+	const cid = newCid()
+	return new Promise<string>((resolve, reject) => {
+		const timer = setTimeout(() => {
+			pendingStarts.delete(cid)
+			reject(new Error('chat.timeout'))
+		}, REPLY_TIMEOUT_MS)
+		pendingStarts.set(cid, { resolve, reject, timer })
+		clientSocket.send(startChat(otherUserId, cid))
+	})
+}
+
 function listConversations(): ConversationSummary[] {
 	return conversations
 }
@@ -275,4 +339,5 @@ export const chatClient: ChatClient = {
 	subscribe,
 	loadHistory,
 	listConversations,
+	startConversation,
 }

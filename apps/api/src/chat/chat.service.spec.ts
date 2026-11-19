@@ -280,3 +280,93 @@ describe('ChatService.conversations', () => {
 		);
 	});
 });
+
+describe('ChatService.start', () => {
+	let service: ChatService;
+	let userFindUnique: ReturnType<typeof vi.fn>;
+	let upsert: ReturnType<typeof vi.fn>;
+
+	beforeEach(async () => {
+		userFindUnique = vi.fn();
+		upsert = vi.fn();
+
+		const moduleRef = await Test.createTestingModule({
+			providers: [
+				ChatService,
+				{
+					provide: PrismaService,
+					useValue: {
+						user: { findUnique: userFindUnique },
+						conversation: { upsert },
+					},
+				},
+			],
+		}).compile();
+
+		service = moduleRef.get(ChatService);
+	});
+
+	it('refuses starting a conversation with yourself', async () => {
+		await expect(
+			service.start(USER_0.id, { otherUserId: USER_0.id }),
+		).rejects.toMatchObject({ code: 'chat.self' });
+		expect(userFindUnique).not.toHaveBeenCalled();
+	});
+
+	it('refuses an id that no user has', async () => {
+		userFindUnique.mockResolvedValue(null);
+		await expect(
+			service.start(USER_0.id, { otherUserId: OUTSIDER_ID }),
+		).rejects.toMatchObject({ code: 'chat.user_not_found' });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+
+	it('stores the pair sorted, whoever starts it', async () => {
+		userFindUnique.mockResolvedValue(USER_0);
+		upsert.mockResolvedValue({
+			id: CONVERSATION_ID,
+			user0Id: USER_0.id,
+			user1Id: USER_1.id,
+			updatedAt: new Date('2026-11-16T12:00:00Z'),
+			messages: [],
+		});
+
+		// USER_1 (the larger id) starts it — user0 must still be the smaller.
+		await service.start(USER_1.id, { otherUserId: USER_0.id });
+
+		expect(upsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				where: {
+					user0Id_user1Id: {
+						user0Id: USER_0.id,
+						user1Id: USER_1.id,
+					},
+				},
+				create: { user0Id: USER_0.id, user1Id: USER_1.id },
+			}),
+		);
+	});
+
+	it('answers with the conversation, existing messages included', async () => {
+		userFindUnique.mockResolvedValue(USER_1);
+		upsert.mockResolvedValue({
+			id: CONVERSATION_ID,
+			user0Id: USER_0.id,
+			user1Id: USER_1.id,
+			updatedAt: new Date('2026-11-16T12:00:00Z'),
+			messages: [{ body: 'rematch after lunch?' }],
+		});
+
+		const result = await service.start(USER_0.id, {
+			otherUserId: USER_1.id,
+		});
+
+		expect(result.conversation).toEqual({
+			conversationId: CONVERSATION_ID,
+			otherUserId: USER_1.id,
+			otherUserName: 'bob',
+			lastMessageBody: 'rematch after lunch?',
+			lastActivityAt: '2026-11-16T12:00:00.000Z',
+		});
+	});
+});

@@ -3,6 +3,7 @@ import { useLocation } from 'react-router'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import ChatPage from '../pages/ChatPage'
 import ChatButton from '../components/ChatButton'
+import { setOpenChatHandler } from './openChat'
 
 function ChatPopup() {
   // The chat page already IS the chat - a popup over it would be chat-inside-chat.
@@ -13,6 +14,14 @@ function ChatPopup() {
 
   // Messages from other people that arrived while the popup was closed.
 	const [unread, setUnread] = useState(0)
+
+  // Set when the Message button opened us on a specific conversation.
+	const [startAt, setStartAt] = useState<string | null>(null)
+
+  // Counts Message presses. Used as the ChatPage key, so a press while
+	// the window is ALREADY open remounts it on the new conversation
+	// (state initializers only run at mount - a prop change alone is ignored).
+	const [startKey, setStartKey] = useState(0)
 
 	// Count incoming messages only while closed. The cleanup unsubscribes
 	// when 'open' flips, so the counter never runs while you are looking.
@@ -38,10 +47,24 @@ function ChatPopup() {
 	if (event.key === 'Escape') {
 		setOpen(false)
 	}
+
 	}
 	window.addEventListener('keydown', onKeyDown)
 	return () => window.removeEventListener('keydown', onKeyDown)
 	}, [open])
+
+  // Let the Message button open this popup on a chosen conversation.
+   useEffect(() => {
+		setOpenChatHandler((conversationId) => {
+			setStartAt(conversationId)
+      setStartKey((current) => current + 1)
+			setUnread(0)
+			setOpen(true)
+		})
+		return () => {
+			setOpenChatHandler(null)
+		}
+	}, [])
 
   if (location.pathname === '/chat') {
     return null
@@ -74,9 +97,9 @@ function ChatPopup() {
       >
         {/* Render the chat interface inside the popup.
             h-96 keeps it at 24rem in the desktop corner box; on phones it
-            takes the dynamic viewport height minus 3rem, plus top padding
-            so the list starts below the relocated Close button. */}
-        <ChatPage className="h-96 max-sm:h-[calc(100dvh-1.5rem)]" onClose={() => setOpen(false)} />
+            takes the dynamic viewport height minus 1.5rem. The Message
+            button can preselect a conversation via initialConversationId. */}
+                <ChatPage key={startKey} className="h-96 max-sm:h-[calc(100dvh-1.5rem)]" onClose={() => setOpen(false)} initialConversationId={startAt ?? undefined} />
       </div>
       )}
 
@@ -87,6 +110,7 @@ function ChatPopup() {
         onToggle={() => {
           if (!open) {
             setUnread(0)
+            setStartAt(null) // A plain open starts at the list.
           }
           setOpen(!open)
         }}
