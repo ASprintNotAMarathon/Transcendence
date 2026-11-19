@@ -8,12 +8,12 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router'
 import type { ChatMessagePayload } from '@transcendence/shared'
 import { CURRENT_USER_ID, chatClient } from './chat'
 import LoadingState from '../components/states/LoadingState'
 import MessageComposer from './MessageComposer'
 import { CloseCross } from '../components/ChatButton'
+import PlayerLink from '../components/PlayerLink'
 
 type MessagePaneProps = {
 	conversationId: string
@@ -165,9 +165,7 @@ function MessagePane({ conversationId, otherUserId, otherUserName, onBack, onClo
 					‹
 				</button>
 				{otherUserId !== '' && (
-					<Link to={`/profile/${otherUserId}`} className="font-semibold hover:underline">
-						{otherUserName}
-					</Link>
+					<PlayerLink userId={otherUserId} displayName={otherUserName} className="font-semibold" />
 				)}
 				<div className="ml-auto md:hidden">
 					<CloseCross onClick={onClose} />
