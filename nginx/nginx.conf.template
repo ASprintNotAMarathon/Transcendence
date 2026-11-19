@@ -10,6 +10,11 @@ http {
 		listen 443 ssl;
 		server_name localhost;
 
+		# nginx's own redirects (/ws -> /ws/) would otherwise be full addresses
+		# with the port nginx listens on inside the container (443), not the one
+		# compose publishes. Relative ones keep whatever port the browser used.
+		absolute_redirect off;
+
 		ssl_certificate		/etc/nginx/certs/localhost.crt;
 		ssl_certificate_key	/etc/nginx/certs/localhost.key;
 
