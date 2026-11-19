@@ -24,13 +24,9 @@ RUN npm run build --workspace @transcendence/web
 # Only the built files are copied over; node and node_modules stay behind.
 FROM nginx:alpine
 
-# The image fills in ${VARS} in *.template files when the container starts.
-# By default it writes the result into conf.d/; this makes it write
-# /etc/nginx/nginx.conf, the main config.
-ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
-COPY nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
-COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
-
+# First, so it stays cached: anything copied in below changes on every
+# frontend edit, and a step after it would make a new certificate each time,
+# which the browser asks you to accept again.
 RUN apk add --no-cache openssl \
 	&& mkdir -p /etc/nginx/certs \
 	&& openssl req -x509 -newkey rsa:2048 -nodes -days 365 \
@@ -41,3 +37,11 @@ RUN apk add --no-cache openssl \
 	&& cp /etc/nginx/certs/localhost.crt /usr/local/share/ca-certificates/localhost.crt \
 	&& update-ca-certificates \
 	&& apk del openssl
+
+# The image fills in ${VARS} in *.template files when the container starts.
+# By default it writes the result into conf.d/; this makes it write
+# /etc/nginx/nginx.conf, the main config.
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
+COPY nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
+COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
+
