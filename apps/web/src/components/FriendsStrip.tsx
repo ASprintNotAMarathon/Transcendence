@@ -6,6 +6,7 @@ import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from './Card'
 import ErrorText from './ErrorText'
+import SectionHeading from './SectionHeading'
 
 /*
   FriendsStrip. A small card for the home page.
@@ -50,12 +51,7 @@ function FriendsStrip() {
   return (
     <section aria-labelledby="friends-heading" className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2
-          id="friends-heading"
-          className="text-xs font-semibold uppercase tracking-widest text-muted"
-        >
-          Friends
-        </h2>
+        <SectionHeading id="friends-heading">Friends</SectionHeading>
         {state.status === 'ready' && state.requestCount > 0 && (
           <Link
             to="/friends"

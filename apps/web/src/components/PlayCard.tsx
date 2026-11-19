@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import Card from './Card'
 import ErrorText from './ErrorText'
+import SectionHeading from './SectionHeading'
 
 type Props = {
   searching: boolean
@@ -16,9 +17,7 @@ const mainButtonClass = 'btn btn-primary w-full tracking-wide border-2 border-(-
 function PlayCard({ searching, error, disabled, resumeMatchId, onFind, onCancel }: Props) {
   return (
     <section aria-labelledby="play-heading" className="flex flex-col gap-3">
-      <h2 id="play-heading" className="text-xs font-semibold uppercase tracking-widest text-muted">
-        Play
-      </h2>
+      <SectionHeading id="play-heading">Play</SectionHeading>
       <Card className="flex flex-col gap-3">
         {resumeMatchId !== null ? (
           <>
