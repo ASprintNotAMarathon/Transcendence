@@ -69,7 +69,7 @@ function FriendsStrip() {
         )}
 
         {state.status === 'ready' && state.friends.length === 0 && (
-          <p className="text-sm text-muted">
+          <p className="text-muted">
             No friends yet. Open a player's profile and choose Add friend.
           </p>
         )}

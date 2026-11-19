@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
 import Avatar from '../components/Avatar'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
@@ -8,6 +7,8 @@ import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from '../components/Card'
 import ErrorText from '../components/ErrorText'
+import SectionHeading from '../components/SectionHeading'
+import PlayerLink from '../components/PlayerLink'
 
 /*
   FriendsPage. /friends
@@ -45,12 +46,11 @@ function Row({ person, online, children }: RowProps) {
     return (
         <Card as="li" size="sm" className="flex items-center gap-3">
             <Avatar displayName={person.displayName} avatarUrl={person.avatarUrl} size="md" online={online} />
-            <Link
-                to={`/profile/${encodeURIComponent(person.id)}`}
-                className="min-w-0 flex-1 truncate font-semibold hover:underline"
-            >
-                {person.displayName}
-            </Link>
+            <PlayerLink
+                userId={person.id}
+                displayName={person.displayName}
+                className="min-w-0 flex-1 font-semibold"
+            />
             <div className="flex items-center gap-3">{children}</div>
         </Card>
     )
@@ -58,8 +58,8 @@ function Row({ person, online, children }: RowProps) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section>
-            <h2 className="mb-3 text-sm uppercase tracking-wide text-muted">{title}</h2>
+        <section className="flex flex-col gap-3">
+            <SectionHeading>{title}</SectionHeading>
             {children}
         </section>
     )

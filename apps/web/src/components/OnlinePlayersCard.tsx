@@ -34,7 +34,7 @@ function OnlinePlayersCard() {
 				{players === null && <p className="text-sm text-muted">Loading…</p>}
 
 				{players !== null && players.length === 0 && (
-					<p className="text-sm text-muted">No one else is online.</p>
+						<p className="text-muted">No one else is online.</p>
 				)}
 
 				{players !== null && players.length > 0 && (
@@ -43,7 +43,7 @@ function OnlinePlayersCard() {
 							<li key={player.userId}>
 								<Link
 									to={`/profile/${encodeURIComponent(player.userId)}`}
-									className="flex items-center gap-3 text-sm hover:underline"
+									className="flex items-center gap-3 hover:underline"
 								>
 									<Avatar
 										displayName={player.displayName}

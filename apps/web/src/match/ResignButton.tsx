@@ -25,7 +25,7 @@ function ResignButton({ onResign }: ResignButtonProps) {
 
   return (
     <div role="group" aria-label="Confirm resignation" className="flex flex-col gap-2">
-      <p className="text-sm">Resign this match?</p>
+      <p>Resign this match?</p>
       <div className="flex gap-2">
         <button type="button" className={buttonClass} disabled={sent} onClick={resign}>
           Yes, resign
