@@ -1,4 +1,17 @@
+/*
+  Here we define the look of Gomoku
+  1. Theme: the colours and the pill shape, used by every component
+  2. Page: background, fonts
+  3. Small helpers: muted text, the outlined button, the glowing title
+  4. Match layout: the grid that puts the board next to the panel
+  5. Stones: the animations on the board
+  6. Reduced motion: the same screens without movement
+  7. Form fields: what a browser paints over our own colours
+*/
+
 @import "tailwindcss";
+
+/* 1. Theme. Change a colour here and every button, border and dot follows. */
 @plugin "daisyui" {
   themes: gomoku --default;
 }
@@ -15,8 +28,10 @@
   --color-stone-sage: #B2C29C;
   --color-board-surface: #0F1013;
   --color-board-line: #3A3E48;
+  --color-error: #E58A7C;
 }
 
+/* 2. Page. The red glow comes from two gradients: one here, one in body::before. */
 body {
   margin: 0;
   font-family: 'Valley Sans', system-ui, sans-serif;
@@ -31,6 +46,7 @@ body {
   position: relative;
 }
 
+/* 3. Small helpers, used from className in the components. */
 .font-barrio {
   font-family: 'Barrio', system-ui, sans-serif;
 }
@@ -116,6 +132,8 @@ body::before {
   animation: stone-flash 0.8s ease-out forwards;
 }
 
+/* 4. Match layout. On a phone everything is stacked. From xl (1280px and wider) the board is
+   in the middle and the players + the buttons on the side */
 .match-layout {
   display: grid;
   grid-template-areas: "status" "board" "players" "actions";
@@ -241,4 +259,14 @@ body::before {
 
 .stone-loading-dot {
   animation: stone-loading-pulse 1.2s ease-in-out infinite;
+}
+
+/* 7. Form fields. Chrome paints its own 'default' background on a field it filled in,
+   and that colour wins from ours. The inset shadow is the usual way over it. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-base-content);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-base-100) inset;
+  caret-color: var(--color-base-content);
 }

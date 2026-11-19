@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes } from 'react'
+import ErrorText from './ErrorText'
 
 /*
 	Lay out for a form field,
@@ -15,6 +16,14 @@ type FormFieldProps = {
   error?: string
 } & InputHTMLAttributes<HTMLInputElement>
 
+/*
+  How every field looks: dark like the cards, a grey border that turns red
+  while you are typing in it, the same red as the focus ring on the buttons.
+*/
+const inputClass =
+	'rounded-xl border-2 border-(--color-board-line) bg-(--color-base-100) px-3 py-2 ' +
+	'text-(--color-base-content) placeholder:text-muted focus:border-(--color-primary) focus:outline-none'
+
 function FormField({ id, label, error, className, ...inputProps }: FormFieldProps) {
   return (
     <div className="flex flex-col gap-1">
@@ -23,12 +32,10 @@ function FormField({ id, label, error, className, ...inputProps }: FormFieldProp
       </label>
       <input
         id={id}
-        className={
-          className ?? 'rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)'
-        }
+            className={className ?? inputClass}
         {...inputProps}
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <ErrorText>{error}</ErrorText>}
     </div>
   )
 }
