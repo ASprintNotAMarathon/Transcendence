@@ -3,6 +3,7 @@ import { ApiError } from '../lib/api'
 import { friendsApi, type Friendship } from '../lib/friends'
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import ErrorText from './ErrorText'
+import QuietButton from './QuietButton'
 
 /*
   FriendButton. The friend button on someone else's profile.
@@ -17,8 +18,6 @@ import ErrorText from './ErrorText'
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 const statusClass =
   'inline-flex h-8 items-center rounded-full border-2 border-(--color-base-300) px-3 text-sm text-muted'
-const quietLinkClass =
-  'text-sm text-muted underline hover:text-(--color-base-content) disabled:no-underline'
 
 type FriendButtonProps = {
   userId: string
@@ -106,14 +105,9 @@ function FriendButton({ userId }: FriendButtonProps) {
       {friendship === 'requested' && (
         <>
           <span className={statusClass}>Request sent</span>
-          <button
-            type="button"
-            disabled={busy}
-            className={quietLinkClass}
-            onClick={() => run(() => friendsApi.remove(userId), 'none')}
-          >
+          <QuietButton disabled={busy} onClick={() => run(() => friendsApi.remove(userId), 'none')}>
             Cancel request
-          </button>
+          </QuietButton>
         </>
       )}
 
@@ -127,28 +121,18 @@ function FriendButton({ userId }: FriendButtonProps) {
           >
             Accept
           </button>
-          <button
-            type="button"
-            disabled={busy}
-            className={quietLinkClass}
-            onClick={() => run(() => friendsApi.declineFrom(userId), 'none')}
-          >
+          <QuietButton disabled={busy} onClick={() => run(() => friendsApi.declineFrom(userId), 'none')}>
             Decline
-          </button>
+          </QuietButton>
         </>
       )}
 
       {friendship === 'friends' && (
         <>
           <span className={statusClass}>Friends</span>
-          <button
-            type="button"
-            disabled={busy}
-            className={quietLinkClass}
-            onClick={() => run(() => friendsApi.remove(userId), 'none')}
-          >
+          <QuietButton disabled={busy} onClick={() => run(() => friendsApi.remove(userId), 'none')}>
             Remove friend
-          </button>
+          </QuietButton>
         </>
       )}
 

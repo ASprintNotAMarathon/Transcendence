@@ -9,6 +9,7 @@ import Card from '../components/Card'
 import ErrorText from '../components/ErrorText'
 import SectionHeading from '../components/SectionHeading'
 import PlayerLink from '../components/PlayerLink'
+import QuietButton from '../components/QuietButton'
 
 /*
   FriendsPage. /friends
@@ -22,8 +23,6 @@ import PlayerLink from '../components/PlayerLink'
 */
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
-const quietLinkClass =
-    'text-sm text-muted underline hover:text-(--color-base-content) disabled:no-underline'
 
 type LoadState =
     | { status: 'loading' }
@@ -132,14 +131,12 @@ function FriendsPage() {
                                         >
                                             Accept
                                         </button>
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === request.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(request.id, () => friendsApi.decline(request.id))}
                                         >
                                             Decline
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>
@@ -159,14 +156,12 @@ function FriendsPage() {
                                         person={friend}
                                         online={onlineIds ? onlineIds.has(friend.id) : friend.online}
                                     >
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === friend.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(friend.id, () => friendsApi.remove(friend.id))}
                                         >
                                             Remove friend
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>
@@ -178,14 +173,12 @@ function FriendsPage() {
                             <ul className="flex flex-col gap-3">
                                 {state.requests.outgoing.map((request) => (
                                     <Row key={request.id} person={request.user}>
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === request.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(request.id, () => friendsApi.remove(request.user.id))}
                                         >
                                             Cancel request
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>
