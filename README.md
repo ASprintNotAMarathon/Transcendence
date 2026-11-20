@@ -356,7 +356,7 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
    refuses any move from a spectator.
 10. **Additional browsers (Minor).** Players use different browsers, and the game should look
     and behave the same for all of them. Besides Google Chrome, the whole application is
-    tested on TODO(team: e.g. Firefox and Safari): registration and login, matchmaking, a full
+    tested on Firefox and Safari: registration and login, matchmaking, a full
     match, reconnecting, spectating, profiles and avatars, friends, and chat. Problems found
     during testing were fixed so that the UI and the behaviour are the same in every
     supported browser. Browser-specific limitations are listed in
@@ -437,8 +437,8 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 | Browser | Version | Status |
 | --- | --- | --- |
 | Google Chrome | latest stable | fully supported |
-| TODO(team) | latest stable | fully supported |
-| TODO(team) | latest stable | fully supported |
+| Mozilla Firefox | latest stable | fully supported |
+| Apple Safari | latest stable | fully supported |
 
 Browser-specific limitations:
 
