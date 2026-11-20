@@ -1,121 +1,58 @@
-# Transcendence
+*This project has been created as part of the 42 curriculum by kziari, lprieri, rkaras, nheessel, rshaheen.*
 
-## WebSocket protocol
+<!--
+DRAFT v3, for the whole team to review.
+- Search for "TODO(team)" and fill in what applies to you.
+- Check every row and paragraph with your name: is it complete and correct?
+- Remaining TODOs: screenshots, individual challenges, what each person learned,
+  extra references, and the AI section.
+Remove all TODO comments before the evaluation.
+-->
 
-Every message either side may send over the socket is declared once in
-[`shared/src/ws.ts`](shared/src/ws.ts). The API imports it to know what it is allowed to receive
-and emit, the web app imports the same file to know what it is allowed to send and expect. If a
-message is not in that file, it is not part of the protocol.
+# Gomoku Friends
 
-The file is pure types, so it compiles to an empty module and adds nothing to either bundle.
+## Description
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/ws-protocol-dark.svg">
-  <img alt="Match payload interfaces are wrapped by the Envelope generic into MatchClientEvent, which combines with the empty LifecycleClientEvent, ChatClientEvent and PresenceClientEvent to form ClientEvent. The server payloads follow the mirrored path into ServerEvent." src="docs/ws-protocol-light.svg">
-</picture>
+**Gomoku Friends** is a web application for playing Gomoku (five in a row) live against other
+people. You create an account, press Play, get paired with an opponent, and play on a 15×15
+board in the browser. Around the game there is a small social layer: profiles with avatars,
+friends with online status, and private chat.
 
-### The envelope
+The goal of the project is a complete multi-user web application with a frontend, a backend
+and a database. The server is the single source of truth. Clients send what they want to do,
+the server checks every move with a shared game engine, stores it, and sends the result to
+everyone watching.
 
-Every message has the same frame: `{ type, cid?, payload }`. Reading `type` tells TypeScript
-which fields `payload` has. Nesting the payload rather than flattening it costs a `.payload` on
-every access, but envelope fields and game fields can never collide, and each section owns a named
-payload type instead of everyone editing the same union member.
+### Key features
 
-`cid` is a correlation id. The client stamps it on a request, the server echoes it on a direct
-reply so the client can tell which reply belongs to which request. Broadcasts do not carry one,
-since a broadcast answers nobody.
+- **Accounts**: sign up and log in with email and password. Passwords are hashed with argon2,
+  and the session is a JWT in an `httpOnly` cookie. All traffic goes over HTTPS.
+- **Live Gomoku**: 15×15 board, five in a row wins, a full board is a draw. Moves appear on
+  both screens without a refresh. Players can resign.
+- **Matchmaking**: join a queue and get paired with the next waiting player.
+- **Disconnect handling**: a player who drops out has 30 seconds to come back to the same
+  board. The opponent sees a countdown. If the player does not return, the opponent wins.
+- **Spectating**: the lobby lists the matches in progress, and anyone logged in can watch one live.
+- **Profiles**: display name, avatar upload with a default avatar, and other players' profile pages.
+- **Friends and presence**: send, accept, decline and remove friend requests, see which
+  friends are online, and see a list of online players.
+- **Chat**: start a private conversation from a profile and keep the message history.
+- **Privacy Policy and Terms of Service** pages, linked from the footer.
 
-### Match events
+<!-- TODO(team): add 1–2 screenshots or a short GIF here (lobby + a match in progress). -->
 
-Seven events are live, all under `match.*`. The server holds the board and clients submit
-intentions:
+## Instructions
 
-| Event | Direction | Sent to |
+### Prerequisites
+
+| Tool | Version | Notes |
 | --- | --- | --- |
-| `match.join` | client to server | Start receiving updates, as a player or a spectator |
-| `match.leave` | client to server | Stop receiving updates. Not a resignation |
-| `match.move` | client to server | Offer a move |
-| `match.resign` | client to server | Concede |
-| `match.state` | server to client | The whole board, in reply to a join or rejoin |
-| `match.moved` | server to client | One accepted move, broadcast to everyone watching |
-| `match.rejected` | server to client | A refusal, to the sending player alone |
+| Docker + Docker Compose | Compose v2 (`docker compose`) | runs the four services |
+| GNU Make | any recent | the single entry point |
+| Node.js | 24 (see `.nvmrc`, run `nvm use`) | `make up` builds the shared game-engine package on the host first |
+| Google Chrome | latest stable | the supported browser |
 
-Two details worth knowing before you build against this:
-
-- `move` and `state` are typed `unknown` on purpose. The transport does not know what a move is,
-  it hands the value to the engine's `parseMove`, and a throw becomes `match.malformed_move`.
-  That is why Reversi will reuse these events unchanged instead of needing a second set.
-- `match.state` and `match.moved` both carry a `moveNumber`. Each broadcast is one higher than the
-  last. A client that sees a gap knows it missed a move and should rejoin for a fresh board.
-
-Errors are events carrying machine readable codes, never prose the client is expected to display.
-`ErrorCode` splits into `TransportErrorCode`, `MatchErrorCode` , `ChatErrorCode` and `PresenceErrorCode`, each namespaced
-with the same prefix as its events so the three sets cannot collide as they grow.
-
-### Chat events
-
-| Event | Direction | Purpose |
-| --- | --- | --- |
-| `chat.send` | client to server | Send a new message |
-| `chat.history` | client to server | Request previous messages |
-| `chat.message` | server to client | A successfully created message |
-| `chat.history_result` | server to client | Previous messages returned in response to a history request |
-| `chat.rejected` | server to client | A chat message refused by the server |
-
-### Presence events
-
-| Event | Direction | Purpose |
-| --- | --- | --- |
-| `presence.list` | client to server | Request the current list of online users |
-| `presence.state` | server to client | Current list of online users |
-| `presence.online` | server to client | A user has come online |
-| `presence.offline` | server to client | A user has gone offline |
-
-### What is still open
-
-The dashed boxes above are `never`, which contributes nothing to a union, so the empty sections
-typecheck today and `ClientEvent` and `ServerEvent` widen on their own once they are filled in.
-No edit to the top level unions is needed.
-
-- Transport: `TransportErrorCode` plus connect, authenticate, disconnect and reconnect.
-
-Note that types are erased at build time, so nothing stops a malformed frame from arriving over
-the wire. Validating incoming messages at the door is part of the transport work.
-
-### Sending a message from the web app
-
-[`apps/web/src/lib/protocol.ts`](apps/web/src/lib/protocol.ts) has one builder per client message,
-so no component constructs an envelope by hand:
-
-```ts
-import { joinMatch, sendMove } from './lib/protocol'
-
-socket.send(joinMatch(matchId, 'a1'))
-socket.send(sendMove(matchId, { x: 7, y: 7 }))
-```
-
-## The database
-
-Postgres, through Prisma. One schema file, `apps/api/prisma/schema.prisma`, and
-one migrations folder beside it — every table anyone adds goes there.
-
-[**docs/database.md**](docs/database.md) explains it from scratch: what the
-pieces are, the conventions every table follows, how to add your own, and what
-to do when something looks off. The migration rules are in
-[CONTRIBUTING](CONTRIBUTING.md#database).
-
-## Getting started
-
-### Requirements
-
-- **Docker** and **Docker Compose**
-- **GNU Make**
-- **Node 24** — run `nvm use`, which reads `.nvmrc`
-
-Node on your machine is not optional: `make up` builds the shared game-engine
-package on the host before starting the containers.
-
-### Setup
+### 1. Clone and configure
 
 ```sh
 git clone git@github.com:ASprintNotAMarathon/Transcendence.git
@@ -123,88 +60,444 @@ cd Transcendence
 cp .env.example .env
 ```
 
-Then edit `.env` and set three values:
+Edit `.env` and set three values. `.env` is ignored by Git, and `.env.example` is the
+committed template.
 
 | Variable | How |
 | --- | --- |
 | `POSTGRES_PASSWORD` | `openssl rand -hex 24` |
 | `JWT_SECRET` | `openssl rand -hex 32` |
-| `DATABASE_URL` | the same password, in the connection string |
+| `DATABASE_URL` | the same password, inside the connection string |
 
-The password may only contain `A-Za-z0-9._~-`. It is embedded in
-`DATABASE_URL`, where `@ : / ? # %` are structural characters and would break
-the URL.
+The password may only contain `A-Za-z0-9._~-`, because it is part of `DATABASE_URL`.
+`make up` refuses to start while a value is still a placeholder, or when `DATABASE_URL` does
+not match the `POSTGRES_*` variables.
 
-`make up` refuses to start if any value is still a placeholder, or if
-`DATABASE_URL` disagrees with the `POSTGRES_*` variables — so if you change the
-password, change it in both places.
+`HTTPS_PORT` (default `8443`) and `HTTP_PORT` (default `8080`) choose where nginx is
+published. They are above 1024 because rootless Docker, as on the Codam machines, cannot use
+lower ports.
+
+### 2. Start
 
 ```sh
 make up
 ```
 
-The first run takes a few minutes: it installs dependencies and builds two
-images. Afterwards it is seconds.
+This one command builds the images, applies the database migrations and waits until every
+service is healthy. The first run takes a few minutes. Later runs take seconds.
 
-### Checking it worked
+### 3. Check that it works
 
 ```sh
 make ps
 ```
 
-Four services, all `healthy`. Then:
+Four services (`nginx`, `web`, `api`, `db`), all `healthy`. Then open:
 
 | URL | Expected |
 | --- | --- |
-| https://localhost:8443 | the web app, as it will be evaluated |
-| https://localhost:8443/api/health | `{"status":"ok"}`, through nginx |
-| http://localhost:8080 | redirects to the https address |
-| http://localhost:5173 | the same app from the Vite dev server, with hot reload |
+| https://localhost:8443 | the app |
+| https://localhost:8443/api/health | `{"status":"ok"}` |
+| http://localhost:8080 | redirects to the HTTPS address |
 
-The certificate is self-signed, so the browser warns the first time. Choose
-"Advanced" and continue.
+The certificate is self-signed, so Chrome warns the first time. Choose "Advanced" and continue.
 
-The second one is the useful check: it proves nginx can reach the api
-container.
-
-### Demo accounts
+### 4. Demo accounts (optional)
 
 ```sh
-npm run seed
+make seed
 ```
 
-Creates four users, one finished match (alice beat bob) and two in progress
-(charlie vs dana, alice vs bob). Safe to run again.
+This creates four users, one finished match and two matches in progress. It is safe to run again.
 
-| Email | displayName | Password |
+| Email | Display name | Password |
 | --- | --- | --- |
 | alice@example.com | alice | alice-1234 |
 | bob@example.com | bob | bob-12345 |
 | charlie@example.com | charlie | charlie-1234 |
 | dana@example.com | dana | dana-1234 |
 
+To play a live match, log in as two of them in two browser windows (for example one normal
+and one incognito) and press Play in both.
+
 ### Everyday commands
 
-`make help` lists them all. The ones you need daily:
+`make help` lists all of them.
 
 | Command | Does |
 | --- | --- |
-| `make up` | start everything, waits until healthy |
-| `make down` | stop, **keep** the database |
-| `make fclean` | stop and **delete** the database |
+| `make up` | start everything and wait until healthy |
+| `make down` | stop, **keep** the database and avatars |
+| `make fclean` | stop and **delete** the database and avatars |
+| `make re` | `fclean`, then `up` |
 | `make logs` | follow all logs |
-| `make psql` | a shell on the database |
-| `make test` | run the game engine tests |
+| `make psql` | open a shell on the database |
+| `make test` | run the test suites |
+| `make typecheck` | typecheck every workspace |
 
-### Good to know
+For development, http://localhost:5173 serves the same app from the Vite dev server with hot
+reload. The evaluation uses https://localhost:8443.
 
-- Two ways in. `https://localhost:8443` is nginx serving the built app, the
-  way it is evaluated. `http://localhost:5173` is the Vite dev server.
-- Editing source hot-reloads on 5173. The app on 8443 is built when the image
-  is, so run `make up` again to see a frontend change there. API changes
-  reload on both.
-- Test logins, cookies and anything for the evaluation on 8443.
-- `HTTPS_PORT` and `HTTP_PORT` in `.env` move the two nginx ports. Rootless
-  Docker cannot use ports below 1024, which is why they are not 443 and 80.
-- Ports are published on `127.0.0.1` only, so nothing is exposed to the network.
-- If a container will not start, `make logs` first.
+## Team Information
+
+| Member | Login | Role(s) | Responsibilities |
+| --- | --- | --- | --- |
+| Kimia | kziari | Tech Lead, Developer | Defined the architecture and the technical conventions, made stack decisions, reviewed critical changes. Built the database models, authentication, the profile and avatar API, the friends and presence API, and the HTTPS setup with nginx. |
+| Lisandro | lprieri | Product Owner, Developer | Decided on features and priorities and validated finished work. Built the shared game engine, Gomoku, match sessions, the board, the lobby, matchmaking (backend), disconnect handling, and CI. |
+| Renata | rkaras | Project Manager, Developer | Organised the meetings and planning, tracked progress and blockers. Built the Docker setup and the one-command start, the WebSocket transport and socket authentication, and the HTTPS setup with nginx. |
+| Noor | nheessel | Developer | Built the frontend: app shell and routing, login and registration, profile page, friends page, online players list, matchmaking (frontend), Privacy Policy and Terms of Service. |
+| Sara | rshaheen | Developer | Built chat from end to end: protocol, database tables, server module, starting a conversation, conversation list and message pane. Wrote the database seed script. |
+
+## Project Management
+
+- **Meetings**: a weekly meeting at Codam, first on Mondays and later on Fridays. In each
+  meeting we went through the backlog: how far each task was, what was blocking, and which
+  decisions had to be made.
+- **Task organisation**: the work is split into GitHub issues, with one branch and one pull
+  request per issue. Features were cut into slices so that frontend and backend could be
+  built in parallel against the shared WebSocket protocol file.
+- **Code review**: every pull request uses the same template (What / Why / How to test) and is
+  reviewed by a teammate before it is merged into `main`.
+- **Conventions**: one vocabulary (`feat`, `fix`, `refactor`, `test`, `chore`, `docs`) for
+  labels, branches and commits, described in [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Tools**: GitHub Issues and pull requests for tasks and reviews, GitHub Actions for CI.
+  CI applies all migrations to an empty Postgres, checks that the schema and the migrations
+  agree, and runs the typecheck and the tests on every pull request.
+- **Communication**: Slack. Besides the channel, we kept a Slack canvas for each topic: the
+  tech stack, resources, the backlog, the modules we aimed for, and the points to discuss in
+  the next meeting.
+
+## Technical Stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 19, TypeScript, Vite, React Router 7, Tailwind CSS 4 + daisyUI 5, socket.io-client |
+| Backend | NestJS 11 (Express platform), TypeScript, Socket.IO 4, class-validator, argon2, JWT |
+| Database | PostgreSQL 17, through the Prisma 7 ORM |
+| Shared | `@transcendence/shared`: the game engine and the WebSocket protocol types, used by both sides |
+| Infrastructure | Docker Compose, nginx (HTTPS, reverse proxy), GNU Make |
+| Tooling | npm workspaces, Vitest, ESLint, Prettier, GitHub Actions |
+
+### Why these choices
+
+- **One language, one repository.** TypeScript on both sides in an npm-workspaces monorepo
+  lets the frontend and the backend import the same package. The Gomoku rules and the
+  WebSocket message types are written once in [`shared/`](shared/), so the client and the
+  server cannot disagree about what a legal move or a valid message is.
+- **NestJS** gives the backend a fixed structure (modules, controllers, services, guards) that
+  five people can follow, with built-in validation and WebSocket gateways.
+- **React + Vite** for a component-based single-page app with fast hot reload.
+  **Tailwind + daisyUI** for consistent, responsive styling without custom CSS on every page.
+- **PostgreSQL** because the data is relational: users, matches between two users, moves in
+  a match, friendships between two users. Foreign keys and unique indexes let the database
+  itself reject a duplicate email, a second friendship for the same pair, or two moves with
+  the same move number. This keeps concurrent actions by different users safe.
+- **Prisma** for one readable schema file, typed queries, and committed migrations that CI checks.
+- **Socket.IO** for the real-time channel. It reconnects automatically and supports rooms,
+  which the match, chat and presence features all use.
+- **The server owns the game.** The board is never stored and never trusted from a client.
+  Each accepted move is one row, and the position is rebuilt by replaying the moves through
+  the engine. A player who reconnects, or a spectator who joins late, gets exactly the same board.
+- **nginx** is the single HTTPS entry point. It serves the built frontend and forwards `/api`
+  and the WebSocket to the backend, so the browser only ever talks to one HTTPS origin.
+- **argon2 + JWT in an `httpOnly` cookie.** The password hash contains its own salt, and
+  JavaScript cannot read the token. The same cookie authenticates the WebSocket connection.
+
+## Database Schema
+
+Six tables. The full schema with comments is
+[`apps/api/prisma/schema.prisma`](apps/api/prisma/schema.prisma), and
+[docs/database.md](docs/database.md) explains the conventions.
+
+```mermaid
+erDiagram
+    User ||--o{ Match : "player0 / player1 / winner"
+    Match ||--o{ Move : "has"
+    User ||--o{ Conversation : "user0 / user1"
+    Conversation ||--o{ Message : "has"
+    User ||--o{ Message : "sender"
+    User ||--o{ Friendship : "user0 / user1"
+
+    User {
+        uuid id PK
+        text email UK
+        text displayName UK
+        text passwordHash
+        text avatarPath "nullable"
+    }
+    Match {
+        uuid id PK
+        GameName game
+        MatchStatus status "active | finished"
+        uuid player0Id FK
+        uuid player1Id FK
+        uuid winnerId FK "nullable, null when finished = draw"
+        EndReason endReason "played | resigned | abandoned"
+    }
+    Move {
+        uuid id PK
+        uuid matchId FK
+        int moveNumber "unique per match"
+        int by "0 or 1"
+        json payload "row, col"
+    }
+    Conversation {
+        uuid id PK
+        uuid user0Id FK
+        uuid user1Id FK "unique pair"
+    }
+    Message {
+        uuid id PK
+        uuid conversationId FK
+        uuid senderId FK
+        text body
+    }
+    Friendship {
+        uuid id PK
+        uuid user0Id FK
+        uuid user1Id FK "unique pair"
+        uuid requesterId
+        FriendshipStatus status "pending | accepted"
+    }
+```
+
+Every table follows the same rules:
+
+- Primary keys are UUIDs, so ids cannot be guessed from a URL.
+- Every table has `createdAt` and `updatedAt` as `timestamptz`.
+- Pairs of users (`Conversation`, `Friendship`) store the smaller id first, with a unique
+  index on the pair, so A+B and B+A are always the same row.
+- Anything that can be rebuilt is stored as events: the board comes from the `Move` rows and
+  is never saved as a snapshot.
+
+## Features List
+
+| Feature | What it does | Who |
+| --- | --- | --- |
+| Registration and login | Email and password, validated in the frontend and the backend, argon2 hash, JWT cookie, logout | Kimia (backend), Noor (frontend) |
+| Protected routing | Pages for guests only and for logged-in users only, app shell, 404 page | Noor |
+| Gomoku engine | Pure rules package: legal moves, win and draw detection, unit tested | Lisandro |
+| Live matches | Moves checked by the server and sent to both players, resign, end of game | Lisandro |
+| Board UI | Interactive 15×15 board with the turn and the result | Lisandro |
+| Matchmaking | A queue that pairs two waiting players into a new match | Lisandro (backend), Noor (frontend) |
+| Reconnection | 30-second grace period after a disconnect with a countdown for the opponent; the match resumes or is forfeited | Lisandro |
+| Lobby and spectating | List of live matches, resume your own, watch others in real time | Lisandro |
+| WebSocket transport | Authenticated connection, connection registry, message validation, rooms | Renata |
+| Profile | View a profile, change display name, upload an avatar (type and size checked on both sides), default avatar | Kimia (backend), Noor (frontend) |
+| Friends | Send, accept and decline requests, remove a friend, friends list | Kimia (backend), Noor (frontend) |
+| Online status | Online dot on friends, list of online players, updated live | Kimia (backend), Noor (frontend) |
+| Chat | Start a conversation from a profile, one-to-one messages, conversation list, history | Sara |
+| Privacy Policy / Terms of Service | Real content, linked from the footer on every page | Noor |
+| HTTPS | nginx with TLS in front of the app, HTTP redirects to HTTPS | Kimia, Renata |
+| One-command start | Docker Compose with health checks, Makefile, `.env` validation | Renata |
+| Seed data | Demo users, matches and conversations | Sara, Lisandro |
+| CI | Migration check, typecheck and tests on every pull request | Lisandro |
+
+## Modules
+
+| # | Category | Module | Type | Points | Who |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Web | Use a frontend framework (React) | Minor | 1 | Noor, Lisandro, Sara |
+| 2 | Web | Use a backend framework (NestJS) | Minor | 1 | Kimia, Lisandro, Renata, Sara |
+| 3 | Web | Real-time features using WebSockets | Major | 2 | Renata, Lisandro, Sara, Kimia |
+| 4 | Web | Allow users to interact with other users | Major | 2 | Sara, Kimia, Noor |
+| 5 | Web | Use an ORM for the database (Prisma) | Minor | 1 | Kimia |
+| 6 | User Management | Standard user management and authentication | Major | 2 | Kimia, Noor |
+| 7 | Gaming and UX | Complete web-based game (Gomoku) | Major | 2 | Lisandro |
+| 8 | Gaming and UX | Remote players | Major | 2 | Lisandro, Renata |
+| 9 | Gaming and UX | Spectator mode | Minor | 1 | Lisandro |
+| | | **Total** | 5 Major, 4 Minor | **14** | |
+
+Points: 5 Major × 2 = 10, plus 4 Minor × 1 = 4, **14 points in total**.
+
+### Why each module, and how it is implemented
+
+1. **Frontend framework (Minor).** React 19 with React Router builds the single-page app.
+   Components are shared between pages (avatar, cards, buttons, loading, empty and error states).
+2. **Backend framework (Minor).** NestJS 11 splits the API into modules (`auth`, `users`,
+   `friends`, `presence`, `match`, `chat`, `ws`), each with its own controller or socket
+   handlers, service and tests. A team of five needs this kind of fixed structure.
+3. **WebSockets (Major).** A board game is only playable if moves arrive at once. One
+   Socket.IO connection per browser tab carries match, matchmaking, lobby, chat and presence
+   events. Every message uses the same typed envelope, declared once in
+   [`shared/src/ws.ts`](shared/src/ws.ts) and validated when it arrives. Broadcasts go to
+   rooms (one per match, one for the lobby), so each message reaches only the clients that
+   need it. A connection registry tracks every socket a user has open, so a user counts as
+   offline only when their last tab closes. The client shows its connection state and
+   re-subscribes automatically after a reconnect.
+4. **User interaction (Major).** Players should be able to find each other again after a
+   game. Each user has a profile page. The friends system lets users add and remove friends
+   and see their friends list. From a profile, a user can start a private chat; messages are
+   delivered live and stored, so the history is still there later.
+5. **ORM (Minor).** Prisma gives one schema file, typed queries and committed migrations.
+   CI rebuilds the database from the migrations and fails if the result differs from the schema.
+6. **Standard user management (Major).** Users can change their display name and upload an
+   avatar (JPEG, PNG or WebP, up to 5 MB, checked in the frontend and the backend). Without
+   an upload, a default avatar with the user's initial is shown. Users can add friends and
+   see their online status, and every user has a profile page.
+7. **Web-based game (Major).** Gomoku has clear rules: two players take turns on a 15×15
+   board, five in a row wins, a full board is a draw, and a player can resign. The rules live
+   in a pure, unit-tested engine in `shared/`. The server runs it for every move and stores
+   each accepted move.
+8. **Remote players (Major).** Two players on different computers play the same match in
+   real time. Every move has a number, so a client that misses one notices the gap and asks
+   for a fresh board. If a player disconnects, the opponent is told and a 30-second grace
+   period starts. Reconnecting restores the full board from the server; otherwise the match
+   ends as `abandoned` and the opponent wins.
+9. **Spectator mode (Minor).** The lobby lists live matches and updates in real time. Joining
+   a match as a spectator subscribes to the same broadcasts as the players, but the server
+   refuses any move from a spectator.
+
+## Individual Contributions
+
+<!-- TODO(team): each person adds one or two real challenges and how they were solved. -->
+
+**Kimia (kziari), Tech Lead and Developer**
+- Technical direction: architecture, conventions, stack decisions, review of critical changes.
+- User model and Prisma service. Authentication: register, login, logout, `me`, argon2
+  hashing, JWT cookie, auth guard.
+- Profile and avatar endpoints, friends API and presence events, matchmaking tests.
+- HTTPS and the nginx reverse proxy, together with Renata.
+- *Challenges:* TODO.
+
+**Lisandro (lprieri), Product Owner and Developer**
+- Product decisions: features, priorities and validating finished work.
+- Shared game-engine package and the Gomoku engine, API scaffold, CI workflow, contribution
+  guidelines.
+- Match sessions over WebSockets, the board, end of game and resignation, the lobby,
+  matchmaking (backend), disconnect and reconnection handling.
+- *Challenges:* TODO.
+
+**Renata (rkaras), Project Manager and Developer**
+- Project management: meetings, planning, progress tracking and blockers.
+- Docker Compose with Postgres, the one-command `make up`, the web app scaffold.
+- WebSocket gateway, connection registry, message validation, cookie-based socket
+  authentication, client socket module.
+- HTTPS and the nginx reverse proxy, together with Kimia.
+- *Challenges:* TODO.
+
+**Noor (nheessel), Developer**
+- App shell and routing, login and registration screens, connecting the socket to auth.
+- Profile page with avatar upload, friends page, list of online players, matchmaking
+  (frontend), Privacy Policy, Terms of Service and footer.
+- *Challenges:* TODO.
+
+**Sara (rshaheen), Developer**
+- Chat from end to end: protocol events, conversation and message tables, chat module,
+  starting a conversation, history paging, conversation list, message pane, composer and
+  empty states.
+- Database seed script.
+- *Challenges:* TODO.
+
+## WebSocket protocol
+
+Every message either side may send over the socket is declared once in
+[`shared/src/ws.ts`](shared/src/ws.ts), and both the API and the web app import it. Every
+message has the same frame, `{ type, cid?, payload }`, where `cid` is a correlation id that
+the server repeats on a direct reply. Errors are events with machine-readable codes.
+
+| Namespace | Client to server | Server to client |
+| --- | --- | --- |
+| `match.*` | `join`, `leave`, `move`, `resign` | `state`, `moved`, `ended`, `disconnected`, `reconnected`, `rejected` |
+| `queue.*` | `join`, `leave` | `matched`, `rejected` |
+| `lobby.*` | `join`, `leave` | `joined`, `started`, `moved`, `ended` |
+| `chat.*` | `start`, `send`, `history`, `conversations` | `started`, `message`, `history_result`, `conversations_result`, `rejected` |
+| `presence.*` | `list` | `state`, `online`, `offline` |
+| `friends.*` | | `changed` |
+| `transport.*` | | `error` |
+
+## Known limitations
+
+- Only Gomoku can be played. The schema already reserves a second game name (Reversi), but
+  it has no engine.
+- Spectators cannot chat inside a match (optional part of the spectator module).
+- Only the latest stable Google Chrome is supported.
+- The HTTPS certificate is self-signed, so the browser shows a warning on the first visit.
+
+## Resources
+
+### References
+
+- [NestJS documentation](https://docs.nestjs.com/)
+- [React documentation](https://react.dev/)
+- [React Router documentation](https://reactrouter.com/)
+- [Prisma documentation](https://www.prisma.io/docs)
+- [PostgreSQL documentation](https://www.postgresql.org/docs/)
+- [Socket.IO documentation](https://socket.io/docs/v4/)
+- [Tailwind CSS](https://tailwindcss.com/docs) and [daisyUI](https://daisyui.com/)
+- [Docker Compose documentation](https://docs.docker.com/compose/)
+- [nginx documentation](https://nginx.org/en/docs/)
+- [GitHub Actions documentation](https://docs.github.com/en/actions)
+- [Vitest documentation](https://vitest.dev/)
+- [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [Gomoku rules (Wikipedia)](https://en.wikipedia.org/wiki/Gomoku)
+- TODO(team): tutorials or articles you actually used.
+
+### How AI was used
+
+AI tools were part of our everyday workflow, as they are in most software teams today.
+Most of the stack (TypeScript, NestJS, React, Prisma, Socket.IO, GitHub Actions) was new to
+us and the timeline was tight, so we treated AI as an assistant that helped us learn faster
+and move faster, while the team stayed responsible for every decision and every line merged.
+
+What we used it for:
+
+- **Learning**: getting comfortable with TypeScript and the frameworks, and explaining
+  concepts we had not met before (WebSockets, ORMs and migrations, JWT cookies, CI).
+- **Planning**: breaking the project down into tasks and estimating how long they would take.
+- **Decisions**: comparing options and their trade-offs before we chose one together in a meeting.
+- **CI**: learning GitHub Actions and setting up the workflow.
+- **Implementation**: as a pair-programming assistant across the codebase, for example to
+  suggest a first version of a component, endpoint or test, which we then adapted to our
+  conventions, reviewed and integrated.
+- **Documentation**: drafting documentation.
+
+<!-- TODO(team): is anything missing from this list, or used in a way not described here
+     (debugging, code review, writing tests, ...)? Add it so the list is complete. -->
+
+How we stayed in control of the result:
+
+- **The team designed the system.** The architecture, the shared protocol, the database
+  schema, the conventions and the priorities were decided by us in our weekly meetings.
+  AI suggestions had to fit into that design, not the other way around.
+- **Nothing was merged unseen.** Every change went through a pull request and was reviewed
+  by a teammate, who had to understand it well enough to approve it. Changes that did not fit
+  our conventions were sent back.
+- **Every change was verified.** Features were tested by hand, and CI runs the typecheck,
+  the test suites and the database migration checks on every pull request.
+
+<!-- TODO(team): read the points above and check that they are true for you. Change or remove
+     anything that does not match how you worked, and add your own practice if you had one
+     (e.g. rewriting suggestions by hand, asking AI to explain code before using it). -->
+
+### What we learned
+
+Beyond the features themselves, this project gave us experience in how a real software
+team works:
+
+- **Technical**: building a full-stack TypeScript application from scratch; designing a
+  typed real-time protocol shared by client and server; keeping a server-authoritative game
+  consistent across reconnects and spectators; working with a relational database, from
+  designing tables and relations to using constraints that keep data correct when users act
+  at the same time; evolving the schema safely with migrations that are versioned in Git and
+  checked in CI; and securing authentication with hashed passwords and `httpOnly` cookies.
+- **Engineering practice**: working in a monorepo with five people, a shared branching and
+  commit convention, pull request reviews, and continuous integration as a safety net.
+- **Teamwork**: splitting work so people could build in parallel, communicating blockers
+  early, making decisions together and documenting them, and working in clear roles
+  (Product Owner, Project Manager, Tech Lead).
+- **Working with AI**: using AI tools productively while keeping ownership of design,
+  quality and correctness, a skill we expect to need in our future jobs.
+
+<!-- TODO(team): add what you personally learned, technical or not. One line each is enough. -->
+- **Kimia:** TODO
+- **Lisandro:** TODO
+- **Renata:** TODO
+- **Noor:** TODO
+- **Sara:** TODO
+
+## More documentation
+
+- [CONTRIBUTING.md](CONTRIBUTING.md): branch, commit and database migration rules
+- [docs/database.md](docs/database.md): the database from scratch
+- [docs/code-notes.md](docs/code-notes.md): the reasoning behind specific pieces of code
