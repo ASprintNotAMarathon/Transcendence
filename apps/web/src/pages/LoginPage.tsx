@@ -21,7 +21,7 @@ const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password.'
 
 /*
   Login Page 
-*/ 
+*/
 function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -97,7 +97,7 @@ function LoginPage() {
         error={errors.email}
       />
 
-<FormField
+      <FormField
         id="password"
         label="Password"
         type="password"
@@ -110,7 +110,7 @@ function LoginPage() {
 
       {formError && <ErrorText live>{formError}</ErrorText>}
 
-      <PrimaryButton type="submit" disabled={submitting}>
+      <PrimaryButton block type="submit" disabled={submitting}>
         {submitting ? 'Logging in…' : 'Log in'}
       </PrimaryButton>
 
