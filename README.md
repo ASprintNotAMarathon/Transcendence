@@ -47,10 +47,10 @@ everyone watching.
 
 | Tool | Version | Notes |
 | --- | --- | --- |
-| Docker + Docker Compose | Compose v2 (`docker compose`) | runs the four services |
+| Docker + Docker Compose | Compose v2 (`docker compose`) | runs the three services |
 | GNU Make | any recent | the single entry point |
 | Node.js | 24 (see `.nvmrc`, run `nvm use`) | `make up` builds the shared game-engine package on the host first |
-| Google Chrome | latest stable | the supported browser |
+| A browser | latest stable | Google Chrome, or one of the other [supported browsers](#supported-browsers) |
 
 ### 1. Clone and configure
 
@@ -92,7 +92,7 @@ service is healthy. The first run takes a few minutes. Later runs take seconds.
 make ps
 ```
 
-Four services (`nginx`, `web`, `api`, `db`), all `healthy`. Then open:
+Three services (`nginx`, `api`, `db`), all `healthy`. Then open:
 
 | URL | Expected |
 | --- | --- |
@@ -100,7 +100,11 @@ Four services (`nginx`, `web`, `api`, `db`), all `healthy`. Then open:
 | https://localhost:8443/api/health | `{"status":"ok"}` |
 | http://localhost:8080 | redirects to the HTTPS address |
 
-The certificate is self-signed, so Chrome warns the first time. Choose "Advanced" and continue.
+The certificate is self-signed, so the browser warns the first time. Choose "Advanced" and continue.
+
+To play from a second computer, open `https://<IP of the host machine>:8443` there. Only the
+HTTPS port is reachable from the network; the API, the database and the HTTP redirect stay
+on `127.0.0.1`.
 
 ### 4. Demo accounts (optional)
 
@@ -135,8 +139,9 @@ and one incognito) and press Play in both.
 | `make test` | run the test suites |
 | `make typecheck` | typecheck every workspace |
 
-For development, http://localhost:5173 serves the same app from the Vite dev server with hot
-reload. The evaluation uses https://localhost:8443.
+nginx serves the built frontend, so a frontend change shows up after the next `make up`.
+For hot reload while developing, run the Vite dev server by hand with
+`npm run dev --workspace @transcendence/web`. The evaluation uses https://localhost:8443.
 
 ## Team Information
 
@@ -306,9 +311,11 @@ Every table follows the same rules:
 | 7 | Gaming and UX | Complete web-based game (Gomoku) | Major | 2 | Lisandro |
 | 8 | Gaming and UX | Remote players | Major | 2 | Lisandro, Renata |
 | 9 | Gaming and UX | Spectator mode | Minor | 1 | Lisandro |
-| | | **Total** | 5 Major, 4 Minor | **14** | |
+| 10 | Accessibility and i18n | Support for additional browsers | Minor | 1 | TODO(team) |
+| 11 | Web | Custom-made design system | Minor | 1 | TODO(team) |
+| | | **Total** | 5 Major, 6 Minor | **16** | |
 
-Points: 5 Major × 2 = 10, plus 4 Minor × 1 = 4, **14 points in total**.
+Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 
 ### Why each module, and how it is implemented
 
@@ -347,6 +354,23 @@ Points: 5 Major × 2 = 10, plus 4 Minor × 1 = 4, **14 points in total**.
 9. **Spectator mode (Minor).** The lobby lists live matches and updates in real time. Joining
    a match as a spectator subscribes to the same broadcasts as the players, but the server
    refuses any move from a spectator.
+10. **Additional browsers (Minor).** Players use different browsers, and the game should look
+    and behave the same for all of them. Besides Google Chrome, the whole application is
+    tested on TODO(team: e.g. Firefox and Safari): registration and login, matchmaking, a full
+    match, reconnecting, spectating, profiles and avatars, friends, and chat. Problems found
+    during testing were fixed so that the UI and the behaviour are the same in every
+    supported browser. Browser-specific limitations are listed in
+    [Supported browsers](#supported-browsers).
+11. **Custom-made design system (Minor).** A consistent look across every page, built once
+    and reused. The colour palette is defined as theme tokens in
+    [`apps/web/src/index.css`](apps/web/src/index.css) (primary, secondary, base, error, and
+    the stone and board colours of the game), and the typography uses DM Sans for text and
+    Barrio for display headings. The reusable components live in
+    [`apps/web/src/components/`](apps/web/src/components/), for example `Avatar`, `Card`,
+    `PrimaryButton`, `QuietButton`, `PrimaryLink`, `FormField`, `ErrorText`,
+    `SectionHeading`, `PlayerLink`, `FriendButton`, `MessageButton`, `UserMenu`, `Footer`
+    and `LegalPage`, together with shared loading, empty and error states.
+    TODO(team): describe the icons (where they come from and where they are used).
 
 ## Individual Contributions
 
@@ -408,12 +432,25 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 | `friends.*` | | `changed` |
 | `transport.*` | | `error` |
 
+## Supported browsers
+
+| Browser | Version | Status |
+| --- | --- | --- |
+| Google Chrome | latest stable | fully supported |
+| TODO(team) | latest stable | fully supported |
+| TODO(team) | latest stable | fully supported |
+
+Browser-specific limitations:
+
+<!-- TODO(team): list what behaves differently per browser, and how it was handled.
+     Example: how each browser shows the self-signed certificate warning. -->
+- TODO
+
 ## Known limitations
 
 - Only Gomoku can be played. The schema already reserves a second game name (Reversi), but
   it has no engine.
 - Spectators cannot chat inside a match (optional part of the spectator module).
-- Only the latest stable Google Chrome is supported.
 - The HTTPS certificate is self-signed, so the browser shows a warning on the first visit.
 
 ## Resources
