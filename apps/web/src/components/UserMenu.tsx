@@ -64,7 +64,7 @@ function UserMenu({ onLogout }: UserMenuProps) {
         aria-label="Account menu"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary-content)"
+        className="inline-flex rounded-full"
       >
         <Avatar displayName={user.displayName} avatarUrl={user.avatarUrl ?? undefined} size="md" />
       </button>

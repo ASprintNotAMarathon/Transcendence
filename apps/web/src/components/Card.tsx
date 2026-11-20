@@ -6,11 +6,12 @@ import type { ElementType, ReactNode } from 'react'
     <Card>                      grey border, for most things
     <Card highlighted>          red border, for "yours" or "current"
     <Card as="li" size="sm">    a different element, or tighter padding for rows
+    <Card size="lg">            roomier, for a card that stands alone on a page
 */
 
 type CardProps = {
   as?: ElementType
-  size?: 'sm' | 'md'
+  size?: 'sm' | 'md' | 'lg'
   highlighted?: boolean
   className?: string
   children: ReactNode
@@ -20,6 +21,7 @@ type CardProps = {
 const PADDING = {
   sm: 'px-4 py-3',
   md: 'p-4',
+  lg: 'p-6',
 }
 
 function Card({ as: Tag = 'div', size = 'md', highlighted = false, className = '', children }: CardProps) {

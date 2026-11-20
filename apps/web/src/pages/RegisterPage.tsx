@@ -119,7 +119,7 @@ function RegisterPage() {
         error={errors.password}
       />
 
-      <PrimaryButton type="submit" disabled={submitting}>
+      <PrimaryButton block type="submit" disabled={submitting}>
         {submitting ? 'Creating account…' : 'Get started'}
       </PrimaryButton>
 

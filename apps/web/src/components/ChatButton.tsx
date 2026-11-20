@@ -14,7 +14,7 @@ export function CloseCross({ onClick }: { onClick: () => void }) {
 			type="button"
 			onClick={onClick}
 			aria-label="Close chat"
-			className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-(--color-secondary) text-lg font-bold text-(--color-base-100) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)"
+			className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-(--color-secondary) text-lg font-bold text-(--color-base-100)"
 		>
 			✕
 		</button>
@@ -42,7 +42,7 @@ function ChatButton({ open, unread, onToggle }: Props) {
 			type="button"
 			onClick={onToggle}
 			aria-label={label}
-			className="cursor-pointer rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--color-primary)"
+			className="cursor-pointer rounded-xl"
 		>
 			<svg aria-hidden="true" width="52" height="48" viewBox="0 0 52 48">
 				<path

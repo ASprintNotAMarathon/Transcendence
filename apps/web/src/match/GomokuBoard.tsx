@@ -14,6 +14,9 @@ const STAR_POINTS = [
 
 const lines = Array.from({ length: BOARD_SIZE }, (_, i) => i * SPACING)
 
+// The grid sits on the board surface, so its lines are lighter than that
+// surface. They use their own colour, not --color-board-line, which is the
+// border colour for cards and form fields.
 const gridLine = { stroke: 'var(--color-board-line)' }
 const starPoint = { fill: 'var(--color-board-line)' }
 const winLine = { stroke: 'var(--color-primary)' }
@@ -60,6 +63,17 @@ function GomokuBoard({ state, onPlay, preview = true, flash = true }: GomokuBoar
           <stop offset="100%" style={{ stopColor: 'var(--color-secondary)' }} stopOpacity="0" />
         </radialGradient>
       </defs>
+      {/* Board surface. The viewBox already has PADDING around the grid, so the
+          outer stones sit on the surface without moving anything. No border
+          here: the card around the board already draws one. */}
+      <rect
+        x={-PADDING}
+        y={-PADDING}
+        width={SIZE + PADDING * 2}
+        height={SIZE + PADDING * 2}
+        rx={16}
+        fill="var(--color-board-surface)"
+      />
 
       <circle cx={SIZE / 2} cy={SIZE / 2} r={SIZE / 1.4} fill={`url(#${glowId})`} pointerEvents="none" />
 

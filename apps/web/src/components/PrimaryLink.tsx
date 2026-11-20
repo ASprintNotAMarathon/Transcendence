@@ -1,4 +1,5 @@
 import { Link, type LinkProps } from 'react-router'
+import { buttonClass, type ButtonLook } from './PrimaryButton'
 
 /*
   PrimaryLink. Same look as PrimaryButton, but for navigation instead of
@@ -8,10 +9,10 @@ import { Link, type LinkProps } from 'react-router'
     [ Play now ]   <- outlined pill shape
 */
 
-function PrimaryLink({ className = '', ...props }: LinkProps) {
+function PrimaryLink({ variant, size, block, className = '', ...props }: LinkProps & ButtonLook) {
   return (
     <Link
-      className={`self-center btn btn-lg tracking-wide border-2 btn-outline-accent ${className}`}
+      className={`${buttonClass({ variant, size, block })} ${className}`}
       {...props}
     />
   )

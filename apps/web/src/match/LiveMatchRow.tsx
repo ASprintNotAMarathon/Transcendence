@@ -2,6 +2,7 @@ import { Link } from 'react-router'
 import type { LiveMatch, MatchPlayer, PlayerIndex } from '@transcendence/shared'
 import { stoneFill } from './stones'
 import Card from '../components/Card'
+import PlayerLink from '../components/PlayerLink'
 
 type LiveMatchRowProps = {
   match: LiveMatch
@@ -28,12 +29,7 @@ function Player({ player, seat }: { player: MatchPlayer; seat: PlayerIndex }) {
       <svg viewBox="-8 -8 16 16" className="size-4 shrink-0" aria-hidden="true">
         <circle r={7} style={{ fill: stoneFill(seat) }} />
       </svg>
-      <Link
-        to={`/profile/${encodeURIComponent(player.userId)}`}
-        className="truncate underline-offset-4 hover:underline"
-      >
-        {player.displayName}
-      </Link>
+      <PlayerLink userId={player.userId} displayName={player.displayName} />
     </span>
   )
 }

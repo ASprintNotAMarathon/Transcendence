@@ -1,5 +1,4 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router'
 import Avatar from '../components/Avatar'
 import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
@@ -7,6 +6,10 @@ import { friendsApi, type Friend, type FriendRequests, type Person } from '../li
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from '../components/Card'
+import ErrorText from '../components/ErrorText'
+import SectionHeading from '../components/SectionHeading'
+import PlayerLink from '../components/PlayerLink'
+import QuietButton from '../components/QuietButton'
 
 /*
   FriendsPage. /friends
@@ -20,8 +23,6 @@ import Card from '../components/Card'
 */
 
 const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
-const quietLinkClass =
-    'text-sm text-muted underline hover:text-(--color-base-content) disabled:no-underline'
 
 type LoadState =
     | { status: 'loading' }
@@ -44,12 +45,11 @@ function Row({ person, online, children }: RowProps) {
     return (
         <Card as="li" size="sm" className="flex items-center gap-3">
             <Avatar displayName={person.displayName} avatarUrl={person.avatarUrl} size="md" online={online} />
-            <Link
-                to={`/profile/${encodeURIComponent(person.id)}`}
-                className="min-w-0 flex-1 truncate font-semibold hover:underline"
-            >
-                {person.displayName}
-            </Link>
+            <PlayerLink
+                userId={person.id}
+                displayName={person.displayName}
+                className="min-w-0 flex-1 font-semibold"
+            />
             <div className="flex items-center gap-3">{children}</div>
         </Card>
     )
@@ -57,8 +57,8 @@ function Row({ person, online, children }: RowProps) {
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
     return (
-        <section>
-            <h2 className="mb-3 text-sm uppercase tracking-wide text-muted">{title}</h2>
+        <section className="flex flex-col gap-3">
+            <SectionHeading>{title}</SectionHeading>
             {children}
         </section>
     )
@@ -116,11 +116,7 @@ function FriendsPage() {
 
             {state.status === 'ready' && (
                 <>
-                    {actionError && (
-                        <p role="alert" className="text-sm text-red-400">
-                            {actionError}
-                        </p>
-                    )}
+                    {actionError && <ErrorText live>{actionError}</ErrorText>}
 
                     {state.requests.incoming.length > 0 && (
                         <Section title="Requests for you">
@@ -135,14 +131,12 @@ function FriendsPage() {
                                         >
                                             Accept
                                         </button>
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === request.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(request.id, () => friendsApi.decline(request.id))}
                                         >
                                             Decline
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>
@@ -162,14 +156,12 @@ function FriendsPage() {
                                         person={friend}
                                         online={onlineIds ? onlineIds.has(friend.id) : friend.online}
                                     >
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === friend.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(friend.id, () => friendsApi.remove(friend.id))}
                                         >
                                             Remove friend
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>
@@ -181,14 +173,12 @@ function FriendsPage() {
                             <ul className="flex flex-col gap-3">
                                 {state.requests.outgoing.map((request) => (
                                     <Row key={request.id} person={request.user}>
-                                        <button
-                                            type="button"
+                                        <QuietButton
                                             disabled={busyId === request.id}
-                                            className={quietLinkClass}
                                             onClick={() => act(request.id, () => friendsApi.remove(request.user.id))}
                                         >
                                             Cancel request
-                                        </button>
+                                        </QuietButton>
                                     </Row>
                                 ))}
                             </ul>

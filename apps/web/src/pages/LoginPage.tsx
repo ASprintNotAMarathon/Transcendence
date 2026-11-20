@@ -4,6 +4,8 @@ import { isEmail } from 'validator'
 import PrimaryButton from '../components/PrimaryButton'
 import { useAuth } from '../auth/AuthContext'
 import { ApiError } from '../lib/api'
+import ErrorText from '../components/ErrorText'
+import FormField from '../components/FormField'
 
 type Errors = {
   email?: string
@@ -19,7 +21,7 @@ const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password.'
 
 /*
   Login Page 
-*/ 
+*/
 function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -84,45 +86,31 @@ function LoginPage() {
     >
       <h1 className="font-barrio text-2xl text-(--color-primary-content)">Welcome back!</h1>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email" className="sr-only">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)"
-        />
-        {errors.email && <p className="text-sm text-red-400">{errors.email}</p>}
-      </div>
+      <FormField
+        id="email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        error={errors.email}
+      />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password" className="sr-only">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          autoComplete="current-password"
-          placeholder="••••••••"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-(--color-primary-content)"
-        />
-        {errors.password && <p className="text-sm text-red-400">{errors.password}</p>}
-      </div>
+      <FormField
+        id="password"
+        label="Password"
+        type="password"
+        autoComplete="current-password"
+        placeholder="••••••••"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        error={errors.password}
+      />
 
-      {formError && (
-        <p role="alert" className="text-sm text-red-400">
-          {formError}
-        </p>
-      )}
+      {formError && <ErrorText live>{formError}</ErrorText>}
 
-      <PrimaryButton type="submit" disabled={submitting}>
+      <PrimaryButton block type="submit" disabled={submitting}>
         {submitting ? 'Logging in…' : 'Log in'}
       </PrimaryButton>
 

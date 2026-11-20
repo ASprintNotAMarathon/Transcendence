@@ -5,6 +5,8 @@ import { friendsApi, type Friend } from '../lib/friends'
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import { useOnlineStatus } from '../socket/useOnlineStatus'
 import Card from './Card'
+import ErrorText from './ErrorText'
+import SectionHeading from './SectionHeading'
 
 /*
   FriendsStrip. A small card for the home page.
@@ -49,12 +51,7 @@ function FriendsStrip() {
   return (
     <section aria-labelledby="friends-heading" className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2
-          id="friends-heading"
-          className="text-xs font-semibold uppercase tracking-widest text-muted"
-        >
-          Friends
-        </h2>
+        <SectionHeading id="friends-heading">Friends</SectionHeading>
         {state.status === 'ready' && state.requestCount > 0 && (
           <Link
             to="/friends"
@@ -68,13 +65,11 @@ function FriendsStrip() {
       <Card>
         {state.status === 'loading' && <p className="text-sm text-muted">Loading…</p>}
         {state.status === 'error' && (
-          <p role="alert" className="text-sm text-red-400">
-            We could not load your friends.
-          </p>
+          <ErrorText live>We could not load your friends.</ErrorText>
         )}
 
         {state.status === 'ready' && state.friends.length === 0 && (
-          <p className="text-sm text-muted">
+          <p className="text-muted">
             No friends yet. Open a player's profile and choose Add friend.
           </p>
         )}

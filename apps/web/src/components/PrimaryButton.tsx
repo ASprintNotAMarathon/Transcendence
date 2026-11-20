@@ -6,14 +6,40 @@ import type { ButtonHTMLAttributes } from 'react'
     For navigation instead, see PrimaryLink.
   
       [ Log in ]   <- outlined pill shape
+      <PrimaryButton>                  outlined pill, the default
+      <PrimaryButton variant="solid">  filled red, the main action on a screen
+      <PrimaryButton size="sm">        smaller, for a secondary action
+      <PrimaryButton block>            full width inside its card
 */
 
-type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement>
+// Full class names on purpose, so Tailwind can find them.
+const VARIANT = {
+  solid: 'btn-primary border-(--color-primary)',
+  outline: 'btn-outline-accent',
+}
 
-function PrimaryButton({ className = '', ...props }: PrimaryButtonProps) {
+const SIZE = {
+  sm: 'btn-sm',
+  lg: 'btn-lg',
+}
+
+export type ButtonLook = {
+  variant?: 'solid' | 'outline'
+  size?: 'sm' | 'lg'
+  block?: boolean
+}
+
+// One source for how a button looks, shared with PrimaryLink.
+export function buttonClass({ variant = 'outline', size = 'lg', block = false }: ButtonLook) {
+  return `btn tracking-wide border-2 ${VARIANT[variant]} ${SIZE[size]} ${block ? 'w-full' : ''}`
+}
+
+type PrimaryButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & ButtonLook
+
+function PrimaryButton({ variant, size, block, className = '', ...props }: PrimaryButtonProps) {
   return (
     <button
-      className={`self-center btn btn-lg tracking-wide border-2 btn-outline-accent ${className}`}
+      className={`${buttonClass({ variant, size, block })} ${className}`}
       {...props}
     />
   )

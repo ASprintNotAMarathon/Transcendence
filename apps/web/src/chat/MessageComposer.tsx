@@ -16,6 +16,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
+import { inputClass } from '../components/FormField'
+import ErrorText from '../components/ErrorText'
 
 // Drafts keyed by conversation id. Lives outside the component so it
 // survives when the composer unmounts (switching conversations).
@@ -106,9 +108,7 @@ function MessageComposer({ conversationId, onSend }: MessageComposerProps) {
 		<div className="flex flex-col gap-2 border-t border-(--color-base-100) pt-2">
 			{status === 'failed' && (
 				<div className="flex items-center justify-between gap-2 text-sm">
-					<span className="text-(--color-primary)">
-						Message not sent.
-					</span>
+					<ErrorText>Message not sent.</ErrorText>
 					{/* Try sending the same message again. */}
 					<button
 						type="button"
@@ -139,9 +139,10 @@ function MessageComposer({ conversationId, onSend }: MessageComposerProps) {
 					rows={2}
 					placeholder="Write a message — Enter to send, Shift+Enter for a new line"
 					aria-label="Message"
+					name="message"
 
 					// extra lines scroll inside the box instead of growing it
-					className="textarea rounded-md flex-1 resize-none overflow-y-auto"
+					className={`${inputClass} flex-1 resize-none overflow-y-auto`}
 				/>
 
 				<button

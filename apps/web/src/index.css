@@ -1,7 +1,22 @@
+/*
+  Here we define the look of Gomoku
+  1. Theme: the colours and the pill shape, used by every component
+  2. Page: background, fonts
+  3. Small helpers: muted text, the outlined button, the glowing title
+  4. Match layout: the grid that puts the board next to the panel
+  5. Animations: stones on the board, the loading dots, the glowing title
+  6. Reduced motion: the same screens without movement
+  7. Form fields: what a browser paints over our own colours
+  8. Focus ring: if you use tab, all buttons have the same clear focus ring
+*/
+
 @import "tailwindcss";
+
+/* 1. Theme. Change a colour here and every button, border and dot follows. */
 @plugin "daisyui" {
   themes: gomoku --default;
 }
+
 @plugin "daisyui/theme" {
   name: "gomoku";
   --color-primary: #B23A2E;
@@ -11,26 +26,29 @@
   --color-base-200: #0A0B0D;
   --color-base-content: #ECE7DE;
   --radius-field: 9999px;
+  --color-error: #E58A7C;
   --color-stone-terracotta: #C2663F;
   --color-stone-sage: #B2C29C;
-  --color-board-surface: #0F1013;
   --color-board-line: #3A3E48;
+  --color-board-grid: #636A72;
+  --color-board-surface: #000000;
 }
 
+
+/* 2. Page. The red glow comes from two gradients: one here, one in body::before. */
 body {
   margin: 0;
-  font-family: 'Valley Sans', system-ui, sans-serif;
+  font-family: 'DM Sans', system-ui, sans-serif;
   background:
-    radial-gradient(
-      ellipse 900px 600px at 15% 100%,
+    radial-gradient(ellipse 900px 600px at 15% 100%,
       color-mix(in srgb, var(--color-primary) 85%, transparent) 0%,
-      transparent 55%
-    ),
+      transparent 55%),
     var(--color-base-200);
   min-height: 100vh;
   position: relative;
 }
 
+/* 3. Small helpers, used from className in the components. */
 .font-barrio {
   font-family: 'Barrio', system-ui, sans-serif;
 }
@@ -56,20 +74,22 @@ body::before {
   left: 0;
   right: 0;
   height: 350px;
-  background: radial-gradient(
-    ellipse 1000px 350px at 80% 30%,
-    color-mix(in srgb, var(--color-primary) 45%, transparent) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse 1000px 350px at 80% 30%,
+      color-mix(in srgb, var(--color-primary) 45%, transparent) 0%,
+      transparent 70%);
   pointer-events: none;
   z-index: 0;
 }
 
+/* 5. Animations: stones on the board, the loading dots, the glowing title.
+   The match layout below sits in the middle of this section, because moving
+   the blocks around would mean touching code that works. */
 @keyframes stone-pop {
   from {
     opacity: 0;
     transform: scale(0.4);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -90,6 +110,7 @@ body::before {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
@@ -104,6 +125,7 @@ body::before {
     opacity: 0.9;
     transform: scale(1);
   }
+
   to {
     opacity: 0;
     transform: scale(1.9);
@@ -116,6 +138,8 @@ body::before {
   animation: stone-flash 0.8s ease-out forwards;
 }
 
+/* 4. Match layout. On a phone everything is stacked. From xl (1280px and wider) the board is
+   in the middle and the players + the buttons on the side */
 .match-layout {
   display: grid;
   grid-template-areas: "status" "board" "players" "actions";
@@ -141,10 +165,21 @@ body::before {
   }
 }
 
-.match-status { grid-area: status; }
-.match-board { grid-area: board; }
-.match-players { grid-area: players; }
-.match-actions { grid-area: actions; }
+.match-status {
+  grid-area: status;
+}
+
+.match-board {
+  grid-area: board;
+}
+
+.match-players {
+  grid-area: players;
+}
+
+.match-actions {
+  grid-area: actions;
+}
 
 .match-status,
 .match-players,
@@ -171,6 +206,7 @@ body::before {
   from {
     filter: drop-shadow(0 0 0 color-mix(in srgb, var(--color-secondary) 0%, transparent));
   }
+
   to {
     filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-secondary) 90%, transparent));
   }
@@ -183,9 +219,12 @@ body::before {
 }
 
 @keyframes title-glow {
-  0%, 100% {
+
+  0%,
+  100% {
     text-shadow: 0 0 6px rgba(0, 0, 0, 0.6), 0 0 2px color-mix(in srgb, var(--color-primary) 40%, transparent);
   }
+
   50% {
     text-shadow: 0 0 10px rgba(0, 0, 0, 0.8), 0 0 3px color-mix(in srgb, var(--color-primary) 60%, transparent);
   }
@@ -195,7 +234,10 @@ body::before {
   animation: title-glow 2.4s ease-in-out infinite;
 }
 
+/* 6. Reduced motion. The same screens for anyone who asked their system to
+   limit animation, so nothing moves but the end result stays visible. */
 @media (prefers-reduced-motion: reduce) {
+
   .stone-pop,
   .stone-win-line,
   .board-win-line,
@@ -225,14 +267,18 @@ body::before {
   .stone-loading-dot {
     animation: none;
     opacity: 1;
-}
+  }
 }
 
 @keyframes stone-loading-pulse {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     opacity: 0.25;
     transform: scale(0.85);
   }
+
   40% {
     opacity: 1;
     transform: scale(1);
@@ -242,3 +288,21 @@ body::before {
 .stone-loading-dot {
   animation: stone-loading-pulse 1.2s ease-in-out infinite;
 }
+
+/* 7. Form fields. Chrome paints its own 'default' background on a field it filled in,
+   and that colour wins from ours. The inset shadow is the usual way over it. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-base-content);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-base-100) inset;
+  caret-color: var(--color-base-content);
+}
+
+/* 8. Focus. One ring for the whole app in color white (from the theme), so it stays
+   visible on the dark page and is everywhere the same. Browsers follow the
+   rounded corners of whatever is focused, so the pills keep their shape. */
+   :focus-visible {
+    outline: 2px solid var(--color-base-content);
+    outline-offset: 2px;
+  }

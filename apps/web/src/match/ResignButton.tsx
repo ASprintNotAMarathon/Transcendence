@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import QuietButton from '../components/QuietButton'
 
 type ResignButtonProps = {
   onResign: () => void
@@ -12,9 +13,9 @@ function ResignButton({ onResign }: ResignButtonProps) {
 
   if (!confirming) {
     return (
-      <button type="button" className={`self-start ${buttonClass}`} onClick={() => setConfirming(true)}>
+      <QuietButton className="self-start" onClick={() => setConfirming(true)}>
         Resign
-      </button>
+      </QuietButton>
     )
   }
 
@@ -25,7 +26,7 @@ function ResignButton({ onResign }: ResignButtonProps) {
 
   return (
     <div role="group" aria-label="Confirm resignation" className="flex flex-col gap-2">
-      <p className="text-sm">Resign this match?</p>
+      <p>Resign this match?</p>
       <div className="flex gap-2">
         <button type="button" className={buttonClass} disabled={sent} onClick={resign}>
           Yes, resign
