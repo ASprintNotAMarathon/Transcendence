@@ -387,7 +387,11 @@ Points: 5 Major × 2 = 10, plus 4 Minor × 1 = 4, **14 points in total**.
   starting a conversation, history paging, conversation list, message pane, composer and
   empty states.
 - Database seed script.
-- *Challenges:* TODO.
+- *Challenges:* Clicking Message for another user didn't update the chat popup if it was already open.
+
+    ***Reason:*** The popup was already mounted and kept its existing state.
+
+    ***Solution:*** Added a `startKey`counter in `ChatPopup.tsx` that increments on every Message press and is used as the chat window's React key. When the key changes, React remounts the chat window with the newly selected conversation and resets its state.
 
 ## WebSocket protocol
 
@@ -494,7 +498,7 @@ team works:
 - **Lisandro:** TODO
 - **Renata:** TODO
 - **Noor:** TODO
-- **Sara:** TODO
+- **Sara:** Using PR and Issues in Github for work organization, Frontend-Backend coordination, React, typescript
 
 ## More documentation
 
