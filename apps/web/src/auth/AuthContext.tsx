@@ -10,11 +10,13 @@ Exports:
 - useAuth(): call this in any component to read user/status, or to call
   login/register/logout
  
-When app starts, it asks the server "who am I" (GET /api/auth/me).
+When app starts, it asks the server "who am I" (GET /api/auth/session).
 The session lives in an HttpOnly cookie, the browser sends it
 automatically, we never read / store it.
- 
-A 401 here just means nobody's logged in, don't treat it as an error.
+
+It answers 200 either way: { user: null } just means nobody's logged in.
+We don't use /auth/me here, because its 401 shows up as an error in the
+browser console for every logged-out visitor.
 */
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
@@ -44,12 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 // 'limitation'.
   useEffect(() => {
     authApi
-      .me()
-      .then((me) => {
-        setUser(me)
-        setStatus('authenticated')
+      .session()
+      .then(({ user }) => {
+        setUser(user)
+        setStatus(user ? 'authenticated' : 'anonymous')
       })
       .catch(() => {
+        // Only a real failure now (server down, network error).
         setUser(null)
         setStatus('anonymous')
       })

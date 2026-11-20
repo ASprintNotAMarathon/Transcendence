@@ -127,6 +127,39 @@ describe('auth (e2e)', () => {
 		await request(server).get('/api/auth/me').expect(401);
 	});
 
+	describe('GET /auth/session', () => {
+		it('answers 200 with no user when there is no cookie', async () => {
+			const res = await request(server)
+				.get('/api/auth/session')
+				.expect(200);
+			expect(res.body).toEqual({ user: null });
+		});
+
+		it('answers 200 with no user for a bad token', async () => {
+			const res = await request(server)
+				.get('/api/auth/session')
+				.set('Cookie', 'access_token=not-a-token-at-all')
+				.expect(200);
+			expect(res.body).toEqual({ user: null });
+		});
+
+		it('returns the user for a valid session', async () => {
+			const registered = await request(server)
+				.post('/api/auth/register')
+				.send(freshAccount())
+				.expect(201);
+
+			const res = await request(server)
+				.get('/api/auth/session')
+				.set('Cookie', sessionCookie(registered))
+				.expect(200);
+
+			expect((res.body as { user: PublicUser }).user.id).toBe(
+				(registered.body as PublicUser).id,
+			);
+		});
+	});
+
 	it('refuses a token that has been edited', async () => {
 		const account = freshAccount();
 
