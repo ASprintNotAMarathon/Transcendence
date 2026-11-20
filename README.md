@@ -146,7 +146,7 @@ reload. The evaluation uses https://localhost:8443.
 | Lisandro | lprieri | Product Owner, Developer | Decided on features and priorities and validated finished work. Built the shared game engine, Gomoku, match sessions, the board, the lobby, matchmaking (backend), disconnect handling, and CI. |
 | Renata | rkaras | Project Manager, Developer | Organised the meetings and planning, tracked progress and blockers. Built the Docker setup and the one-command start, the WebSocket transport and socket authentication, and the HTTPS setup with nginx. |
 | Noor | nheessel | Developer | Built the frontend: app shell and routing, login and registration, profile page, friends page, online players list, matchmaking (frontend), Privacy Policy and Terms of Service. |
-| Sara | rshaheen | Developer | Built chat from end to end: protocol, database tables, server module, starting a conversation, conversation list and message pane. Wrote the database seed script. |
+| Sara | rshaheen | Developer | Built chat from end to end: protocol, database tables, chat backend, starting a conversation, conversation list and message pane. Wrote the database seed script. |
 
 ## Project Management
 
@@ -383,15 +383,13 @@ Points: 5 Major × 2 = 10, plus 4 Minor × 1 = 4, **14 points in total**.
 - *Challenges:* TODO.
 
 **Sara (rshaheen), Developer**
-- Chat from end to end: protocol events, conversation and message tables, chat module,
-  starting a conversation, history paging, conversation list, message pane, composer and
-  empty states.
+- Chat from end to end: WebSocket events (`chat.send`, `chat.start`, …), relevant payload types, conversation and message tables, chat module, starting a conversation, history paging, conversation list, message pane, composer, unread badges and empty states.
 - Database seed script.
 - *Challenges:* Clicking Message for another user didn't update the chat popup if it was already open.
 
     ***Reason:*** The popup was already mounted and kept its existing state.
 
-    ***Solution:*** Added a `startKey`counter in `ChatPopup.tsx` that increments on every Message press and is used as the chat window's React key. When the key changes, React remounts the chat window with the newly selected conversation and resets its state.
+    ***Solution:*** Added a `startKey` counter in `ChatPopup.tsx` that increments on every Message press and is used as the chat window's React key. When the key changes, React remounts the chat window with the newly selected conversation and resets its state.
 
 ## WebSocket protocol
 
