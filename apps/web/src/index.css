@@ -7,6 +7,7 @@
   5. Animations: stones on the board, the loading dots, the glowing title
   6. Reduced motion: the same screens without movement
   7. Form fields: what a browser paints over our own colours
+  8. Focus ring: if you use tab, all buttons have the same clear focus ring
 */
 
 @import "tailwindcss";
@@ -297,3 +298,11 @@ input:-webkit-autofill:focus {
   -webkit-box-shadow: 0 0 0 1000px var(--color-base-100) inset;
   caret-color: var(--color-base-content);
 }
+
+/* 8. Focus. One ring for the whole app in color white (from the theme), so it stays
+   visible on the dark page and is everywhere the same. Browsers follow the
+   rounded corners of whatever is focused, so the pills keep their shape. */
+   :focus-visible {
+    outline: 2px solid var(--color-base-content);
+    outline-offset: 2px;
+  }
