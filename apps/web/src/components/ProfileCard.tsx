@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Avatar from './Avatar'
+import Card from './Card'
 
 /*
   ProfileCard. The card on the profile page: avatar, name, member since.
@@ -21,7 +22,7 @@ function ProfileCard({ displayName, avatarUrl, createdAt, email, children }: Pro
   })
 
   return (
-    <div className="mt-4 max-w-xl rounded-2xl border-2 border-(--color-primary) bg-(--color-base-100) p-6">
+    <Card highlighted size="lg" className="mt-4 max-w-xl">
       <div className="flex flex-col items-start gap-5 sm:flex-row sm:items-center">
         <Avatar displayName={displayName} avatarUrl={avatarUrl} size="lg" />
         <div className="min-w-0">
@@ -32,7 +33,7 @@ function ProfileCard({ displayName, avatarUrl, createdAt, email, children }: Pro
       </div>
 
       {children && <div className="mt-5 flex gap-3">{children}</div>}
-    </div>
+    </Card>
   )
 }
 
