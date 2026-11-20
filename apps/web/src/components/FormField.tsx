@@ -20,7 +20,7 @@ type FormFieldProps = {
   How every field looks: dark like the cards, with the same grey border as the
   other cards. The focus ring from index.css marks the field you are in.
 */
-const inputClass =
+export const inputClass =
   'rounded-xl border-2 border-(--color-board-line) bg-(--color-base-100) px-3 py-2 ' +
   'text-(--color-base-content) placeholder:text-muted'
 
