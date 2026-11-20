@@ -1,4 +1,4 @@
-# Stage 1: build the web app. Same steps and order as apps/web/Dockerfile,
+# Stage 1: build the web app. Same steps and order as apps/api/Dockerfile,
 # so Docker reuses the cached `npm ci` from there.
 FROM node:24-slim AS web-build
 
