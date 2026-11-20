@@ -1,7 +1,8 @@
-import { Link } from 'react-router'
 import Card from './Card'
 import ErrorText from './ErrorText'
 import SectionHeading from './SectionHeading'
+import PrimaryButton from './PrimaryButton'
+import PrimaryLink from './PrimaryLink'
 
 type Props = {
   searching: boolean
@@ -11,8 +12,6 @@ type Props = {
   onFind: () => void
   onCancel: () => void
 }
-
-const mainButtonClass = 'btn btn-primary w-full tracking-wide border-2 border-(--color-primary)'
 
 function PlayCard({ searching, error, disabled, resumeMatchId, onFind, onCancel }: Props) {
   return (
@@ -24,23 +23,23 @@ function PlayCard({ searching, error, disabled, resumeMatchId, onFind, onCancel 
             <p role="status" className="text-muted">
               Your match is ready.
             </p>
-            <Link to={`/match/${resumeMatchId}`} className={mainButtonClass}>
+            <PrimaryLink variant="solid" block to={`/match/${resumeMatchId}`}>
               Resume your match
-            </Link>
+            </PrimaryLink>
           </>
         ) : searching ? (
           <>
             <p role="status" className="text-muted">
               Looking for an opponent…
             </p>
-            <button type="button" onClick={onCancel} className="btn btn-sm tracking-wide border-2 btn-outline-accent self-start">
+            <PrimaryButton size="sm" className="self-start" onClick={onCancel}>
               Cancel
-            </button>
+            </PrimaryButton>
           </>
         ) : (
-          <button type="button" onClick={onFind} disabled={disabled} className={mainButtonClass}>
+          <PrimaryButton variant="solid" block onClick={onFind} disabled={disabled}>
             Find a match
-          </button>
+          </PrimaryButton>
         )}
         {error !== null && (
           <ErrorText live>{error}</ErrorText>
