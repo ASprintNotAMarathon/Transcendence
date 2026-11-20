@@ -52,7 +52,7 @@ psql:	## Open a shell on the database
 seed:	$(DEPS) $(PRISMA)	## Fill the database with demo users and matches
 		$(NPM) run seed
 		@echo
-		@echo "Log in at http://localhost:5173/login as either player"
+		@. ./.env && echo "Log in at https://localhost:$${HTTPS_PORT:-8443}/login as either player"
 		@echo "	charlie@example.com / charlie-1234"
 		@echo "	dana@example.com / dana-1234"
 		@echo "They have a match in progress. Full account list is in the README."

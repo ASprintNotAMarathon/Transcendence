@@ -152,16 +152,20 @@ images. Afterwards it is seconds.
 make ps
 ```
 
-Three services, all `healthy`. Then:
+Four services, all `healthy`. Then:
 
 | URL | Expected |
 | --- | --- |
-| http://localhost:5173 | the web app |
-| http://localhost:3000/api/health | `{"status":"ok"}` |
-| http://localhost:5173/api/health | the same, through the Vite proxy |
+| https://localhost:8443 | the web app, as it will be evaluated |
+| https://localhost:8443/api/health | `{"status":"ok"}`, through nginx |
+| http://localhost:8080 | redirects to the https address |
+| http://localhost:5173 | the same app from the Vite dev server, with hot reload |
 
-The third one is the useful check — it proves the web container can reach the
-api container.
+The certificate is self-signed, so the browser warns the first time. Choose
+"Advanced" and continue.
+
+The second one is the useful check: it proves nginx can reach the api
+container.
 
 ### Demo accounts
 
@@ -194,6 +198,13 @@ Creates four users, one finished match (alice beat bob) and two in progress
 
 ### Good to know
 
-- Editing source hot-reloads inside the containers. No rebuild needed.
+- Two ways in. `https://localhost:8443` is nginx serving the built app, the
+  way it is evaluated. `http://localhost:5173` is the Vite dev server.
+- Editing source hot-reloads on 5173. The app on 8443 is built when the image
+  is, so run `make up` again to see a frontend change there. API changes
+  reload on both.
+- Test logins, cookies and anything for the evaluation on 8443.
+- `HTTPS_PORT` and `HTTP_PORT` in `.env` move the two nginx ports. Rootless
+  Docker cannot use ports below 1024, which is why they are not 443 and 80.
 - Ports are published on `127.0.0.1` only, so nothing is exposed to the network.
 - If a container will not start, `make logs` first.

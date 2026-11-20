@@ -26,8 +26,8 @@ export function configureApp(app: NestExpressApplication): void {
 
 	// The uploaded avatars, at the URL avatarUrl() builds. Public on purpose:
 	// an <img> loads them, and the names are random uuids nobody can guess.
-	// nginx will serve this same path from the same folder later, so the
-	// URL, and the web app, stay as they are.
+	// Behind nginx they never reach this: nginx serves the same path from the
+	// same folder. This is for the Vite dev server and running without Docker.
 	const config = app.get(ConfigService<EnvConfig, true>);
 	app.useStaticAssets(config.get('AVATAR_DIR', { infer: true }), {
 		prefix: AVATAR_URL_PREFIX,

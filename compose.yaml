@@ -1,6 +1,31 @@
 name: transcendence
 
 services:
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    init: true
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      # Filled into nginx.conf.template when the container starts.
+      HTTPS_PORT: ${HTTPS_PORT:-8443}
+      API_PORT: ${API_PORT:-3000}
+    ports:
+      - "127.0.0.1:${HTTPS_PORT:-8443}:443"
+      - "127.0.0.1:${HTTP_PORT:-8080}:80"
+    volumes:
+      # The same volume the api writes uploads to. Read-only: nginx only hands them out.
+      - avatars:/data/avatars:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "https://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   web:
     build:
       context: .
@@ -51,7 +76,7 @@ services:
       - /app/apps/api/node_modules
       # Named like postgres-data, so avatars survive `make down` and rebuilds, and `make fclean`
       # deletes them together with the rows that point at them.
-      # When nginx arrives it can mount this same volume read-only and serve /api/avatars/ itself.
+      # nginx mounts this same volume read-only and serves /api/avatars/ itself.
       - avatars:/data/avatars
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:' + (process.env.API_PORT || 3000) + '/api/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]

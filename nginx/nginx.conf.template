@@ -1,0 +1,89 @@
+events {}
+
+http {
+	# Without this every file goes out as text/plain, and the browser
+	# refuses to run a script that is not labelled as JavaScript.
+	include			/etc/nginx/mime.types;
+	default_type	application/octet-stream;
+
+	server {
+		listen 443 ssl;
+		server_name localhost;
+
+		# nginx's own redirects (/ws -> /ws/) would otherwise be full addresses
+		# with the port nginx listens on inside the container (443), not the one
+		# compose publishes. Relative ones keep whatever port the browser used.
+		absolute_redirect off;
+
+		ssl_certificate		/etc/nginx/certs/localhost.crt;
+		ssl_certificate_key	/etc/nginx/certs/localhost.key;
+
+		# Uploaded avatars, straight from the volume the api writes them to.
+		# More specific than /api/, so nginx picks this block for these URLs.
+		location /api/avatars/ {
+			alias /data/avatars/;
+
+			# Every upload gets a new name, so a URL's content never changes.
+			add_header Cache-Control "public, max-age=31536000, immutable";
+			# The type comes from the extension, which the api took from the
+			# real bytes. Stop the browser second-guessing it.
+			add_header X-Content-Type-Options "nosniff";
+		}
+
+		location /api/ {
+			proxy_pass http://api:${API_PORT};
+
+			# The api accepts avatars up to 5 MB; nginx stops at 1 MB unless
+			# told otherwise. The extra megabyte is for the form around the file.
+			client_max_body_size 6m;
+
+			proxy_set_header Host				$host;
+			proxy_set_header X-Real-IP			$remote_addr;
+			proxy_set_header X-Forwarded-For	$proxy_add_x_forwarded_for;
+			proxy_set_header X-Forwarded-Proto	$scheme;
+		}
+
+		location /ws/ {
+			proxy_pass http://api:${API_PORT};
+
+			# The upgrade only exists in HTTP/1.1, and nginx drops these two
+			# headers unless told to pass them on.
+			proxy_http_version 1.1;
+			proxy_set_header Upgrade	$http_upgrade;
+			proxy_set_header Connection	"upgrade";
+
+			proxy_set_header Host				$host;
+			proxy_set_header X-Real-IP			$remote_addr;
+			proxy_set_header X-Forwarded-For	$proxy_add_x_forwarded_for;
+			proxy_set_header X-Forwarded-Proto	$scheme;
+
+			# nginx closes a proxied connection after 60s of silence. The api
+			# pings every 10s, so this is only a safety margin.
+			proxy_read_timeout 1h;
+		}
+
+		root /usr/share/nginx/html;
+
+		# Vite puts a hash of the content in every file name under /assets/,
+		# so a file never changes and the browser may keep it for good.
+		location /assets/ {
+			add_header Cache-Control "public, max-age=31536000, immutable";
+			try_files $uri =404;
+		}
+
+		# The real file if there is one. Otherwise index.html, because
+		# /lobby or /match/123 are pages the React router draws, not files.
+		location / {
+			add_header Cache-Control "no-cache";
+			try_files $uri /index.html;
+		}
+	}
+
+	server {
+		listen 80;
+		server_name localhost;
+		# $host has no port in it, and nginx cannot know which port compose
+		# published https on, so compose passes it in.
+		return 301 https://$host:${HTTPS_PORT}$request_uri;
+	}
+}
