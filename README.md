@@ -440,11 +440,27 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 | Mozilla Firefox | latest stable | fully supported |
 | Apple Safari | latest stable | fully supported |
 
-Browser-specific limitations:
+### Browser-specific limitations
 
-<!-- TODO(team): list what behaves differently per browser, and how it was handled.
-     Example: how each browser shows the self-signed certificate warning. -->
-- TODO
+<!-- TODO(team): check each point in Chrome, Firefox and Safari before the evaluation,
+     and add anything else you noticed while testing. -->
+
+- **Minimum versions.** The styling uses Tailwind CSS 4 and modern CSS such as
+  `color-mix()`, so older browsers are not supported. The minimum versions are
+  Chrome 111, Firefox 128 and Safari 16.4. Older versions may show wrong colours or a
+  broken layout.
+- **Self-signed certificate warning.** Each browser shows the warning differently, and it
+  has to be accepted once per browser (and once per computer when playing from a second
+  machine):
+  - Chrome: "Your connection is not private" → **Advanced** → **Proceed to localhost (unsafe)**.
+  - Firefox: "Warning: Potential Security Risk Ahead" → **Advanced…** → **Accept the Risk and Continue**.
+  - Safari: "This Connection Is Not Private" → **Show Details** → **visit this website** →
+    **Visit Website**.
+- **Time format in chat.** Message times use the browser's language and region settings,
+  so the same message can show as `14:05` in one browser and `2:05 PM` in another.
+- **Fonts.** DM Sans and Barrio are loaded from Google Fonts. Without an internet
+  connection, each browser falls back to its own system font, so text looks slightly
+  different between browsers and operating systems.
 
 ## Known limitations
 
