@@ -139,6 +139,7 @@ function MessageComposer({ conversationId, onSend }: MessageComposerProps) {
 					rows={2}
 					placeholder="Write a message — Enter to send, Shift+Enter for a new line"
 					aria-label="Message"
+					name="message"
 
 					// extra lines scroll inside the box instead of growing it
 					className={`${inputClass} flex-1 resize-none overflow-y-auto`}
