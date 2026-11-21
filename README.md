@@ -162,6 +162,9 @@ For hot reload while developing, run the Vite dev server by hand with
 - **Task organisation**: the work is split into GitHub issues, with one branch and one pull
   request per issue. Features were cut into slices so that frontend and backend could be
   built in parallel against the shared WebSocket protocol file.
+- **Interfaces first**: For features that cross frontend and backend, we agreed on the
+  endpoints and payloads in writing before building, so both sides could work in parallel
+  and neither had to wait.
 - **Code review**: every pull request uses the same template (What / Why / How to test) and is
   reviewed by a teammate before it is merged into `main`.
 - **Conventions**: one vocabulary (`feat`, `fix`, `refactor`, `test`, `chore`, `docs`) for
@@ -172,6 +175,7 @@ For hot reload while developing, run the Vite dev server by hand with
 - **Communication**: Slack. Besides the channel, we kept a Slack canvas for each topic: the
   tech stack, resources, the backlog, the modules we aimed for, and the points to discuss in
   the next meeting.
+
 
 ## Technical Stack
 
@@ -313,7 +317,7 @@ Every table follows the same rules:
 | 8 | Gaming and UX | Remote players | Major | 2 | Lisandro, Renata |
 | 9 | Gaming and UX | Spectator mode | Minor | 1 | Lisandro |
 | 10 | Accessibility and i18n | Support for additional browsers | Minor | 1 | TODO(team) |
-| 11 | Web | Custom-made design system | Minor | 1 | TODO(team) |
+| 11 | Web | Custom-made design system | Minor | 1 | Noor |
 | | | **Total** | 5 Major, 6 Minor | **16** | |
 
 Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
@@ -364,14 +368,13 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
     [Supported browsers](#supported-browsers).
 11. **Custom-made design system (Minor).** A consistent look across every page, built once
     and reused. The colour palette is defined as theme tokens in
-    [`apps/web/src/index.css`](apps/web/src/index.css) (primary, secondary, base, error, and
-    the stone and board colours of the game), and the typography uses DM Sans for text and
-    Barrio for display headings. The reusable components live in
+    [`apps/web/src/index.css`](apps/web/src/index.css) (primary, secondary, base, error, and the stone and board colours of the game), and the typography uses DM Sans for text and Barrio for display headings. The reusable components live in
     [`apps/web/src/components/`](apps/web/src/components/), for example `Avatar`, `Card`,
     `PrimaryButton`, `QuietButton`, `PrimaryLink`, `FormField`, `ErrorText`,
     `SectionHeading`, `PlayerLink`, `FriendButton`, `MessageButton`, `UserMenu`, `Footer`
-    and `LegalPage`, together with shared loading, empty and error states.
-    TODO(team): describe the icons (where they come from and where they are used).
+    and `LegalPage`, together with shared loading, empty and error states. 
+    The `/design` page shows all of it together, built from the real components. Accessibility is part of the system: one focus ring everywhere, contrast checked against WCAG AA, and animation that respects
+    `prefers-reduced-motion`.
 
 ## Individual Contributions
 
@@ -408,16 +411,24 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 - App shell and routing, login and registration screens, connecting the socket to auth.
 - Profile page with avatar upload, friends page, list of online players, matchmaking
   (frontend), Privacy Policy, Terms of Service and footer.
-- *Challenges:* TODO.
+- The design system: colour palette, type scale, icon set, reusable components, the
+  `/design` page, and the accessibility pass (focus ring, contrast, reduced motion).
+- *Challenges:* A lot of newness in this project! New language, new framework, working in a group of five on one codebase. Where do you start, and how do you keep an overview while you are still learning the tools? That showed in the frontend.The app worked, but it did not look like one app: nine text sizes, three ways of going back, and buttons that each wrote their own classes.
+
+  ***Reason:*** The styling lived in the pages instead of shared components. We started building screens before we had decided what a button, a heading or a form field should look like.
+
+  ***Solution:*** I moved the decisions into one place: theme tokens in `index.css`, a
+  type scale of six levels, an `Icon` and a `BackLink` component, and one button component
+  the others build on. In a future project I would set up that foundation for an application first. Make sketches etc. before writing the first screen, instead of cleaning up afterwards.
 
 **Sara (rshaheen), Developer**
 - Chat from end to end: WebSocket events (`chat.send`, `chat.start`, …), relevant payload types, conversation and message tables, chat module, starting a conversation, history paging, conversation list, message pane, composer, unread badges and empty states.
 - Database seed script.
 - *Challenges:* Clicking Message for another user didn't update the chat popup if it was already open.
 
-    ***Reason:*** The popup was already mounted and kept its existing state.
+  ***Reason:*** The popup was already mounted and kept its existing state.
 
-    ***Solution:*** Added a `startKey` counter in `ChatPopup.tsx` that increments on every Message press and is used as the chat window's React key. When the key changes, React remounts the chat window with the newly selected conversation and resets its state.
+  ***Solution:*** Added a `startKey` counter in `ChatPopup.tsx` that increments on every Message press and is used as the chat window's React key. When the key changes, React remounts the chat window with the newly selected conversation and resets its state.
 
 ## WebSocket protocol
 
@@ -490,6 +501,15 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 - [Vitest documentation](https://vitest.dev/)
 - [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
 - [Gomoku rules (Wikipedia)](https://en.wikipedia.org/wiki/Gomoku)
+- [WCAG 2.1: Contrast (Minimum)](https://www.w3.org/WAI/WCAG21/Understanding/contrast-minimum.html)
+- [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/)
+- [MDN: `:focus-visible`](https://developer.mozilla.org/en-US/docs/Web/CSS/:focus-visible)
+- [MDN: `Set-Cookie`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie)
+- [MDN: `FormData`](https://developer.mozilla.org/en-US/docs/Web/API/FormData)
+- [Heroicons](https://heroicons.com/)
+- [Google Fonts](https://fonts.google.com/)
+- [Vite documentation](https://vite.dev/guide/)
+- [Conventional Commits](https://www.conventionalcommits.org/)
 - TODO(team): tutorials or articles you actually used.
 
 ### How AI was used
@@ -510,6 +530,15 @@ What we used it for:
   suggest a first version of a component, endpoint or test, which we then adapted to our
   conventions, reviewed and integrated.
 - **Documentation**: drafting documentation.
+- **Reading unfamiliar code**: understanding a teammate's module well enough to review it,
+  or to connect our two halves of a feature.
+- **Design exploration**: asking for several options and sketches for a visual choice
+  before deciding, instead of implementing the first idea.
+- **Debugging**: reading error messages and logs, and narrowing down where a problem
+  actually came from, for example a failed request that turned out to be answered by nginx
+  and not by the API.
+- **Reading unfamiliar code**: understanding a teammate's module well enough to review it,
+  or to connect our two halves of a feature.
 
 <!-- TODO(team): is anything missing from this list, or used in a way not described here
      (debugging, code review, writing tests, ...)? Add it so the list is complete. -->
@@ -524,6 +553,8 @@ How we stayed in control of the result:
   our conventions were sent back.
 - **Every change was verified.** Features were tested by hand, and CI runs the typecheck,
   the test suites and the database migration checks on every pull request.
+- **We stayed critical.** AI is good at collecting and explaining what already exists, not
+  at deciding what this project should be. Those choices stayed ours.
 
 <!-- TODO(team): read the points above and check that they are true for you. Change or remove
      anything that does not match how you worked, and add your own practice if you had one
@@ -552,7 +583,7 @@ team works:
 - **Kimia:** TODO
 - **Lisandro:** TODO
 - **Renata:** Working the agile way (issues, a branch per issue, reviews, nobody touches `main`), which my internship at QPS uses too, and a first start with frameworks.
-- **Noor:** TODO
+- **Noor:** Working in one codebase with a bigger group! Issues, branches, reviews, nothing straight to main. Learning React, TypeScript and Tailwind from scratch. And how to work with a design system.
 - **Sara:** Using PR and Issues in Github for work organization, Frontend-Backend coordination, React, typescript
 
 ## More documentation
