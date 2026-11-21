@@ -18,6 +18,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { inputClass } from '../components/FormField'
 import ErrorText from '../components/ErrorText'
+import Icon from '../components/Icon'
+import PrimaryButton from '../components/PrimaryButton'
 
 // Drafts keyed by conversation id. Lives outside the component so it
 // survives when the composer unmounts (switching conversations).
@@ -119,7 +121,7 @@ function MessageComposer({ conversationId, onSend }: MessageComposerProps) {
 					</button>
 				</div>
 			)}
-			<div className="flex items-end gap-2">
+			<div className="flex items-end gap-3">
 				{/* Textarea allows Shift+Enter to create multiple lines. */}
 				<textarea
 					// ref gives a direct handle on the textarea element, so we can call .focus() on it
@@ -145,21 +147,25 @@ function MessageComposer({ conversationId, onSend }: MessageComposerProps) {
 					className={`${inputClass} flex-1 resize-none overflow-y-auto`}
 				/>
 
-				<button
-					type="button"
+				<PrimaryButton
+					size="sm"
 
 					// Send the message when the button is clicked.
 					onClick={() => void send()}
 
 					// Disable the button while sending or when there is no text.
-					disabled={
-						status === 'sending' || text.trim() === ''
-					}
-					className="btn btn-sm tracking-wide border-2 btn-outline-accent"
+					disabled={status === 'sending' || text.trim() === ''}
 				>
 					{/* Show different text depending on the current status. */}
-					{status === 'sending' ? 'Sending…' : 'Send'}
-				</button>
+					{status === 'sending' ? (
+						'Sending…'
+					) : (
+						<>
+							<Icon name="send" />
+							Send
+						</>
+					)}
+				</PrimaryButton>
 			</div>
 		</div>
 	)

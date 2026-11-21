@@ -14,9 +14,9 @@ const STAR_POINTS = [
 
 const lines = Array.from({ length: BOARD_SIZE }, (_, i) => i * SPACING)
 
-// The grid sits on the board surface, so its lines are lighter than that
-// surface. They use their own colour, not --color-board-line, which is the
-// border colour for cards and form fields.
+// The grid sits on the black board surface and uses --color-board-line, the
+// same border colour as cards and form fields, so the board stays part of the
+// same system instead of having a colour of its own.
 const gridLine = { stroke: 'var(--color-board-line)' }
 const starPoint = { fill: 'var(--color-board-line)' }
 const winLine = { stroke: 'var(--color-primary)' }

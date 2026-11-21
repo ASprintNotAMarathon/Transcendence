@@ -4,6 +4,8 @@ import { friendsApi, type Friendship } from '../lib/friends'
 import { useFriendsChanged } from '../socket/useFriendsChanged'
 import ErrorText from './ErrorText'
 import QuietButton from './QuietButton'
+import Icon from './Icon'
+import PrimaryButton from './PrimaryButton'
 
 /*
   FriendButton. The friend button on someone else's profile.
@@ -15,7 +17,6 @@ import QuietButton from './QuietButton'
     self       nothing (it is your own profile)
 */
 
-const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 const statusClass =
   'inline-flex h-8 items-center rounded-full border-2 border-(--color-base-300) px-3 text-sm text-muted'
 
@@ -92,14 +93,14 @@ function FriendButton({ userId }: FriendButtonProps) {
   return (
     <>
       {friendship === 'none' && (
-        <button
-          type="button"
+        <PrimaryButton
+          size="sm"
           disabled={busy}
-          className={buttonClass}
           onClick={() => run(() => friendsApi.send(userId), null)}
         >
+          <Icon name="addFriend" />
           Add friend
-        </button>
+        </PrimaryButton>
       )}
 
       {friendship === 'requested' && (
@@ -113,14 +114,13 @@ function FriendButton({ userId }: FriendButtonProps) {
 
       {friendship === 'incoming' && (
         <>
-          <button
-            type="button"
+          <PrimaryButton
+            size="sm"
             disabled={busy}
-            className={buttonClass}
             onClick={() => run(() => friendsApi.acceptFrom(userId), 'friends')}
           >
             Accept
-          </button>
+          </PrimaryButton>
           <QuietButton disabled={busy} onClick={() => run(() => friendsApi.declineFrom(userId), 'none')}>
             Decline
           </QuietButton>

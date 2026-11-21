@@ -1,11 +1,12 @@
 import LegalPage, { LegalSection } from '../components/LegalPage'
-import { CONTACT_EMAIL } from '../lib/contact'
+import { CONTACT_EMAILS } from '../lib/contact'
+
 
 const listClass = 'list-disc space-y-2 pl-6'
 
 function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="22 October 2026">
+    <LegalPage title="Terms of Service" updated="21 November 2026">
       <LegalSection title="Using Gomoku Friends">
         <p>
           Gomoku Friends is a free student project, made for fun. By creating an account or using the website, you
@@ -17,7 +18,8 @@ function TermsPage() {
         <ul className={listClass}>
           <li>Give a real email address, and keep your password to yourself.</li>
           <li>You are responsible for what happens with your account.</li>
-          <li>Tell us if you think someone else is using your account.</li>
+          <li>Tell us at one of the addresses below if you think someone else is using your account.</li>
+          <li>You can ask us to delete your account at any time, see the privacy policy.</li>
         </ul>
       </LegalSection>
 
@@ -53,13 +55,16 @@ function TermsPage() {
       </LegalSection>
 
       <LegalSection title="Changes and questions">
-        <p>
-          If we change these terms, we change the date at the top. Questions are welcome at{' '}
-          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
-            {CONTACT_EMAIL}
-          </a>
-          .
-        </p>
+        <p>If we change these terms, we change the date at the top. Questions are welcome at:</p>
+        <ul className={listClass}>
+          {CONTACT_EMAILS.map((email) => (
+            <li key={email}>
+              <a className="link" href={`mailto:${email}`}>
+                {email}
+              </a>
+            </li>
+          ))}
+        </ul>
       </LegalSection>
     </LegalPage>
   )

@@ -1,7 +1,7 @@
 /*
   Here we define the look of Gomoku
   1. Theme: the colours and the pill shape, used by every component
-  2. Page: background, fonts
+  2. Page: background, fonts, type scale
   3. Small helpers: muted text, the outlined button, the glowing title
   4. Match layout: the grid that puts the board next to the panel
   5. Animations: stones on the board, the loading dots, the glowing title
@@ -26,16 +26,26 @@
   --color-base-200: #0A0B0D;
   --color-base-content: #ECE7DE;
   --radius-field: 9999px;
-  --color-error: #E58A7C;
+  --color-error: #BE5C51;
   --color-stone-terracotta: #C2663F;
   --color-stone-sage: #B2C29C;
   --color-board-line: #3A3E48;
-  --color-board-grid: #636A72;
   --color-board-surface: #000000;
 }
 
 
-/* 2. Page. The red glow comes from two gradients: one here, one in body::before. */
+/* 2. Page. The red glow comes from two gradients: one here, one in body::before.
+
+   Type scale. Four sizes, and what each one is for. If you need a size that is
+   not in this list, the answer is usually one of these, not a new one.
+
+     Display   Barrio, text-2xl    page titles and the logo
+     Heading   text-xs uppercase   section labels, via SectionHeading
+     Body      text-base           the default, everything you read
+     Small     text-sm             quiet actions, timestamps, helper text
+
+   Barrio is display only: it is hard to read at small sizes, so it never
+   carries body text. DM Sans does the rest. */
 body {
   margin: 0;
   font-family: 'DM Sans', system-ui, sans-serif;
@@ -48,11 +58,11 @@ body {
   position: relative;
 }
 
-/* 3. Small helpers, used from className in the components. */
 .font-barrio {
   font-family: 'Barrio', system-ui, sans-serif;
 }
 
+/* 3. Small helpers, used from className in the components. */
 .btn-outline-accent {
   border-color: var(--color-primary);
   background-color: transparent;
