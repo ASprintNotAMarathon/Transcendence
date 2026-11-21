@@ -115,14 +115,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Login and register start a new 24h session, so we ask /auth/session
   // again: the same path as startup, and the timer restarts.
+  // If the server said yes but /auth/session says nobody, the browser did not
+  // keep the cookie: throw, so the form shows "Something went wrong" instead
+  // of silently sending you back to /login.
+  async function startSession() {
+    const session = await authApi.session()
+    applySession(session)
+    if (!session.user) throw new Error('Logged in, but the session cookie was not kept.')
+  }
+
   async function login(input: LoginInput) {
     await authApi.login(input)
-    applySession(await authApi.session())
+    await startSession()
   }
 
   async function register(input: RegisterInput) {
     await authApi.register(input)
-    applySession(await authApi.session())
+    await startSession()
   }
 
   async function logout() {

@@ -46,6 +46,12 @@ export type LoginInput = {
 // Shape of response is confirmed with Kimia: 400/409 return
 // { errors: { fieldName: "message" } }, 401 (login) is a single
 // form-level message instead, see LoginPage.
+// Failures that are normal use (wrong password, taken name, ...) arrive as
+// 200 { ok: false, status, message?, errors? } so the browser console stays
+// clean. request() turns them into this same ApiError with the real status,
+// so callers check error.status exactly as before.
+// Always call the API through request(): a raw fetch() would see the 200
+// and treat { ok: false } as a success.
 export class ApiError extends Error {
   status: number
   fieldErrors?: Record<string, string>
@@ -103,7 +109,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   LAYER 3   authApi: register, login, logout and session.
             Each calls request() with the right path + data.
             session() is the startup check: always 200, { user: null } when
-            you are logged out.
+            you are logged out, and expiresIn (seconds left) when logged in.
 */
 const realAuthApi = {
   register(input: RegisterInput) {
