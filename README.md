@@ -39,7 +39,8 @@ everyone watching.
 - **Chat**: start a private conversation from a profile and keep the message history.
 - **Privacy Policy and Terms of Service** pages, linked from the footer.
 
-<!-- TODO(team): add 1–2 screenshots or a short GIF here (lobby + a match in progress). -->
+![The lobby](docs/screenshots/Lobby_screenshot.png)
+![A match in progress](docs/screenshots/Live_match_screenshot.png)
 
 ## Instructions
 
@@ -398,7 +399,10 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 - WebSocket gateway, connection registry, message validation, cookie-based socket
   authentication, client socket module.
 - HTTPS and the nginx reverse proxy, together with Kimia.
-- *Challenges:* TODO.
+- *Challenges:* Working with frameworks, which I still find hard. In C I call every
+  function myself, but in NestJS and React the framework calls my code. What helped was
+  following one socket message from the browser to the handler and back, and building on
+  that in small steps.
 
 **Noor (nheessel), Developer**
 - App shell and routing, login and registration screens, connecting the socket to auth.
@@ -547,7 +551,7 @@ team works:
 <!-- TODO(team): add what you personally learned, technical or not. One line each is enough. -->
 - **Kimia:** TODO
 - **Lisandro:** TODO
-- **Renata:** TODO
+- **Renata:** Working the agile way (issues, a branch per issue, reviews, nobody touches `main`), which my internship at QPS uses too, and a first start with frameworks.
 - **Noor:** TODO
 - **Sara:** Using PR and Issues in Github for work organization, Frontend-Backend coordination, React, typescript
 
