@@ -35,7 +35,6 @@ export type {
 	ChatStartPayload,
 	ClientEvent,
 	Envelope,
-	ErrorCode,
 	LifecycleClientEvent,
 	LifecycleServerEvent,
 	MatchClientEvent,

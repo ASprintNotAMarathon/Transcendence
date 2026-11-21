@@ -303,7 +303,7 @@ describe('MatchHandlers', () => {
 			await handlers.join(client, joinEvent);
 
 			expect(joinRoom).toHaveBeenCalledWith(ROOM);
-			expect(service.join).toHaveBeenCalledWith(USER_ID, MATCH_ID);
+			expect(service.join).toHaveBeenCalledWith(MATCH_ID);
 			expect(joinRoom.mock.invocationCallOrder[0]).toBeLessThan(
 				service.join.mock.invocationCallOrder[0],
 			);

@@ -50,7 +50,7 @@ export interface Envelope<TType extends string, TPayload> {
  * Error codes
  * ========================================================================== */
 
-/**
+/*
  * Why something was refused.
  *
  * Machine-readable, so the UI switches on the code and owns the wording.
@@ -58,10 +58,7 @@ export interface Envelope<TType extends string, TPayload> {
  *
  * Codes are namespaced with the same prefixes as the event names,
  * so the four sections below cannot collide as they grow.
- * The ErrorCode union isn't used yet, it exists so a single error-display component can look up
- * wording for any code without knowing which family it came from.
  */
-export type ErrorCode = TransportErrorCode | MatchErrorCode | QueueErrorCode | ChatErrorCode | PresenceErrorCode;
 
 /** Failures below the game and chat layers */
 export type TransportErrorCode =
