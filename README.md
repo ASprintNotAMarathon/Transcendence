@@ -373,18 +373,14 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 - Technical direction: architecture, conventions, stack decisions, review of critical changes.
 - User model and Prisma service. Authentication: register, login, logout, `me`, argon2
   hashing, JWT cookie, auth guard.
-- Profile and avatar endpoints, friends API and presence events, matchmaking tests.
-- *Challenges:* Working with the database, and making decisions for auth while the
-  frontend was already waiting for them.
-
-  ***Reason:*** I had not worked with a database like this before, and almost every table
-  points to `User`, so the relations had to be right before others could build on them.
-  For auth, the frontend and backend started at the same time, so Noor needed to know how
-  the API would answer before I had written it, and some questions had no obvious answer.
-
-  ***Solution:*** I wrote down the rules every table follows in
-  [docs/database.md](docs/database.md). For auth, I wrote a contract with each open
-  question and its options, looked into which one fit our project, and we decided together.
+- Profile and avatar endpoints, friends API and presence events.
+- *Challenges:* Learning a lot of new things in a short time: a new language, new
+  frameworks and a real database. The database was hard at first, because almost every
+  table points to `User`, so the relations had to be right before others could build on
+  them. I wrote down the rules every table follows in [docs/database.md](docs/database.md).
+  Auth was another challenge: the frontend and backend started at the same time, so I had
+  to make decisions before the code existed. I wrote a contract with each open question and
+  its options, looked into which one fit our project, and we decided together.
 
 **Lisandro (lprieri), Product Owner and Developer**
 - Product decisions: features, priorities and validating finished work.
