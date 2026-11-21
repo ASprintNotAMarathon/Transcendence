@@ -26,12 +26,6 @@ import type { EnvConfig } from '../config/env.validation';
 		AuthService,
 		// So any module can put @UseGuards(JwtAuthGuard) on a route.
 		JwtAuthGuard,
-		// Re-exported with it: the guard needs JwtService, and a module holding
-		// the guard class but not the service it depends on cannot build it.
-		JwtModule,
-		// So the seed script hashes with the same helper. Two different argon2
-		// configurations means every seeded login fails.
-		PasswordService,
 	],
 })
 export class AuthModule {}

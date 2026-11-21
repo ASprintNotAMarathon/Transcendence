@@ -90,10 +90,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /*
-  LAYER 3   authApi: register, login, logout, me and session.
+  LAYER 3   authApi: register, login, logout and session.
             Each calls request() with the right path + data.
-            session() is the startup check, me() is the same data behind a
-            401 when you are logged out, and has no caller in the app today.
+            session() is the startup check: always 200, { user: null } when
+            you are logged out.
 */
 const realAuthApi = {
   register(input: RegisterInput) {
@@ -112,10 +112,6 @@ const realAuthApi = {
 
   logout() {
     return request<void>('/auth/logout', { method: 'POST' })
-  },
-
-  me() {
-    return request<AuthUser>('/auth/me')
   },
 
   // Startup check. Always 200: { user: null } means nobody is logged in,
