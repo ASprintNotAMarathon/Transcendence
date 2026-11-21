@@ -148,7 +148,7 @@ For hot reload while developing, run the Vite dev server by hand with
 
 | Member | Login | Role(s) | Responsibilities |
 | --- | --- | --- | --- |
-| Kimia | kziari | Tech Lead, Developer | Defined the architecture and the technical conventions, made stack decisions, reviewed critical changes. Built the database models, authentication, the profile and avatar API, the friends and presence API, and the HTTPS setup with nginx. |
+| Kimia | kziari | Tech Lead, Developer | Defined the architecture and the technical conventions, made stack decisions, reviewed critical changes. Built the database models, authentication, the profile and avatar API, and the friends and presence API. |
 | Lisandro | lprieri | Product Owner, Developer | Decided on features and priorities and validated finished work. Built the shared game engine, Gomoku, match sessions, the board, the lobby, matchmaking (backend), disconnect handling, and CI. |
 | Renata | rkaras | Project Manager, Developer | Organised the meetings and planning, tracked progress and blockers. Built the Docker setup and the one-command start, the WebSocket transport and socket authentication, and the HTTPS setup with nginx. |
 | Noor | nheessel | Developer | Built the frontend: app shell and routing, login and registration, profile page, friends page, online players list, matchmaking (frontend), Privacy Policy and Terms of Service. |
@@ -298,7 +298,7 @@ Every table follows the same rules:
 | Online status | Online dot on friends, list of online players, updated live | Kimia (backend), Noor (frontend) |
 | Chat | Start a conversation from a profile, one-to-one messages, conversation list, history | Sara |
 | Privacy Policy / Terms of Service | Real content, linked from the footer on every page | Noor |
-| HTTPS | nginx with TLS in front of the app, HTTP redirects to HTTPS | Kimia, Renata |
+| HTTPS | nginx with TLS in front of the app, HTTP redirects to HTTPS | Renata |
 | One-command start | Docker Compose with health checks, Makefile, `.env` validation | Renata |
 | Seed data | Demo users, matches and conversations | Sara, Lisandro |
 | CI | Migration check, typecheck and tests on every pull request | Lisandro |
@@ -385,8 +385,17 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 - User model and Prisma service. Authentication: register, login, logout, `me`, argon2
   hashing, JWT cookie, auth guard.
 - Profile and avatar endpoints, friends API and presence events, matchmaking tests.
-- HTTPS and the nginx reverse proxy, together with Renata.
-- *Challenges:* TODO.
+- *Challenges:* Working with the database, and making decisions for auth while the
+  frontend was already waiting for them.
+
+  ***Reason:*** I had not worked with a database like this before, and almost every table
+  points to `User`, so the relations had to be right before others could build on them.
+  For auth, the frontend and backend started at the same time, so Noor needed to know how
+  the API would answer before I had written it, and some questions had no obvious answer.
+
+  ***Solution:*** I wrote down the rules every table follows in
+  [docs/database.md](docs/database.md). For auth, I wrote a contract with each open
+  question and its options, looked into which one fit our project, and we decided together.
 
 **Lisandro (lprieri), Product Owner and Developer**
 - Product decisions: features, priorities and validating finished work.
@@ -401,7 +410,7 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 - Docker Compose with Postgres, the one-command `make up`, the web app scaffold.
 - WebSocket gateway, connection registry, message validation, cookie-based socket
   authentication, client socket module.
-- HTTPS and the nginx reverse proxy, together with Kimia.
+- HTTPS and the nginx reverse proxy.
 - *Challenges:* Working with frameworks, which I still find hard. In C I call every
   function myself, but in NestJS and React the framework calls my code. What helped was
   following one socket message from the browser to the handler and back, and building on
@@ -580,7 +589,9 @@ team works:
   quality and correctness, a skill we expect to need in our future jobs.
 
 <!-- TODO(team): add what you personally learned, technical or not. One line each is enough. -->
-- **Kimia:** TODO
+- **Kimia:** A new language and a new framework, and working with a database for real.
+  Working in a team with a clear setup (GitHub Issues, branches, reviews and Actions), and
+  how to talk about a decision with the team instead of just making it.
 - **Lisandro:** TODO
 - **Renata:** Working the agile way (issues, a branch per issue, reviews, nobody touches `main`), which my internship at QPS uses too, and a first start with frameworks.
 - **Noor:** Working in one codebase with a bigger group! Issues, branches, reviews, nothing straight to main. Learning React, TypeScript and Tailwind from scratch. And how to work with a design system.
