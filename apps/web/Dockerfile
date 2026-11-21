@@ -42,6 +42,6 @@ RUN apk add --no-cache openssl \
 # By default it writes the result into conf.d/; this makes it write
 # /etc/nginx/nginx.conf, the main config.
 ENV NGINX_ENVSUBST_OUTPUT_DIR=/etc/nginx
-COPY nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
+COPY apps/web/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
 
