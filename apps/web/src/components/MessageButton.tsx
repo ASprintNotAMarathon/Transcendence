@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { chatClient } from '../chat/chat'
 import { openChatWith } from '../chat/openChat'
+import Icon from './Icon'
+import PrimaryButton from './PrimaryButton'
 
 /*
  * Message button on someone else's profile: starts (or reopens) the
  * conversation with them, then opens the chat popup on it.
  */
 
-const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
 function MessageButton({ userId }: { userId: string }) {
   const [busy, setBusy] = useState(false)
@@ -26,9 +27,16 @@ function MessageButton({ userId }: { userId: string }) {
   }
 
   return (
-    <button type="button" className={buttonClass} disabled={busy} onClick={() => void handleClick()}>
-      {busy ? 'Opening…' : 'Message'}
-    </button>
+    <PrimaryButton size="sm" disabled={busy} onClick={() => void handleClick()}>
+      {busy ? (
+        'Opening…'
+      ) : (
+        <>
+          <Icon name="message" />
+          Message
+        </>
+      )}
+    </PrimaryButton>
   )
 }
 

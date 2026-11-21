@@ -19,6 +19,7 @@ import NotFoundPage from './pages/NotFoundPage.tsx'
 import PrivacyPage from './pages/PrivacyPage.tsx'
 import TermsPage from './pages/TermsPage.tsx'
 import { SocketProvider } from './socket/SocketProvider.tsx'
+import DesignPage from './pages/DesignPage.tsx'
 
 
 function AppSocketProvider({ children }: { children: ReactNode }) {
@@ -45,6 +46,7 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<PublicLayout />}>
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/terms" element={<TermsPage />} />
+              <Route path="/design" element={<DesignPage />} />
               <Route element={<GuestOnlyRoute />}>
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
