@@ -84,7 +84,7 @@ service is healthy. The first run takes a few minutes. Later runs take seconds.
 make ps
 ```
 
-Three services (`nginx`, `api`, `db`), all `healthy`. Then open:
+Three services (`web`, `api`, `db`), all `healthy`. Then open:
 
 | URL | Expected |
 | --- | --- |
@@ -584,4 +584,3 @@ What each of us learned personally:
 
 - [CONTRIBUTING.md](CONTRIBUTING.md): branch, commit and database migration rules
 - [docs/database.md](docs/database.md): the database from scratch
-- [docs/code-notes.md](docs/code-notes.md): the reasoning behind specific pieces of code
