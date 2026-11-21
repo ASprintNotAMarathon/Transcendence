@@ -1,14 +1,5 @@
 *This project has been created as part of the 42 curriculum by kziari, lprieri, rkaras, nheessel, rshaheen.*
 
-<!--
-DRAFT v3, for the whole team to review.
-- Search for "TODO(team)" and fill in what applies to you.
-- Check every row and paragraph with your name: is it complete and correct?
-- Remaining TODOs: screenshots, individual challenges, what each person learned,
-  extra references, and the AI section.
-Remove all TODO comments before the evaluation.
--->
-
 # Gomoku Friends
 
 ## Description
@@ -316,7 +307,7 @@ Every table follows the same rules:
 | 7 | Gaming and UX | Complete web-based game (Gomoku) | Major | 2 | Lisandro |
 | 8 | Gaming and UX | Remote players | Major | 2 | Lisandro, Renata |
 | 9 | Gaming and UX | Spectator mode | Minor | 1 | Lisandro |
-| 10 | Accessibility and i18n | Support for additional browsers | Minor | 1 | TODO(team) |
+| 10 | Accessibility and i18n | Support for additional browsers | Minor | 1 | Team |
 | 11 | Web | Custom-made design system | Minor | 1 | Noor |
 | | | **Total** | 5 Major, 6 Minor | **16** | |
 
@@ -378,8 +369,6 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
 
 ## Individual Contributions
 
-<!-- TODO(team): each person adds one or two real challenges and how they were solved. -->
-
 **Kimia (kziari), Tech Lead and Developer**
 - Technical direction: architecture, conventions, stack decisions, review of critical changes.
 - User model and Prisma service. Authentication: register, login, logout, `me`, argon2
@@ -403,7 +392,11 @@ Points: 5 Major × 2 = 10, plus 6 Minor × 1 = 6, **16 points in total**.
   guidelines.
 - Match sessions over WebSockets, the board, end of game and resignation, the lobby,
   matchmaking (backend), disconnect and reconnection handling.
-- *Challenges:* TODO.
+- *Challenges:* Being Product Owner. This was my first time in this role. We were also
+  learning many new concepts at the same time, which made it harder to keep the goal in
+  mind and build a backlog for our work. Learning new frameworks was difficult too.
+  Another challenge was using AI responsibly: adapting to how it is used in real workplaces,
+  while staying in control of both our work and our learning.
 
 **Renata (rkaras), Project Manager and Developer**
 - Project management: meetings, planning, progress tracking and blockers.
@@ -466,9 +459,6 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 
 ### Browser-specific limitations
 
-<!-- TODO(team): check each point in Chrome, Firefox and Safari before the evaluation,
-     and add anything else you noticed while testing. -->
-
 - **Minimum versions.** The styling uses Tailwind CSS 4 and modern CSS such as
   `color-mix()`, so older browsers are not supported. The minimum versions are
   Chrome 111, Firefox 128 and Safari 16.4. Older versions may show wrong colours or a
@@ -519,7 +509,6 @@ the server repeats on a direct reply. Errors are events with machine-readable co
 - [Google Fonts](https://fonts.google.com/)
 - [Vite documentation](https://vite.dev/guide/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
-- TODO(team): tutorials or articles you actually used.
 
 ### How AI was used
 
@@ -546,11 +535,6 @@ What we used it for:
 - **Debugging**: reading error messages and logs, and narrowing down where a problem
   actually came from, for example a failed request that turned out to be answered by nginx
   and not by the API.
-- **Reading unfamiliar code**: understanding a teammate's module well enough to review it,
-  or to connect our two halves of a feature.
-
-<!-- TODO(team): is anything missing from this list, or used in a way not described here
-     (debugging, code review, writing tests, ...)? Add it so the list is complete. -->
 
 How we stayed in control of the result:
 
@@ -564,10 +548,6 @@ How we stayed in control of the result:
   the test suites and the database migration checks on every pull request.
 - **We stayed critical.** AI is good at collecting and explaining what already exists, not
   at deciding what this project should be. Those choices stayed ours.
-
-<!-- TODO(team): read the points above and check that they are true for you. Change or remove
-     anything that does not match how you worked, and add your own practice if you had one
-     (e.g. rewriting suggestions by hand, asking AI to explain code before using it). -->
 
 ### What we learned
 
@@ -588,11 +568,14 @@ team works:
 - **Working with AI**: using AI tools productively while keeping ownership of design,
   quality and correctness, a skill we expect to need in our future jobs.
 
-<!-- TODO(team): add what you personally learned, technical or not. One line each is enough. -->
+What each of us learned personally:
+
 - **Kimia:** A new language and a new framework, and working with a database for real.
   Working in a team with a clear setup (GitHub Issues, branches, reviews and Actions), and
   how to talk about a decision with the team instead of just making it.
-- **Lisandro:** TODO
+- **Lisandro:** To work in a bigger group. I also learned to work with a product backlog,
+  to use Git pull requests professionally, and what different roles in a project are for.
+  On the technical side, I learned a new language and how to work with WebSockets and frameworks.
 - **Renata:** Working the agile way (issues, a branch per issue, reviews, nobody touches `main`), which my internship at QPS uses too, and a first start with frameworks.
 - **Noor:** Working in one codebase with a bigger group! Issues, branches, reviews, nothing straight to main. Learning React, TypeScript and Tailwind from scratch. And how to work with a design system.
 - **Sara:** Using PR and Issues in Github for work organization, Frontend-Backend coordination, React, typescript
