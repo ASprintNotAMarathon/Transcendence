@@ -1,11 +1,11 @@
 import LegalPage, { LegalSection } from '../components/LegalPage'
-import { CONTACT_EMAIL } from '../lib/contact'
+import { CONTACT_EMAILS } from '../lib/contact'
 
 const listClass = 'list-disc space-y-2 pl-6'
 
 function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="16 November 2026">
+    <LegalPage title="Privacy Policy" updated="21 November 2026">
       <LegalSection title="Who we are">
         <p>
           Gomoku Friends is a student project, made for the ft_transcendence project at Codam. It is a website
@@ -48,7 +48,6 @@ function PrivacyPage() {
             Photos can contain hidden information, such as where they were taken. We do not remove it, so please
             choose a picture without sensitive information.
           </li>
-          <li>Only your friends can see whether you are online. Other players cannot.</li>
           <li>Friend requests can only be seen by the two players involved.</li>
           <li>
             Other players can see when you are online. Your name appears in the list of players
@@ -79,24 +78,24 @@ function PrivacyPage() {
       </LegalSection>
 
       <LegalSection title="How long we keep it, and how to change it">
-        <p>
+      <p>
           We keep your data for as long as your account exists. You can change your display name and profile
-          picture on your profile page. To have your account and its data removed, contact us at{' '}
-          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
-            {CONTACT_EMAIL}
-          </a>
-          .
+          picture on your profile page. To have your account and its data removed, contact any of us at the
+          addresses below.
         </p>
       </LegalSection>
 
       <LegalSection title="Changes and questions">
-        <p>
-          If we change this page, we change the date at the top. Questions are welcome at{' '}
-          <a className="link" href={`mailto:${CONTACT_EMAIL}`}>
-            {CONTACT_EMAIL}
-          </a>
-          .
-        </p>
+        <p>If we change this page, we change the date at the top. Questions are welcome at:</p>
+        <ul className={listClass}>
+          {CONTACT_EMAILS.map((email) => (
+            <li key={email}>
+              <a className="link" href={`mailto:${email}`}>
+                {email}
+              </a>
+            </li>
+          ))}
+        </ul>
       </LegalSection>
     </LegalPage>
   )
