@@ -40,7 +40,7 @@ export class MatchHandlers implements OnModuleInit {
 
 		await client.join(room);
 		try {
-			const state = await this.service.join(client.data.userId, matchId);
+			const state = await this.service.join(matchId);
 			this.sender.sendToSocket(client, {
 				type: 'match.state',
 				cid: event.cid,

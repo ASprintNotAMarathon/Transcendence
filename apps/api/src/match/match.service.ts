@@ -44,7 +44,7 @@ export class MatchService {
 		private readonly disconnects: MatchDisconnects,
 	) {}
 
-	async join(userId: string, matchId: string): Promise<MatchStatePayload> {
+	async join(matchId: string): Promise<MatchStatePayload> {
 		const { match, engine, position } = await this.rebuild(matchId);
 
 		return {
