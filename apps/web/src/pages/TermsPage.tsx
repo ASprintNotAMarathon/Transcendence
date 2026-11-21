@@ -1,6 +1,7 @@
 import LegalPage, { LegalSection } from '../components/LegalPage'
 import { CONTACT_EMAIL } from '../lib/contact'
 
+
 const listClass = 'list-disc space-y-2 pl-6'
 
 function TermsPage() {
