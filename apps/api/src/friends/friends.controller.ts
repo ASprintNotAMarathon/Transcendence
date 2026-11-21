@@ -9,13 +9,27 @@ import {
 	Param,
 	ParseUUIDPipe,
 	Post,
+	UseFilters,
 	UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard, type AuthUser } from '../auth';
+import { ExpectedErrorFilter } from '../http/expected-error.filter';
 import { WsSender } from '../ws/ws.sender';
 import { SendFriendRequestDto } from './dto/send-friend-request.dto';
 import { FriendsService } from './friends.service';
 import type { Friend, FriendRequests, FriendshipState } from './friends.types';
+
+/**
+ * The failures of a friend action that are normal use: a request the other
+ * player just withdrew (404), both players asking at once (409), a bad id
+ * (400). They answer 200 { ok: false } so the browser logs nothing. The
+ * guard's 401 stays a real 401.
+ */
+const friendActionFailures = new ExpectedErrorFilter(
+	HttpStatus.BAD_REQUEST,
+	HttpStatus.NOT_FOUND,
+	HttpStatus.CONFLICT,
+);
 
 /**
  * Every route is about the caller's own friends, so the caller's id always
@@ -46,6 +60,7 @@ export class FriendsController {
 	 * button can change without asking again. 'friends' when they had
 	 * already asked you.
 	 */
+	@UseFilters(friendActionFailures)
 	@Post('requests')
 	async send(
 		@CurrentUser() user: AuthUser,
@@ -56,6 +71,7 @@ export class FriendsController {
 		return { friendship };
 	}
 
+	@UseFilters(friendActionFailures)
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('requests/:id/accept')
 	async accept(
@@ -66,6 +82,7 @@ export class FriendsController {
 		this.changed(user.id, requesterId);
 	}
 
+	@UseFilters(friendActionFailures)
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Post('requests/:id/decline')
 	async decline(
@@ -77,6 +94,7 @@ export class FriendsController {
 	}
 
 	/** Removes a friend, or cancels a request you sent. */
+	@UseFilters(friendActionFailures)
 	@HttpCode(HttpStatus.NO_CONTENT)
 	@Delete(':userId')
 	async remove(

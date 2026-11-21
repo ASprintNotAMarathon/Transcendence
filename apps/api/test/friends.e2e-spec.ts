@@ -19,6 +19,19 @@ function freshAccount() {
 }
 
 /** Carried by hand: supertest will not send a Secure cookie over http. */
+/**
+ * A normal-use failure: 200 on the wire, so the browser logs nothing, with
+ * the real status inside (see ExpectedErrorFilter).
+ */
+async function expectExpectedError(
+	pending: request.Test,
+	status: number,
+): Promise<void> {
+	const response = await pending;
+	expect(response.status).toBe(200);
+	expect(response.body).toMatchObject({ ok: false, status });
+}
+
 function sessionCookie(response: request.Response): string {
 	const header = response.headers['set-cookie'] as unknown as string[];
 	return header.map((cookie) => cookie.split(';')[0]).join('; ');
@@ -157,10 +170,12 @@ describe('friends (e2e)', () => {
 		await send(a, b).expect(201);
 		const [outgoing] = (await requestsOf(a)).outgoing;
 
-		await request(server)
-			.post(`/api/friends/requests/${outgoing?.id}/accept`)
-			.set('Cookie', a.cookie)
-			.expect(404);
+		await expectExpectedError(
+			request(server)
+				.post(`/api/friends/requests/${outgoing?.id}/accept`)
+				.set('Cookie', a.cookie),
+			404,
+		);
 	});
 
 	it('the sender cancels with DELETE', async () => {
@@ -191,37 +206,43 @@ describe('friends (e2e)', () => {
 		expect(await friendIdsOf(b)).toEqual([]);
 	});
 
-	it('answers 409 for a second request', async () => {
+	it('answers an expected 409 for a second request', async () => {
 		const a = await register();
 		const b = await register();
 		await send(a, b).expect(201);
 
-		await send(a, b).expect(409);
+		await expectExpectedError(send(a, b), 409);
 	});
 
-	it('answers 400 for yourself or an id that is not a uuid', async () => {
+	it('answers an expected 400 for yourself or an id that is not a uuid', async () => {
 		const a = await register();
 
-		await send(a, a).expect(400);
-		await request(server)
-			.post('/api/friends/requests')
-			.set('Cookie', a.cookie)
-			.send({ userId: 'abc' })
-			.expect(400);
-		await request(server)
-			.post('/api/friends/requests/abc/accept')
-			.set('Cookie', a.cookie)
-			.expect(400);
+		await expectExpectedError(send(a, a), 400);
+		await expectExpectedError(
+			request(server)
+				.post('/api/friends/requests')
+				.set('Cookie', a.cookie)
+				.send({ userId: 'abc' }),
+			400,
+		);
+		await expectExpectedError(
+			request(server)
+				.post('/api/friends/requests/abc/accept')
+				.set('Cookie', a.cookie),
+			400,
+		);
 	});
 
-	it('answers 404 for a user nobody has', async () => {
+	it('answers an expected 404 for a user nobody has', async () => {
 		const a = await register();
 
-		await request(server)
-			.post('/api/friends/requests')
-			.set('Cookie', a.cookie)
-			.send({ userId: randomUUID() })
-			.expect(404);
+		await expectExpectedError(
+			request(server)
+				.post('/api/friends/requests')
+				.set('Cookie', a.cookie)
+				.send({ userId: randomUUID() }),
+			404,
+		);
 	});
 
 	it('the profile shows the friendship from each side', async () => {
