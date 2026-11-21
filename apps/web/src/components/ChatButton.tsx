@@ -1,3 +1,5 @@
+import Icon from '../components/Icon'
+
 type Props = {
 	open: boolean
 	unread: number
@@ -14,9 +16,9 @@ export function CloseCross({ onClick }: { onClick: () => void }) {
 			type="button"
 			onClick={onClick}
 			aria-label="Close chat"
-			className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-(--color-secondary) text-lg font-bold text-(--color-base-100)"
+			className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full bg-(--color-secondary) text-(--color-base-100)"
 		>
-			✕
+			<Icon name="close" size={20} />
 		</button>
 	)
 }

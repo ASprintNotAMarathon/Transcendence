@@ -14,6 +14,7 @@ import LoadingState from '../components/states/LoadingState'
 import MessageComposer from './MessageComposer'
 import { CloseCross } from '../components/ChatButton'
 import PlayerLink from '../components/PlayerLink'
+import Icon from '../components/Icon'
 
 type MessagePaneProps = {
 	conversationId: string
@@ -160,9 +161,9 @@ function MessagePane({ conversationId, otherUserId, otherUserName, onBack, onClo
 					type="button"
 					onClick={onBack}
 					aria-label="Back to conversations"
-					className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-3xl leading-none md:hidden"
+					className="-ml-1 flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center md:hidden"
 				>
-					‹
+					<Icon name="back" size={20} />
 				</button>
 				{otherUserId !== '' && (
 					<PlayerLink userId={otherUserId} displayName={otherUserName} className="font-semibold" />
