@@ -9,6 +9,7 @@ import ErrorState from '../components/states/ErrorState'
 import LoadingState from '../components/states/LoadingState'
 import FriendButton from '../components/FriendButton'
 import MessageButton from '../components/MessageButton'
+import PrimaryButton from '../components/PrimaryButton'
 
 /*
   ProfilePage. /profile is your own profile, /profile/:id is someone else's.
@@ -16,8 +17,6 @@ import MessageButton from '../components/MessageButton'
   Your own:   avatar, name, member since, email, [ Change avatar ] [ Edit name ]
   Someone else: avatar, name, member since (no email, no buttons)
 */
-
-const buttonClass = 'btn btn-sm tracking-wide border-2 btn-outline-accent'
 
 type OpenForm = 'none' | 'name' | 'avatar'
 
@@ -35,12 +34,12 @@ function OwnProfile({ user }: { user: AuthUser }) {
       {openForm === 'avatar' && <ChangeAvatarForm user={user} onDone={() => setOpenForm('none')} />}
       {openForm === 'none' && (
         <>
-          <button type="button" className={buttonClass} onClick={() => setOpenForm('avatar')}>
+          <PrimaryButton size="sm" onClick={() => setOpenForm('avatar')}>
             Change avatar
-          </button>
-          <button type="button" className={buttonClass} onClick={() => setOpenForm('name')}>
+          </PrimaryButton>
+          <PrimaryButton size="sm" onClick={() => setOpenForm('name')}>
             Edit name
-          </button>
+          </PrimaryButton>
         </>
       )}
     </ProfileCard>
