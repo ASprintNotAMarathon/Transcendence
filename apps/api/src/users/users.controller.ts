@@ -21,7 +21,6 @@ import {
 } from '../auth';
 import { FriendsService } from '../friends/friends.service';
 import type { FriendshipState } from '../friends/friends.types';
-import { PresenceService } from '../presence/presence.service';
 import { AVATAR_FIELD, AVATAR_MAX_BYTES } from './avatar';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UsersService } from './users.service';
@@ -44,7 +43,6 @@ export class UsersController {
 	constructor(
 		private readonly users: UsersService,
 		private readonly friends: FriendsService,
-		private readonly presence: PresenceService,
 	) {}
 
 	/**
@@ -54,25 +52,18 @@ export class UsersController {
 	 *
 	 * `friendship` is seen from the caller's side, so the profile page knows
 	 * which button to show. Both lookups run at once; a missing user is
-	 * still the 404 from findProfile. `online` is visible to every player,
-	 * as the lobby shows it too (#76).
+	 * still the 404 from findProfile.
 	 */
 	@Get(':id')
 	async findOne(
 		@CurrentUser() user: AuthUser,
 		@Param('id', ParseUUIDPipe) id: string,
-	): Promise<
-		PublicProfile & { friendship: FriendshipState; online: boolean }
-	> {
+	): Promise<PublicProfile & { friendship: FriendshipState }> {
 		const [profile, friendship] = await Promise.all([
 			this.users.findProfile(id),
 			this.friends.stateBetween(user.id, id),
 		]);
-		return {
-			...profile,
-			friendship,
-			online: this.presence.isOnline(id),
-		};
+		return { ...profile, friendship };
 	}
 
 	/**
