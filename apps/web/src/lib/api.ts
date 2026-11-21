@@ -12,7 +12,7 @@
   Friends have their own file: friends.ts (it uses request() from here).
 */
 
-import type { LiveMatch } from '@transcendence/shared'
+import { isExpectedError, type LiveMatch } from '@transcendence/shared'
 import type { Friendship } from './friends'
 
 /*
@@ -86,7 +86,17 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T
   }
 
-  return response.json() as Promise<T>
+  const body: unknown = await response.json()
+  // A normal-use failure arrives as 200 { ok: false, ... } (see shared/http.ts).
+  // Throw it as the same ApiError a real 4xx gives, so callers don't change.
+  if (isExpectedError(body)) {
+    throw new ApiError(
+      body.status,
+      body.message ?? `Request failed with status ${body.status}`,
+      body.errors,
+    )
+  }
+  return body as T
 }
 
 /*

@@ -127,6 +127,48 @@ describe('auth (e2e)', () => {
 		await request(server).get('/api/auth/me').expect(401);
 	});
 
+	describe('expected failures answer 200, so the browser logs nothing', () => {
+		it('a wrong password', async () => {
+			const account = freshAccount();
+			await request(server)
+				.post('/api/auth/register')
+				.send(account)
+				.expect(201);
+
+			const res = await request(server)
+				.post('/api/auth/login')
+				.send({ email: account.email, password: 'not-the-password' })
+				.expect(200);
+
+			expect(res.body).toEqual({
+				ok: false,
+				status: 401,
+				message: 'Invalid email or password',
+			});
+			expect(res.headers['set-cookie']).toBeUndefined();
+		});
+
+		it('an email that is already registered', async () => {
+			const account = freshAccount();
+			await request(server)
+				.post('/api/auth/register')
+				.send(account)
+				.expect(201);
+
+			const res = await request(server)
+				.post('/api/auth/register')
+				.send({ ...account, displayName: `${account.displayName}x` })
+				.expect(200);
+
+			expect(res.body).toMatchObject({
+				ok: false,
+				status: 409,
+				errors: { email: expect.any(String) as string },
+			});
+			expect(res.headers['set-cookie']).toBeUndefined();
+		});
+	});
+
 	describe('GET /auth/session', () => {
 		it('answers 200 with no user when there is no cookie', async () => {
 			const res = await request(server)

@@ -8,10 +8,12 @@ import {
 	Req,
 	Res,
 	UnauthorizedException,
+	UseFilters,
 	UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request, Response } from 'express';
+import { ExpectedErrorFilter } from '../http/expected-error.filter';
 import { AUTH_COOKIE, TOKEN_COOKIE_OPTIONS, TOKEN_TTL_S } from './auth-cookie';
 import { AuthService } from './auth.service';
 import type { AuthUser, PublicUser } from './auth.types';
@@ -34,7 +36,13 @@ export class AuthController {
 	 * The cookie is issued only after the service returns. A duplicate throws
 	 * before that line, so a failed registration can never leave a session
 	 * behind.
+	 *
+	 * A rejected field (400) or a taken email or name (409) is normal use, so
+	 * it answers 200 { ok: false } and the browser logs nothing.
 	 */
+	@UseFilters(
+		new ExpectedErrorFilter(HttpStatus.BAD_REQUEST, HttpStatus.CONFLICT),
+	)
 	@Post('register')
 	async register(
 		@Body() dto: RegisterDto,
@@ -45,7 +53,17 @@ export class AuthController {
 		return user;
 	}
 
-	/** A login creates nothing, so it answers 200 rather than Nest's default 201. */
+	/**
+	 * A login creates nothing, so it answers 200 rather than Nest's default 201.
+	 * A wrong email or password (401) or a malformed body (400) is normal use,
+	 * so it answers 200 { ok: false } and the browser logs nothing.
+	 */
+	@UseFilters(
+		new ExpectedErrorFilter(
+			HttpStatus.BAD_REQUEST,
+			HttpStatus.UNAUTHORIZED,
+		),
+	)
 	@HttpCode(HttpStatus.OK)
 	@Post('login')
 	async login(
