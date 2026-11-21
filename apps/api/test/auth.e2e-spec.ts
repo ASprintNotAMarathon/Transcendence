@@ -7,6 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from './../src/app.module';
 import { configureApp } from './../src/bootstrap';
 import type { JwtPayload, PublicUser } from './../src/auth';
+import { TOKEN_TTL_S } from './../src/auth/auth-cookie';
 
 /**
  * These run against a live database, so every run registers an address nobody
@@ -196,9 +197,12 @@ describe('auth (e2e)', () => {
 				.set('Cookie', sessionCookie(registered))
 				.expect(200);
 
-			expect((res.body as { user: PublicUser }).user.id).toBe(
-				(registered.body as PublicUser).id,
-			);
+			const body = res.body as { user: PublicUser; expiresIn: number };
+			expect(body.user.id).toBe((registered.body as PublicUser).id);
+
+			// A brand-new token: about the full 24h left, never more.
+			expect(body.expiresIn).toBeLessThanOrEqual(TOKEN_TTL_S);
+			expect(body.expiresIn).toBeGreaterThan(TOKEN_TTL_S - 60);
 		});
 	});
 

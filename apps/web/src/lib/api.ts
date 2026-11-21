@@ -126,8 +126,9 @@ const realAuthApi = {
 
   // Startup check. Always 200: { user: null } means nobody is logged in,
   // so a logged-out visitor gets no 401 in the browser console.
+  // expiresIn: seconds the session has left (only when someone is logged in).
   session() {
-    return request<{ user: AuthUser | null }>('/auth/session')
+    return request<{ user: AuthUser | null; expiresIn?: number }>('/auth/session')
   },
 }
 

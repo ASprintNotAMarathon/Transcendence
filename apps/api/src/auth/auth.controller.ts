@@ -114,17 +114,26 @@ export class AuthController {
 	 * The user is wrapped in an object rather than returned bare: a bare null
 	 * goes out as an empty body, which the client cannot parse as JSON.
 	 *
-	 * It uses the same check as the guard (AuthService.verifyToken), so a bad
-	 * token is treated the same here: as nobody.
+	 * It uses the same check as the guard (AuthService.verifySession), so a
+	 * bad token is treated the same here: as nobody.
+	 *
+	 * `expiresIn` is the seconds the session has left. The web app logs
+	 * itself out just before then, so after 24h it never sends a request the
+	 * guard would answer with a 401.
 	 */
 	@Get('session')
-	async session(@Req() req: Request): Promise<{ user: PublicUser | null }> {
+	async session(
+		@Req() req: Request,
+	): Promise<{ user: PublicUser; expiresIn: number } | { user: null }> {
 		const token = req.cookies?.[AUTH_COOKIE] as string | undefined;
-		const userId = token ? this.auth.verifyToken(token) : null;
-		if (userId === null) return { user: null };
+		const session = token ? this.auth.verifySession(token) : null;
+		if (session === null) return { user: null };
 
 		try {
-			return { user: await this.auth.profile(userId) };
+			return {
+				user: await this.auth.profile(session.userId),
+				expiresIn: session.expiresIn,
+			};
 		} catch (err) {
 			// Valid token, deleted user: also nobody.
 			if (err instanceof UnauthorizedException) return { user: null };
