@@ -1,6 +1,6 @@
 /*
     LoadingState. Shown while something is loading 
-    (for example ProtectedRoute waiting on GET /api/auth/me).
+    (for example ProtectedRoute waiting on GET /api/auth/session).
   
     ● ● ● ● ●   <- 5 dots, pulsing one after another
     Loading…    <- message, customizable

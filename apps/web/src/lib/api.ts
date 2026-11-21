@@ -1,7 +1,7 @@
 /*
   Api.ts: The ONLY place our frontend talks to the backend.
 
-  Every other file just calls authApi.login(...) or authApi.me(), 
+  Every other file just calls authApi.login(...) or authApi.session(),
   no need to know about fetch, cookies, or errors.
 
   Three layers:
@@ -64,9 +64,10 @@ export class ApiError extends Error {
 */
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, {
-    // Goes through the Vite proxy, so this is same origin. No CORS needed.
+    // Same origin through nginx (8443) or the Vite proxy (5173). No CORS needed.
     // The cookie is Secure in every environment, also on localhost (decision 09).
-    // If login seems to work but /me gives a 401 right after, check the cookie in the browser.
+    // If login seems to work but session() keeps answering { user: null }
+    // right after, check the cookie in the browser.
     credentials: 'include',
     headers: {
       ...(init?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
@@ -89,8 +90,10 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 /*
-  LAYER 3   authApi: contains 4 simple functions: register, login, logout, me.
+  LAYER 3   authApi: register, login, logout, me and session.
             Each calls request() with the right path + data.
+            session() is the startup check, me() is the same data behind a
+            401 when you are logged out, and has no caller in the app today.
 */
 const realAuthApi = {
   register(input: RegisterInput) {
