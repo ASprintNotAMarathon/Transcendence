@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router'
+import { useParams } from 'react-router'
+import BackLink from '../components/BackLink'
 import { gomoku } from '@transcendence/shared'
 import type {
   GameOutcome,
@@ -265,9 +266,9 @@ function MatchPage() {
           endReason={view.endReason}
         />
         {backToLobby && (
-          <Link to="/home" className="btn btn-sm shrink-0 tracking-wide border-2 btn-outline-accent">
-            ← Back to lobby
-          </Link>
+          <BackLink to="/home" className="shrink-0">
+            Back to lobby
+          </BackLink>
         )}
       </div>
       <div className="match-board flex flex-col items-center gap-3">
