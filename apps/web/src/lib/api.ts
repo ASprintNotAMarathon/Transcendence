@@ -128,11 +128,6 @@ export const matchApi = {
   live() {
     return request<LiveMatch[]>('/matches/live')
   },
-
-  async current() {
-    const match = await request<LiveMatch | undefined>('/matches/current')
-    return match ?? null
-  },
 }
 
 export type Profile = {

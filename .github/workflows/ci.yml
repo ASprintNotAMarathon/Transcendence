@@ -75,8 +75,3 @@ jobs:
 
       - name: Test
         run: make test
-
-      # No linter is configured at the root yet. apps/api brings eslint with it,
-      # so add the step once that branch lands:
-      # - name: Lint
-      #   run: make lint

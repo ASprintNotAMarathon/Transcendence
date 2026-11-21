@@ -1,10 +1,10 @@
 name: transcendence
 
 services:
-  nginx:
+  web:
     build:
       context: .
-      dockerfile: nginx/Dockerfile
+      dockerfile: apps/web/Dockerfile
     init: true
     depends_on:
       api:

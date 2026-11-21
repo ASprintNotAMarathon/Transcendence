@@ -1,4 +1,4 @@
-import type { GameEngine, GameOutcome, PlayerIndex } from "./types.js";
+import type { GameEngine, PlayerIndex } from "./types.js";
 
 export const BOARD_SIZE = 15;
 export const WIN_LENGTH = 5;

@@ -91,7 +91,7 @@ describe('MatchService.join', () => {
 	it('gives an empty board and player 0 to move for a match with no moves', async () => {
 		findUnique.mockResolvedValue(matchRow());
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.matchId).toBe(MATCH_ID);
 		expect(state.game).toBe('gomoku');
@@ -103,7 +103,7 @@ describe('MatchService.join', () => {
 	it('replays the stored moves into the current position', async () => {
 		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 		const board = gomoku.deserialize(state.state);
 
 		expect(state.moveNumber).toBe(2);
@@ -115,7 +115,7 @@ describe('MatchService.join', () => {
 	it('puts the engine serialize output on the wire', async () => {
 		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		// deserialize re-validates the whole shape and throws on anything it did
 		// not produce, so surviving it is the real assertion here. Surviving a
@@ -127,7 +127,7 @@ describe('MatchService.join', () => {
 	it('lists the players in seat order', async () => {
 		findUnique.mockResolvedValue(matchRow());
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.players).toEqual([
 			{ userId: PLAYER_0.id, displayName: PLAYER_0.displayName },
@@ -138,38 +138,27 @@ describe('MatchService.join', () => {
 	it('gives a rejoin exactly what it gave the first join', async () => {
 		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
 
-		const first = await service.join(PLAYER_0.id, MATCH_ID);
-		const second = await service.join(PLAYER_0.id, MATCH_ID);
+		const first = await service.join(MATCH_ID);
+		const second = await service.join(MATCH_ID);
 
 		// The acceptance criterion in #22, and it costs nothing: there is no
 		// first-join path and no rejoin path, only a fold over the same rows.
 		expect(second).toEqual(first);
 	});
 
-	it('gives a spectator the same payload as a player', async () => {
-		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
-
-		const asPlayer = await service.join(PLAYER_0.id, MATCH_ID);
-		const asSpectator = await service.join(SPECTATOR_ID, MATCH_ID);
-
-		expect(asSpectator).toEqual(asPlayer);
-	});
-
 	it('rejects an unknown match with match.not_found', async () => {
 		findUnique.mockResolvedValue(null);
 
-		await expect(
-			service.join(PLAYER_0.id, UNKNOWN_MATCH_ID),
-		).rejects.toBeInstanceOf(MatchError);
-		await expect(
-			service.join(PLAYER_0.id, UNKNOWN_MATCH_ID),
-		).rejects.toMatchObject({
+		await expect(service.join(UNKNOWN_MATCH_ID)).rejects.toBeInstanceOf(
+			MatchError,
+		);
+		await expect(service.join(UNKNOWN_MATCH_ID)).rejects.toMatchObject({
 			code: 'match.not_found',
 		});
 	});
 
 	it('rejects an id that is not a uuid with match.not_found', async () => {
-		await expect(service.join(PLAYER_0.id, 'abc')).rejects.toMatchObject({
+		await expect(service.join('abc')).rejects.toMatchObject({
 			code: 'match.not_found',
 		});
 		expect(findUnique).not.toHaveBeenCalled();
@@ -178,7 +167,7 @@ describe('MatchService.join', () => {
 	it('asks the database for the moves in move-number order', async () => {
 		findUnique.mockResolvedValue(matchRow());
 
-		await service.join(PLAYER_0.id, MATCH_ID);
+		await service.join(MATCH_ID);
 
 		// replay() refuses an out-of-sequence row rather than sorting it, so this
 		// clause is the only thing standing between a correct board and a
@@ -200,7 +189,7 @@ describe('MatchService.join', () => {
 			}),
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.outcome).toEqual({ kind: 'win', player: 1 });
 	});
@@ -214,7 +203,7 @@ describe('MatchService.join', () => {
 			}),
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.outcome).toEqual({ kind: 'draw' });
 	});
@@ -222,7 +211,7 @@ describe('MatchService.join', () => {
 	it('has no end reason while the match is still running', async () => {
 		findUnique.mockResolvedValue(matchRow({ moves: rowsFor(quietMoves) }));
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.endReason).toBeNull();
 	});
@@ -237,7 +226,7 @@ describe('MatchService.join', () => {
 			}),
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.outcome).toEqual({ kind: 'win', player: 1 });
 		expect(state.endReason).toBe('resigned');
@@ -252,7 +241,7 @@ describe('MatchService.join', () => {
 			}),
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.endReason).toBe('played');
 	});
@@ -262,7 +251,7 @@ describe('MatchService.join', () => {
 			matchRow({ moves: rowsFor(winningMoves) }),
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.outcome).toEqual({ kind: 'win', player: 0 });
 		expect(state.moveNumber).toBe(winningMoves.length);
@@ -274,18 +263,16 @@ describe('MatchService.join', () => {
 		// A match created for a game this server cannot run is a bug on our side.
 		// It must reach the player as a 500, never as a rejection code they could
 		// be expected to do something about.
-		await expect(service.join(PLAYER_0.id, MATCH_ID)).rejects.toThrow(
-			/not implemented/,
+		await expect(service.join(MATCH_ID)).rejects.toThrow(/not implemented/);
+		await expect(service.join(MATCH_ID)).rejects.not.toBeInstanceOf(
+			MatchError,
 		);
-		await expect(
-			service.join(PLAYER_0.id, MATCH_ID),
-		).rejects.not.toBeInstanceOf(MatchError);
 	});
 
 	it('says nobody is missing while both players are connected', async () => {
 		findUnique.mockResolvedValue(matchRow());
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.disconnected).toBeNull();
 	});
@@ -299,7 +286,7 @@ describe('MatchService.join', () => {
 			() => undefined,
 		);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.disconnected).toEqual(pending);
 		disconnects.cancel(PLAYER_1.id);
@@ -311,7 +298,7 @@ describe('MatchService.join', () => {
 		);
 		disconnects.start(PLAYER_1.id, MATCH_ID, 1, () => undefined);
 
-		const state = await service.join(PLAYER_0.id, MATCH_ID);
+		const state = await service.join(MATCH_ID);
 
 		expect(state.disconnected).toBeNull();
 		disconnects.cancel(PLAYER_1.id);
