@@ -26,6 +26,15 @@ function sessionCookie(response: request.Response): string {
 	return header.map((cookie) => cookie.split(';')[0]).join('; ');
 }
 
+/**
+ * A normal-use failure: 200 on the wire, so the browser logs nothing, with
+ * the real status inside (see ExpectedErrorFilter).
+ */
+function expectExpectedError(response: request.Response, status: number) {
+	expect(response.status).toBe(200);
+	expect(response.body).toMatchObject({ ok: false, status });
+}
+
 /** A real 1x1 PNG, the smallest honest upload. */
 const TINY_PNG = Buffer.from(
 	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
@@ -99,18 +108,18 @@ describe('users (e2e)', () => {
 		await request(server).get(`/api/users/${me.id}`).expect(401);
 	});
 
-	it('answers 400 for an id that is not a uuid', async () => {
-		await request(server)
+	it('answers an expected 400 for an id that is not a uuid', async () => {
+		const response = await request(server)
 			.get('/api/users/abc')
-			.set('Cookie', cookie)
-			.expect(400);
+			.set('Cookie', cookie);
+		expectExpectedError(response, 400);
 	});
 
-	it('answers 404 for a uuid nobody has', async () => {
-		await request(server)
+	it('answers an expected 404 for a uuid nobody has', async () => {
+		const response = await request(server)
 			.get(`/api/users/${randomUUID()}`)
-			.set('Cookie', cookie)
-			.expect(404);
+			.set('Cookie', cookie);
+		expectExpectedError(response, 404);
 	});
 
 	describe('PATCH /users/me', () => {
@@ -143,7 +152,7 @@ describe('users (e2e)', () => {
 				.expect(200);
 		});
 
-		it('answers 409 on the displayName field for a taken name', async () => {
+		it('answers an expected 409 on the displayName field for a taken name', async () => {
 			const { cookie } = await register();
 			const { user: other } = await register();
 
@@ -151,35 +160,39 @@ describe('users (e2e)', () => {
 				.patch('/api/users/me')
 				.set('Cookie', cookie)
 				.send({ displayName: other.displayName })
-				.expect(409);
+				.expect(200);
 
 			expect(refused.body).toEqual({
-				statusCode: 409,
-				error: 'Conflict',
+				ok: false,
+				status: 409,
 				errors: { displayName: 'That display name is taken' },
 			});
 		});
 
-		it('answers 400 for a name register would refuse', async () => {
+		it('answers an expected 400 for a name register would refuse', async () => {
 			const { cookie } = await register();
 
 			const refused = await request(server)
 				.patch('/api/users/me')
 				.set('Cookie', cookie)
-				.send({ displayName: 'a b' })
-				.expect(400);
+				.send({ displayName: 'a b' });
 
+			expectExpectedError(refused, 400);
 			expect(refused.body).toHaveProperty('errors.displayName');
 		});
 
-		it('answers 400 for a field it does not take', async () => {
+		it('answers an expected 400 for a field it does not take', async () => {
 			const { cookie, user } = await register();
 
-			await request(server)
+			const refused = await request(server)
 				.patch('/api/users/me')
 				.set('Cookie', cookie)
-				.send({ displayName: user.displayName, email: 'x@example.com' })
-				.expect(400);
+				.send({
+					displayName: user.displayName,
+					email: 'x@example.com',
+				});
+
+			expectExpectedError(refused, 400);
 		});
 
 		it('refuses a visitor who is not logged in', async () => {
@@ -239,35 +252,36 @@ describe('users (e2e)', () => {
 				.attach('avatar', Buffer.from('not an image'), {
 					filename: 'fake.png',
 					contentType: 'image/png',
-				})
-				.expect(400);
+				});
 
+			expectExpectedError(refused, 400);
 			expect(refused.body).toHaveProperty('errors.avatar');
 		});
 
-		it('answers 413 for a file over 5 MB', async () => {
+		it('answers an expected 413 for a file over 5 MB', async () => {
 			const { cookie } = await register();
 			const huge = Buffer.concat([
 				TINY_PNG,
 				Buffer.alloc(5 * 1024 * 1024),
 			]);
 
-			await request(server)
+			const refused = await request(server)
 				.post('/api/users/me/avatar')
 				.set('Cookie', cookie)
-				.attach('avatar', huge, 'huge.png')
-				.expect(413);
+				.attach('avatar', huge, 'huge.png');
+
+			expectExpectedError(refused, 413);
 		});
 
-		it('answers 400 when no file is sent', async () => {
+		it('answers an expected 400 when no file is sent', async () => {
 			const { cookie } = await register();
 
 			const refused = await request(server)
 				.post('/api/users/me/avatar')
 				.set('Cookie', cookie)
-				.field('nothing', 'here')
-				.expect(400);
+				.field('nothing', 'here');
 
+			expectExpectedError(refused, 400);
 			expect(refused.body).toHaveProperty('errors.avatar');
 		});
 

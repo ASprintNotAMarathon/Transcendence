@@ -9,10 +9,12 @@ import {
 	Patch,
 	Post,
 	UploadedFile,
+	UseFilters,
 	UseGuards,
 	UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ExpectedErrorFilter } from '../http/expected-error.filter';
 import {
 	CurrentUser,
 	JwtAuthGuard,
@@ -53,7 +55,14 @@ export class UsersController {
 	 * `friendship` is seen from the caller's side, so the profile page knows
 	 * which button to show. Both lookups run at once; a missing user is
 	 * still the 404 from findProfile.
+	 *
+	 * The 400 and 404 answer 200 { ok: false }: a link to a player who is gone
+	 * is normal use, and the page shows "not found" without a console error.
+	 * The guard's 401 stays a real 401.
 	 */
+	@UseFilters(
+		new ExpectedErrorFilter(HttpStatus.BAD_REQUEST, HttpStatus.NOT_FOUND),
+	)
 	@Get(':id')
 	async findOne(
 		@CurrentUser() user: AuthUser,
@@ -69,7 +78,13 @@ export class UsersController {
 	/**
 	 * The id comes from the cookie, never the URL, so the only user anyone
 	 * can rename is themselves.
+	 *
+	 * A refused name (400) or a taken one (409) is normal use, so it answers
+	 * 200 { ok: false } and the browser logs nothing.
 	 */
+	@UseFilters(
+		new ExpectedErrorFilter(HttpStatus.BAD_REQUEST, HttpStatus.CONFLICT),
+	)
 	@Patch('me')
 	updateMe(
 		@CurrentUser() user: AuthUser,
@@ -88,7 +103,16 @@ export class UsersController {
 	 *
 	 * 200 rather than Nest's default 201 for a POST: it replaces the caller's
 	 * avatar, it does not create something at a new address.
+	 *
+	 * A refused file (400) or one over the limit (413) is normal use, so it
+	 * answers 200 { ok: false } and the browser logs nothing.
 	 */
+	@UseFilters(
+		new ExpectedErrorFilter(
+			HttpStatus.BAD_REQUEST,
+			HttpStatus.PAYLOAD_TOO_LARGE,
+		),
+	)
 	@HttpCode(HttpStatus.OK)
 	@Post('me/avatar')
 	@UseInterceptors(
