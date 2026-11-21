@@ -1,7 +1,5 @@
 import { Injectable } from '@nestjs/common';
 
-const NO_SOCKETS: ReadonlySet<string> = new Set();
-
 /** Told when a user comes online (true) or goes offline (false). */
 export type PresenceListener = (userId: string, online: boolean) => void;
 
@@ -64,10 +62,6 @@ export class WsRegistry {
 
 	isOnline(userId: string): boolean {
 		return this.byUser.has(userId);
-	}
-
-	socketsFor(userId: string): ReadonlySet<string> {
-		return this.byUser.get(userId) ?? NO_SOCKETS;
 	}
 
 	onlineUserIds(): readonly string[] {

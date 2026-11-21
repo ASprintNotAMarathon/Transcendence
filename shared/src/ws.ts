@@ -70,9 +70,7 @@ export type TransportErrorCode =
 	/** Readable but not in protocol - type is one we never heard of */
 	| "transport.unknown_event"
 	/** Type is real but the payload is wrong */
-	| "transport.invalid_payload"
-	/** Too many messages too quickly. Socket stays open. */
-	| "transport.rate_limited";
+	| "transport.invalid_payload";
 
 /** Failures the match runtime raises. */
 export type MatchErrorCode =

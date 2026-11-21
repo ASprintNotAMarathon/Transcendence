@@ -11,11 +11,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 /* 
 this is where the api is, as host:port.
-Inside compose the service name is 'localhost', and localhost inside of container means that container.
-so proxying to localhost:3000 would search for the api inside of the web container.
-Outside of compose (npm run dev) the default is right
+The dev server runs on the host (npm run dev), not in a container,
+and compose publishes the api on the host's localhost:3000.
 */
-const apiHost = process.env.API_HOST ?? 'localhost:3000'
+const apiHost = 'localhost:3000'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

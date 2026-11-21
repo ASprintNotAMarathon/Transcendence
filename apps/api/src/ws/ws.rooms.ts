@@ -21,8 +21,3 @@ export function matchRoom(matchId: string): string {
 export function lobbyRoom(): string {
 	return 'lobby';
 }
-
-/** Everyone in one conversation - for Chat. */
-export function conversationRoom(conversationId: string): string {
-	return `conversation:${conversationId}`;
-}
