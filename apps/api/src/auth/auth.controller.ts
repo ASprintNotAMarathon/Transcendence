@@ -5,11 +5,13 @@ import {
 	HttpCode,
 	HttpStatus,
 	Post,
+	Req,
 	Res,
+	UnauthorizedException,
 	UseGuards,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { AUTH_COOKIE, TOKEN_COOKIE_OPTIONS, TOKEN_TTL_S } from './auth-cookie';
 import { AuthService } from './auth.service';
 import type { AuthUser, PublicUser } from './auth.types';
@@ -83,6 +85,33 @@ export class AuthController {
 	@Get('me')
 	me(@CurrentUser() user: AuthUser): Promise<PublicUser> {
 		return this.auth.profile(user.id);
+	}
+
+	/**
+	 * The startup check: "is anyone logged in?". Unlike /me it is unguarded and
+	 * answers 200 either way, because for a visitor with no cookie "nobody" is
+	 * the correct answer, not an error. The browser logs every 4xx in the
+	 * console, so the question asked on every page load must not produce one.
+	 *
+	 * The user is wrapped in an object rather than returned bare: a bare null
+	 * goes out as an empty body, which the client cannot parse as JSON.
+	 *
+	 * It uses the same check as the guard (AuthService.verifyToken), so a bad
+	 * token is treated the same here: as nobody.
+	 */
+	@Get('session')
+	async session(@Req() req: Request): Promise<{ user: PublicUser | null }> {
+		const token = req.cookies?.[AUTH_COOKIE] as string | undefined;
+		const userId = token ? this.auth.verifyToken(token) : null;
+		if (userId === null) return { user: null };
+
+		try {
+			return { user: await this.auth.profile(userId) };
+		} catch (err) {
+			// Valid token, deleted user: also nobody.
+			if (err instanceof UnauthorizedException) return { user: null };
+			throw err;
+		}
 	}
 
 	/**
