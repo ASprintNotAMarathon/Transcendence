@@ -68,6 +68,8 @@ function RegisterPage() {
     } catch (error) {
       // Confirmed with Kimia: 400 and 409 both return
       // { errors: { fieldName: "message" } }, handled the same way here.
+      // They arrive as 200 { ok: false } (clean console), request() turns
+      // them back into ApiError with fieldErrors.
       if (error instanceof ApiError && error.fieldErrors) {
         setErrors(error.fieldErrors)
       } else {

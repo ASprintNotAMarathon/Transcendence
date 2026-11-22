@@ -45,8 +45,24 @@ export class AuthService implements OnModuleInit {
 	 * to change along with both callers.
 	 */
 	verifyToken(token: string): string | null {
+		return this.verifySession(token)?.userId ?? null;
+	}
+
+	/**
+	 * verifyToken plus how many seconds the token has left, for
+	 * GET /auth/session: the web app logs itself out just before that, so it
+	 * never sends a request the guard would refuse.
+	 *
+	 * Seconds left rather than a date, so a client whose clock is wrong still
+	 * counts down correctly.
+	 */
+	verifySession(token: string): { userId: string; expiresIn: number } | null {
 		try {
-			return this.jwt.verify<JwtPayload>(token).sub;
+			const { sub, exp } = this.jwt.verify<JwtPayload>(token);
+			return {
+				userId: sub,
+				expiresIn: exp - Math.floor(Date.now() / 1000),
+			};
 		} catch {
 			// Expired, tampered, signed with another key, or not a token at
 			// all. The caller does not get to tell them apart.

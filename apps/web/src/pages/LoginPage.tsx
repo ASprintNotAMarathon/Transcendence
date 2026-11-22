@@ -15,6 +15,8 @@ type Errors = {
 /*
   Wrong email or wrong password return a generic 401 from server.
   On purpose: see issue #20, requiring: without revealing which field was wrong.
+  It arrives as 200 { ok: false, status: 401 } so the console stays clean;
+  request() turns it back into ApiError with status 401.
 */
 const INVALID_CREDENTIALS_MESSAGE = 'Incorrect email or password.'
 

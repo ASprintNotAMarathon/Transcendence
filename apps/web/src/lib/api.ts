@@ -12,7 +12,7 @@
   Friends have their own file: friends.ts (it uses request() from here).
 */
 
-import type { LiveMatch } from '@transcendence/shared'
+import { isExpectedError, type LiveMatch } from '@transcendence/shared'
 import type { Friendship } from './friends'
 
 /*
@@ -46,6 +46,12 @@ export type LoginInput = {
 // Shape of response is confirmed with Kimia: 400/409 return
 // { errors: { fieldName: "message" } }, 401 (login) is a single
 // form-level message instead, see LoginPage.
+// Failures that are normal use (wrong password, taken name, ...) arrive as
+// 200 { ok: false, status, message?, errors? } so the browser console stays
+// clean. request() turns them into this same ApiError with the real status,
+// so callers check error.status exactly as before.
+// Always call the API through request(): a raw fetch() would see the 200
+// and treat { ok: false } as a success.
 export class ApiError extends Error {
   status: number
   fieldErrors?: Record<string, string>
@@ -86,14 +92,24 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     return undefined as T
   }
 
-  return response.json() as Promise<T>
+  const body: unknown = await response.json()
+  // A normal-use failure arrives as 200 { ok: false, ... } (see shared/http.ts).
+  // Throw it as the same ApiError a real 4xx gives, so callers don't change.
+  if (isExpectedError(body)) {
+    throw new ApiError(
+      body.status,
+      body.message ?? `Request failed with status ${body.status}`,
+      body.errors,
+    )
+  }
+  return body as T
 }
 
 /*
   LAYER 3   authApi: register, login, logout and session.
             Each calls request() with the right path + data.
             session() is the startup check: always 200, { user: null } when
-            you are logged out.
+            you are logged out, and expiresIn (seconds left) when logged in.
 */
 const realAuthApi = {
   register(input: RegisterInput) {
@@ -116,8 +132,9 @@ const realAuthApi = {
 
   // Startup check. Always 200: { user: null } means nobody is logged in,
   // so a logged-out visitor gets no 401 in the browser console.
+  // expiresIn: seconds the session has left (only when someone is logged in).
   session() {
-    return request<{ user: AuthUser | null }>('/auth/session')
+    return request<{ user: AuthUser | null; expiresIn?: number }>('/auth/session')
   },
 }
 

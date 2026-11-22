@@ -72,11 +72,22 @@ function FriendButton({ userId }: FriendButtonProps) {
       await action()
       setFriendship(next ?? (await friendsApi.statusWith(userId)))
     } catch (caught) {
+      // 409 / 404: the other player changed something in the meantime (sent,
+      // withdrew or accepted a request). Show the real state, not the old one.
+      const changed =
+        caught instanceof ApiError && (caught.status === 409 || caught.status === 404)
       setError(
-        caught instanceof ApiError && caught.status === 409
-          ? 'There is already a request or friendship with this player.'
+        changed
+          ? 'This changed in the meantime, here is the current status.'
           : 'Something went wrong. Please try again.',
       )
+      if (changed) {
+        try {
+          setFriendship(await friendsApi.statusWith(userId))
+        } catch {
+          // Keep the old buttons; the error above already says something is off.
+        }
+      }
     } finally {
       setBusy(false)
     }

@@ -19,6 +19,9 @@ export type { MatchSeats, MoveRow, ReplayResult } from "./match.js";
 
 export type { LiveMatch } from "./lobby.js";
 
+export { isExpectedError } from "./http.js";
+export type { ExpectedError } from "./http.js";
+
 export type {
 	ChatClientEvent,
 	ChatConversationPayload,
