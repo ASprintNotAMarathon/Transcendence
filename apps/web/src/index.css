@@ -36,13 +36,15 @@
 
 /* 2. Page. The red glow comes from two gradients: one here, one in body::before.
 
-   Type scale. Four sizes, and what each one is for. If you need a size that is
+   Type scale. Six sizes, and what each one is for. If you need a size that is
    not in this list, the answer is usually one of these, not a new one.
 
-     Display   Barrio, text-2xl    page titles and the logo
-     Heading   text-xs uppercase   section labels, via SectionHeading
-     Body      text-base           the default, everything you read
-     Small     text-sm             quiet actions, timestamps, helper text
+     Hero      Barrio   the landing page and the 404
+     Display   Barrio   the logo and page titles
+     Title              a screen title, and headings inside a long text
+     Label              section labels, uppercase, via SectionHeading
+     Body               the default, everything you read
+     Small              quiet actions, timestamps, helper text
 
    Barrio is display only: it is hard to read at small sizes, so it never
    carries body text. DM Sans does the rest. */

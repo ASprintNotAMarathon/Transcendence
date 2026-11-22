@@ -33,7 +33,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { ApiError, authApi, type AuthUser, type LoginInput, type RegisterInput } from '../lib/api'
+import { authApi, type AuthUser, type LoginInput, type RegisterInput } from '../lib/api'
 
 type AuthStatus = 'loading' | 'authenticated' | 'anonymous'
 
@@ -159,5 +159,3 @@ export function useAuth() {
   }
   return ctx
 }
-
-export { ApiError }
